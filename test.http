@@ -1,0 +1,28 @@
+@baseUrl = localhost:3000
+
+
+### Send test GET method
+GET http://{{baseUrl}}/test
+
+### Send test POST method
+POST http://{{baseUrl}}/test HTTP/1.1
+content-type: application/json
+
+{
+    "name": "sample",
+    "time": "Wed, 21 Oct 2015 18:27:50 GMT"
+}
+
+### Send test PUT method
+PUT http://{{baseUrl}}/test
+Content-Type: "application/json"
+
+### Send test PATCH method
+PATCH http://{{baseUrl}}/test
+Content-Type: "application/json"
+
+### Send test DELETE method
+DELETE http://{{baseUrl}}/test
+
+### Send test OPTIONS method
+OPTIONS http://{{baseUrl}}/test

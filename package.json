@@ -1,0 +1,33 @@
+{
+  "name": "@boolts/core",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BoolTS/core.git"
+  },
+  "author": "Trần Đức Tâm (Neo)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/BoolTS/core/issues"
+  },
+  "homepage": "https://github.com/BoolTS/core#readme",
+  "dependencies": {
+    "colors": "^1.4.0",
+    "express": ">=5.0.0-beta.1",
+    "qs": "^6.12.1",
+    "reflect-metadata": "^0.2.2",
+    "response-time": "^2.3.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node-statsd": "^0.1.6",
+    "@types/response-time": "^2.3.8",
+    "typescript": "^5.4.5"
+  }
+}
