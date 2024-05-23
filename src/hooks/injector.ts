@@ -1,10 +1,10 @@
 import "reflect-metadata";
 
-import { injectableKey } from "../decorators";
+import { injectableKey, injectKey } from "../decorators";
 
 
 interface IInjector {
-    get<T>(target: new (...args: any[]) => T): T
+    get<T>(classDefinition: { new(...args: any[]): T }): T
 }
 
 export const Injector: IInjector = new class {
@@ -15,25 +15,25 @@ export const Injector: IInjector = new class {
      * 
      * @param constructor 
      */
-    get<T extends Object>(
-        classDefinition: T
+    get<T>(
+        classDefinition: { new(...args: any[]): T }
     ) {
-        if (this._mapper.has(classDefinition.constructor)) {
-            return this._mapper.get(classDefinition.constructor) as T;
+        if (this._mapper.has(classDefinition)) {
+            return this._mapper.get(classDefinition) as T;
         }
 
-        const ownMetadataKeys = Reflect.getOwnMetadataKeys(classDefinition.constructor);
+        const ownMetadataKeys = Reflect.getMetadataKeys(classDefinition);
 
         if (!ownMetadataKeys.includes(injectableKey)) {
             throw Error("Missing dependency declaration, please check @Injectable() used on dependency(ies).");
         }
 
         // Initialize dependencies injection
-        const dependencies: any[] = Reflect.getOwnMetadata("design:paramtypes", classDefinition.constructor) || [];
+        const dependencies: any[] = Reflect.getOwnMetadata(injectKey, classDefinition) || [];
         const injections: any[] = dependencies.map(dependency => Injector.get(dependency));
-        const instance = classDefinition.constructor(...injections);
+        const instance = new classDefinition(...injections);
 
-        this._mapper.set(classDefinition.constructor, instance);
+        this._mapper.set(classDefinition, instance);
 
         return instance;
     }

@@ -16,6 +16,7 @@ export class TestController {
         req: Request,
         res: Response
     ) {
+        console.log("this.testService", this.testService.exec())
         res.json({ test: "success" }).send();
     }
 

@@ -1,10 +1,10 @@
 {
   "name": "@bool-ts/core",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "bun run __test/index.ts --watch",
     "build": "tsc"
   },
   "repository": {
