@@ -12,7 +12,7 @@ export const Injector = new class {
         }
         const ownMetadataKeys = Reflect.getOwnMetadataKeys(target);
         if (!ownMetadataKeys.includes(injectableKey)) {
-            console.error("Current metadata keys:", ownMetadataKeys);
+            console.error("Current metadata keys:", ownMetadataKeys, Reflect.getOwnMetadataKeys(target.constructor));
             throw Error("Missing dependency declaration, please check @Injectable() used on dependency(ies).");
         }
         // Initialize dependencies injection
