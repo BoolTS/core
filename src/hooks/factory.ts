@@ -149,11 +149,13 @@ export const BoolFactory = (
     );
 
     app.use((req: Request, res: Response, next: NextFunction) => {
-        if (!allowOrigins.includes(req.headers.origin || "*")) {
-            return res.status(403).json({
-                ["httpCode"]: 403,
-                ["data"]: "Invalid origin."
-            });
+        if (!allowOrigins.includes("*")) {
+            if (!allowOrigins.includes(req.headers.origin || "*")) {
+                return res.status(403).json({
+                    ["httpCode"]: 403,
+                    ["data"]: "Invalid origin."
+                });
+            }
         }
 
         res.header("Access-Control-Allow-Origin", req.headers.origin || "*");

@@ -119,11 +119,13 @@ export const BoolFactory = (target) => {
         console.info(`PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${req.originalUrl.blue} - Time: ${convertedTime}`);
     }));
     app.use((req, res, next) => {
-        if (!allowOrigins.includes(req.headers.origin || "*")) {
-            return res.status(403).json({
-                ["httpCode"]: 403,
-                ["data"]: "Invalid origin."
-            });
+        if (!allowOrigins.includes("*")) {
+            if (!allowOrigins.includes(req.headers.origin || "*")) {
+                return res.status(403).json({
+                    ["httpCode"]: 403,
+                    ["data"]: "Invalid origin."
+                });
+            }
         }
         res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
         res.header("Access-Control-Allow-Headers", "*");
