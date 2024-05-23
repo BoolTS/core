@@ -1,5 +1,7 @@
 import "reflect-metadata";
 
+import { injectableKey } from "../decorators";
+
 
 interface IInjector {
     get<T>(target: new (...args: any[]) => T): T
@@ -20,7 +22,7 @@ export const Injector: IInjector = new class {
             return this._mapper.get(target) as T;
         }
 
-        if (!Reflect.getOwnMetadataKeys(target).includes("__bool:injectable__")) {
+        if (!Reflect.getOwnMetadataKeys(target).includes(injectableKey)) {
             throw Error("Missing dependency declaration, please check @Injectable() used on dependency(ies).");
         }
 
