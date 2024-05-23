@@ -113,6 +113,32 @@ export const BoolFactory = (target) => {
         const convertedTime = `${Math.round((time + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
         console.info(`PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${req.originalUrl.blue} - Time: ${convertedTime}`);
     }));
+    const allowOrigins = !metadata?.allowOrigins ?
+        ["*"] : typeof metadata.allowOrigins !== "string" ?
+        metadata.allowOrigins : [metadata.allowOrigins];
+    const allowMethods = !metadata?.allowMethods ?
+        ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : metadata.allowMethods;
+    app.use((req, res, next) => {
+        if (!req.headers.origin) {
+            return res.status(403).json({
+                ["httpCode"]: 403,
+                ["data"]: "CORS Origin - Not found."
+            });
+        }
+        if (!allowOrigins.includes("*")) {
+            if (!allowOrigins.includes(req.headers.origin)) {
+                return res.status(403).json({
+                    ["httpCode"]: 403,
+                    ["data"]: "Invalid origin."
+                });
+            }
+        }
+        res.header("Access-Control-Allow-Origin", req.headers.origin);
+        res.header("Access-Control-Allow-Headers", "*");
+        res.header("Access-Control-Allow-Credentials", "true");
+        res.header("Access-Control-Allow-Methods", allowMethods.join(", "));
+        next();
+    });
     app.use(routers);
     return app;
 };

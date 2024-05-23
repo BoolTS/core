@@ -1,6 +1,8 @@
 export type TModuleOptions = Partial<{
     controllers: Array<new (...args: any[]) => unknown>;
     dependencies: Array<new (...args: any[]) => unknown>;
+    allowOrigins: string | Array<string>;
+    allowMethods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
 }> | undefined;
 
 export const moduleKey = "__bool:module__";
