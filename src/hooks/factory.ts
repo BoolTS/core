@@ -70,6 +70,11 @@ export const BoolFactory = (
 
     const metadata = Reflect.getOwnMetadata(moduleKey, target) as TModuleOptions;
     const routers = !metadata?.controllers ? [] : metadata.controllers.map(controllerConstructor => controllerCreator(controllerConstructor));
+    const allowOrigins = !metadata?.allowOrigins ?
+        ["*"] : typeof metadata.allowOrigins !== "string" ?
+            metadata.allowOrigins : [metadata.allowOrigins];
+    const allowMethods = !metadata?.allowMethods ?
+        ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : metadata.allowMethods;
     const app = ExpressApp();
     const configs = Object.freeze({
         allowLogsMethods: [
@@ -143,31 +148,15 @@ export const BoolFactory = (
         })
     );
 
-    const allowOrigins = !metadata?.allowOrigins ?
-        ["*"] : typeof metadata.allowOrigins !== "string" ?
-            metadata.allowOrigins : [metadata.allowOrigins];
-
-    const allowMethods = !metadata?.allowMethods ?
-        ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : metadata.allowMethods;
-
     app.use((req: Request, res: Response, next: NextFunction) => {
-        if (!req.headers.origin) {
+        if (!allowOrigins.includes(req.headers.origin || "*")) {
             return res.status(403).json({
                 ["httpCode"]: 403,
-                ["data"]: "CORS Origin - Not found."
+                ["data"]: "Invalid origin."
             });
         }
 
-        if (!allowOrigins.includes("*")) {
-            if (!allowOrigins.includes(req.headers.origin)) {
-                return res.status(403).json({
-                    ["httpCode"]: 403,
-                    ["data"]: "Invalid origin."
-                });
-            }
-        }
-
-        res.header("Access-Control-Allow-Origin", req.headers.origin);
+        res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
         res.header("Access-Control-Allow-Headers", "*");
         res.header("Access-Control-Allow-Credentials", "true");
         res.header("Access-Control-Allow-Methods", allowMethods.join(", "));
