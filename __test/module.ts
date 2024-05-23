@@ -1,6 +1,6 @@
 import { Module } from "../src";
 import { TestController } from "./controller";
-import { TestRepository } from "./repository";
+// import { TestRepository } from "./repository";
 import { TestService } from "./service";
 
 @Module({
@@ -8,7 +8,7 @@ import { TestService } from "./service";
         TestController
     ],
     dependencies: [
-        TestService,
+        // TestService,
         // TestRepository
     ]
 })

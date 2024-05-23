@@ -15,26 +15,25 @@ export const Injector: IInjector = new class {
      * 
      * @param constructor 
      */
-    get<T>(
-        target: new (...args: any[]) => T
+    get<T extends Object>(
+        target: T
     ) {
-        if (this._mapper.has(target)) {
-            return this._mapper.get(target) as T;
+        if (this._mapper.has(target.constructor)) {
+            return this._mapper.get(target.constructor) as T;
         }
 
-        const ownMetadataKeys = Reflect.getOwnMetadataKeys(target);
+        const ownMetadataKeys = Reflect.getOwnMetadataKeys(target.constructor);
 
         if (!ownMetadataKeys.includes(injectableKey)) {
-            console.error("Current metadata keys:", ownMetadataKeys, Reflect.getOwnMetadataKeys((target as Function).constructor));
             throw Error("Missing dependency declaration, please check @Injectable() used on dependency(ies).");
         }
 
         // Initialize dependencies injection
         const dependencies: any[] = Reflect.getOwnMetadata("design:paramtypes", target) || [];
         const injections: any[] = dependencies.map(dependency => Injector.get(dependency));
-        const instance = new target(...injections);
+        const instance = target.constructor(...injections);
 
-        this._mapper.set(target, instance);
+        this._mapper.set(target.constructor, instance);
 
         return instance;
     }
