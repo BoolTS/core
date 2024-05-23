@@ -10,7 +10,9 @@ export const Injector = new class {
         if (this._mapper.has(target)) {
             return this._mapper.get(target);
         }
-        if (!Reflect.getOwnMetadataKeys(target).includes(injectableKey)) {
+        const ownMetadataKeys = Reflect.getOwnMetadataKeys(target);
+        if (!ownMetadataKeys.includes(injectableKey)) {
+            console.error("Current metadata keys:", ownMetadataKeys);
             throw Error("Missing dependency declaration, please check @Injectable() used on dependency(ies).");
         }
         // Initialize dependencies injection
