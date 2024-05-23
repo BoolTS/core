@@ -1,7 +1,7 @@
 export const injectKey = "design:paramtypes";
 
-export const Inject = <T>(
-    constructor: new (...args: any[]) => T
+export const Inject = <T extends Object>(
+    classDefinition: T
 ) => {
     return (
         target: Object,
@@ -10,7 +10,7 @@ export const Inject = <T>(
     ) => {
         const designParameterTypes: any[] = Reflect.getMetadata(injectKey, target.constructor) || [];
 
-        designParameterTypes[parameterIndex] = constructor;
+        designParameterTypes[parameterIndex] = classDefinition.constructor;
 
         Reflect.defineMetadata(injectKey, designParameterTypes, target.constructor);
     }
