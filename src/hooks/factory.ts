@@ -88,8 +88,8 @@ export const BoolFactory = (
 
     app.set("etag", "strong");
     app.set("query parser", (query: string) => Qs.parse(query, {
-        ["depth"]: 10,
-        ["arrayLimit"]: 50
+        depth: 10,
+        arrayLimit: 50
     }));
 
     app.use(
@@ -152,8 +152,13 @@ export const BoolFactory = (
         if (!allowOrigins.includes("*")) {
             if (!allowOrigins.includes(req.headers.origin || "*")) {
                 return res.status(403).json({
-                    ["httpCode"]: 403,
-                    ["data"]: "Invalid origin."
+                    httpCode: 403,
+                    data: {
+                        origin: {
+                            code: "origin:invalid:0x00001",
+                            message: "Invalid origin."
+                        }
+                    }
                 });
             }
         }
@@ -166,7 +171,9 @@ export const BoolFactory = (
         next();
     });
 
-    app.use(routers);
+    if (routers.length > 0) {
+        app.use(routers);
+    }
 
     return app;
 }

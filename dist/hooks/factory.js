@@ -69,8 +69,8 @@ export const BoolFactory = (target) => {
     });
     app.set("etag", "strong");
     app.set("query parser", (query) => Qs.parse(query, {
-        ["depth"]: 10,
-        ["arrayLimit"]: 50
+        depth: 10,
+        arrayLimit: 50
     }));
     app.use(urlencoded({
         extended: true,
@@ -122,8 +122,13 @@ export const BoolFactory = (target) => {
         if (!allowOrigins.includes("*")) {
             if (!allowOrigins.includes(req.headers.origin || "*")) {
                 return res.status(403).json({
-                    ["httpCode"]: 403,
-                    ["data"]: "Invalid origin."
+                    httpCode: 403,
+                    data: {
+                        origin: {
+                            code: "origin:invalid:0x00001",
+                            message: "Invalid origin."
+                        }
+                    }
                 });
             }
         }
@@ -133,7 +138,9 @@ export const BoolFactory = (target) => {
         res.header("Access-Control-Allow-Methods", allowMethods.join(", "));
         next();
     });
-    app.use(routers);
+    if (routers.length > 0) {
+        app.use(routers);
+    }
     return app;
 };
 export default BoolFactory;
