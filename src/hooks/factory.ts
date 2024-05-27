@@ -7,6 +7,19 @@ import * as ResponseTime from "response-time";
 import { type IControllerRoute, type TModuleOptions, controllerKey, controllerRoutesKey, moduleKey } from "../decorators";
 import { default as ExpressApp, Router, json, urlencoded, Request, Response, NextFunction, Errback } from "express";
 import { Injector } from "./injector";
+import { errorInfer } from "../http";
+
+
+export type TBoolFactoryOptions = Partial<{
+    debug: boolean;
+    log: Partial<{
+        methods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
+    }>;
+    queryParser: Partial<{
+        depth: 10,
+        arrayLimit: 50
+    }>;
+}>;
 
 
 /**
@@ -62,7 +75,8 @@ const controllerCreator = (
  * @param target 
  */
 export const BoolFactory = (
-    target: new (...args: any[]) => unknown
+    target: new (...args: any[]) => unknown,
+    options?: TBoolFactoryOptions
 ) => {
     if (!Reflect.getOwnMetadataKeys(target).includes(moduleKey)) {
         throw Error(`${target.name} is not a module.`);
@@ -76,20 +90,14 @@ export const BoolFactory = (
     const allowMethods = !metadata?.allowMethods ?
         ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : metadata.allowMethods;
     const app = ExpressApp();
-    const configs = Object.freeze({
-        allowLogsMethods: [
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE"
-        ]
+    const factoryOptions = Object.freeze({
+        allowLogsMethods: !options?.log?.methods ? ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : options.log.methods
     });
 
     app.set("etag", "strong");
     app.set("query parser", (query: string) => Qs.parse(query, {
-        depth: 10,
-        arrayLimit: 50
+        depth: !options?.queryParser?.depth || options.queryParser.depth < 0 ? 10 : options.queryParser.depth,
+        arrayLimit: !options?.queryParser?.arrayLimit || options.queryParser.arrayLimit < 0 ? 50 : options.queryParser.arrayLimit
     }));
 
     app.use(
@@ -127,15 +135,19 @@ export const BoolFactory = (
         },
         // Error catcher
         (err: Errback, req: Request, res: Response, next: NextFunction) => {
-            console.error(err);
+            errorInfer(res, err);
 
-            next();
+            if (!options?.debug) {
+                return;
+            }
+
+            console.error("Headers:", JSON.stringify(req.headers), "\nBody:", JSON.stringify(req.body), "\nError:", JSON.stringify(err));
         },
         // Response time log
         ResponseTime.default((req: Request, res: Response, time: number) => {
             const requestMethod = req.method.toUpperCase();
 
-            if (!configs.allowLogsMethods.includes(requestMethod)) {
+            if (!factoryOptions.allowLogsMethods.includes(requestMethod)) {
                 return;
             }
 

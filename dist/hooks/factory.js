@@ -5,6 +5,7 @@ import * as ResponseTime from "response-time";
 import { controllerKey, controllerRoutesKey, moduleKey } from "../decorators";
 import { default as ExpressApp, Router, json, urlencoded } from "express";
 import { Injector } from "./injector";
+import { errorInfer } from "../http";
 /**
  *
  * @param target
@@ -46,7 +47,7 @@ const controllerCreator = (target, router = Router()) => {
  *
  * @param target
  */
-export const BoolFactory = (target) => {
+export const BoolFactory = (target, options) => {
     if (!Reflect.getOwnMetadataKeys(target).includes(moduleKey)) {
         throw Error(`${target.name} is not a module.`);
     }
@@ -58,19 +59,13 @@ export const BoolFactory = (target) => {
     const allowMethods = !metadata?.allowMethods ?
         ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : metadata.allowMethods;
     const app = ExpressApp();
-    const configs = Object.freeze({
-        allowLogsMethods: [
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE"
-        ]
+    const factoryOptions = Object.freeze({
+        allowLogsMethods: !options?.log?.methods ? ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : options.log.methods
     });
     app.set("etag", "strong");
     app.set("query parser", (query) => Qs.parse(query, {
-        depth: 10,
-        arrayLimit: 50
+        depth: !options?.queryParser?.depth || options.queryParser.depth < 0 ? 10 : options.queryParser.depth,
+        arrayLimit: !options?.queryParser?.arrayLimit || options.queryParser.arrayLimit < 0 ? 50 : options.queryParser.arrayLimit
     }));
     app.use(urlencoded({
         extended: true,
@@ -103,13 +98,16 @@ export const BoolFactory = (target) => {
     }, 
     // Error catcher
     (err, req, res, next) => {
-        console.error(err);
-        next();
+        errorInfer(res, err);
+        if (!options?.debug) {
+            return;
+        }
+        console.error("Headers:", JSON.stringify(req.headers), "\nBody:", JSON.stringify(req.body), "\nError:", JSON.stringify(err));
     }, 
     // Response time log
     ResponseTime.default((req, res, time) => {
         const requestMethod = req.method.toUpperCase();
-        if (!configs.allowLogsMethods.includes(requestMethod)) {
+        if (!factoryOptions.allowLogsMethods.includes(requestMethod)) {
             return;
         }
         const convertedMethod = `${requestMethod.yellow}`.bgBlue;
