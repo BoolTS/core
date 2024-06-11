@@ -1,15 +1,18 @@
-export const controllerRoutesKey = "__bool:controller.routes__";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Options = exports.Delete = exports.Patch = exports.Put = exports.Post = exports.Get = exports.controllerRoutesKey = void 0;
+exports.controllerRoutesKey = "__bool:controller.routes__";
 /**
  *
  * @param path
  * @returns
  */
-export const Get = (path = "/") => (target, methodName, descriptor) => {
+const Get = (path = "/") => (target, methodName, descriptor) => {
     if (typeof descriptor.value !== "function") {
         throw Error("Get decorator only use for method.");
     }
-    Reflect.defineMetadata(controllerRoutesKey, [
-        ...Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || [],
+    Reflect.defineMetadata(exports.controllerRoutesKey, [
+        ...Reflect.getOwnMetadata(exports.controllerRoutesKey, target.constructor) || [],
         {
             path: !path.startsWith("/") ? `/${path}` : path,
             httpMethod: "GET",
@@ -18,17 +21,18 @@ export const Get = (path = "/") => (target, methodName, descriptor) => {
         }
     ], target.constructor);
 };
+exports.Get = Get;
 /**
  *
  * @param path
  * @returns
  */
-export const Post = (path = "/") => (target, methodName, descriptor) => {
+const Post = (path = "/") => (target, methodName, descriptor) => {
     if (typeof descriptor.value !== "function") {
         throw Error("Post decorator only use for method.");
     }
-    Reflect.defineMetadata(controllerRoutesKey, [
-        ...Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || [],
+    Reflect.defineMetadata(exports.controllerRoutesKey, [
+        ...Reflect.getOwnMetadata(exports.controllerRoutesKey, target.constructor) || [],
         {
             path: !path.startsWith("/") ? `/${path}` : path,
             httpMethod: "POST",
@@ -37,17 +41,18 @@ export const Post = (path = "/") => (target, methodName, descriptor) => {
         }
     ], target.constructor);
 };
+exports.Post = Post;
 /**
  *
  * @param path
  * @returns
  */
-export const Put = (path = "/") => (target, methodName, descriptor) => {
+const Put = (path = "/") => (target, methodName, descriptor) => {
     if (typeof descriptor.value !== "function") {
         throw Error("Put decorator only use for method.");
     }
-    Reflect.defineMetadata(controllerRoutesKey, [
-        ...Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || [],
+    Reflect.defineMetadata(exports.controllerRoutesKey, [
+        ...Reflect.getOwnMetadata(exports.controllerRoutesKey, target.constructor) || [],
         {
             path: !path.startsWith("/") ? `/${path}` : path,
             httpMethod: "PUT",
@@ -56,17 +61,18 @@ export const Put = (path = "/") => (target, methodName, descriptor) => {
         }
     ], target.constructor);
 };
+exports.Put = Put;
 /**
  *
  * @param path
  * @returns
  */
-export const Patch = (path = "/") => (target, methodName, descriptor) => {
+const Patch = (path = "/") => (target, methodName, descriptor) => {
     if (typeof descriptor.value !== "function") {
         throw Error("Patch decorator only use for method.");
     }
-    Reflect.defineMetadata(controllerRoutesKey, [
-        ...Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || [],
+    Reflect.defineMetadata(exports.controllerRoutesKey, [
+        ...Reflect.getOwnMetadata(exports.controllerRoutesKey, target.constructor) || [],
         {
             path: !path.startsWith("/") ? `/${path}` : path,
             httpMethod: "PATCH",
@@ -75,17 +81,18 @@ export const Patch = (path = "/") => (target, methodName, descriptor) => {
         }
     ], target.constructor);
 };
+exports.Patch = Patch;
 /**
  *
  * @param path
  * @returns
  */
-export const Delete = (path = "/") => (target, methodName, descriptor) => {
+const Delete = (path = "/") => (target, methodName, descriptor) => {
     if (typeof descriptor.value !== "function") {
         throw Error("Delete decorator only use for method.");
     }
-    Reflect.defineMetadata(controllerRoutesKey, [
-        ...Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || [],
+    Reflect.defineMetadata(exports.controllerRoutesKey, [
+        ...Reflect.getOwnMetadata(exports.controllerRoutesKey, target.constructor) || [],
         {
             path: !path.startsWith("/") ? `/${path}` : path,
             httpMethod: "DELETE",
@@ -94,17 +101,18 @@ export const Delete = (path = "/") => (target, methodName, descriptor) => {
         }
     ], target.constructor);
 };
+exports.Delete = Delete;
 /**
  *
  * @param path
  * @returns
  */
-export const Options = (path = "/") => (target, methodName, descriptor) => {
+const Options = (path = "/") => (target, methodName, descriptor) => {
     if (typeof descriptor.value !== "function") {
         throw Error("Options decorator only use for method.");
     }
-    Reflect.defineMetadata(controllerRoutesKey, [
-        ...Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || [],
+    Reflect.defineMetadata(exports.controllerRoutesKey, [
+        ...Reflect.getOwnMetadata(exports.controllerRoutesKey, target.constructor) || [],
         {
             path: !path.startsWith("/") ? `/${path}` : path,
             httpMethod: "OPTIONS",
@@ -113,10 +121,11 @@ export const Options = (path = "/") => (target, methodName, descriptor) => {
         }
     ], target.constructor);
 };
-export default {
-    Get,
-    Post,
-    Put,
-    Patch,
-    Delete
+exports.Options = Options;
+exports.default = {
+    Get: exports.Get,
+    Post: exports.Post,
+    Put: exports.Put,
+    Patch: exports.Patch,
+    Delete: exports.Delete
 };

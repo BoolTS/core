@@ -1,26 +1,52 @@
-import "reflect-metadata";
-import "colors";
-import * as Qs from "qs";
-import * as ResponseTime from "response-time";
-import { controllerKey, controllerRoutesKey, moduleKey } from "../decorators";
-import { default as ExpressApp, Router, json, urlencoded } from "express";
-import { Injector } from "./injector";
-import { errorInfer } from "../http";
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BoolFactory = void 0;
+require("reflect-metadata");
+require("colors");
+const Qs = __importStar(require("qs"));
+const ResponseTime = __importStar(require("response-time"));
+const decorators_1 = require("../decorators");
+const express_1 = __importStar(require("express"));
+const injector_1 = require("./injector");
+const http_1 = require("../http");
 /**
  *
  * @param target
  * @param router
  */
-const controllerCreator = (target, router = Router()) => {
-    if (!Reflect.getOwnMetadataKeys(target).includes(controllerKey)) {
+const controllerCreator = (target, router = (0, express_1.Router)()) => {
+    if (!Reflect.getOwnMetadataKeys(target).includes(decorators_1.controllerKey)) {
         throw Error(`${target.name} is not a controller.`);
     }
-    const controller = Injector.get(target);
+    const controller = injector_1.Injector.get(target);
     if (!controller) {
         throw Error("Can not initialize controller.");
     }
-    const controllerMetadata = Reflect.getOwnMetadata(controllerKey, target) || "/";
-    const routesMetadata = (Reflect.getOwnMetadata(controllerRoutesKey, target) || []);
+    const controllerMetadata = Reflect.getOwnMetadata(decorators_1.controllerKey, target) || "/";
+    const routesMetadata = (Reflect.getOwnMetadata(decorators_1.controllerRoutesKey, target) || []);
     const innerRouter = router.route(controllerMetadata);
     routesMetadata.forEach(route => {
         if (typeof route.descriptor.value !== "function") {
@@ -47,18 +73,18 @@ const controllerCreator = (target, router = Router()) => {
  *
  * @param target
  */
-export const BoolFactory = (target, options) => {
-    if (!Reflect.getOwnMetadataKeys(target).includes(moduleKey)) {
+const BoolFactory = (target, options) => {
+    if (!Reflect.getOwnMetadataKeys(target).includes(decorators_1.moduleKey)) {
         throw Error(`${target.name} is not a module.`);
     }
-    const metadata = Reflect.getOwnMetadata(moduleKey, target);
+    const metadata = Reflect.getOwnMetadata(decorators_1.moduleKey, target);
     const routers = !metadata?.controllers ? [] : metadata.controllers.map(controllerConstructor => controllerCreator(controllerConstructor));
     const allowOrigins = !metadata?.allowOrigins ?
         ["*"] : typeof metadata.allowOrigins !== "string" ?
         metadata.allowOrigins : [metadata.allowOrigins];
     const allowMethods = !metadata?.allowMethods ?
         ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : metadata.allowMethods;
-    const app = ExpressApp();
+    const app = (0, express_1.default)();
     const factoryOptions = Object.freeze({
         allowLogsMethods: !options?.log?.methods ? ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : options.log.methods
     });
@@ -67,14 +93,14 @@ export const BoolFactory = (target, options) => {
         depth: !options?.queryParser?.depth || options.queryParser.depth < 0 ? 10 : options.queryParser.depth,
         arrayLimit: !options?.queryParser?.arrayLimit || options.queryParser.arrayLimit < 0 ? 50 : options.queryParser.arrayLimit
     }));
-    app.use(urlencoded({
+    app.use((0, express_1.urlencoded)({
         extended: true,
         inflate: true,
         limit: "1mb",
         parameterLimit: 20,
         type: "application/x-www-form-urlencoded",
         verify: undefined
-    }), json({
+    }), (0, express_1.json)({
         inflate: true,
         limit: "5mb",
         reviver: undefined,
@@ -98,7 +124,7 @@ export const BoolFactory = (target, options) => {
     }, 
     // Error catcher
     (err, req, res, next) => {
-        errorInfer(res, err);
+        (0, http_1.errorInfer)(res, err);
         if (!options?.debug) {
             return;
         }
@@ -141,4 +167,5 @@ export const BoolFactory = (target, options) => {
     }
     return app;
 };
-export default BoolFactory;
+exports.BoolFactory = BoolFactory;
+exports.default = exports.BoolFactory;
