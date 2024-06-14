@@ -11,7 +11,7 @@ export class TestController {
         @Inject(TestService) private readonly testService: IService
     ) { }
 
-    @Get()
+    @Get("abc")
     private _get(
         req: Request,
         res: Response
@@ -20,7 +20,7 @@ export class TestController {
         res.json({ test: "success" }).send();
     }
 
-    @Post()
+    @Post("abc")
     private _post(
         req: Request,
         res: Response
@@ -37,11 +37,12 @@ export class TestController {
         res.json({ test: "success" }).send();
     }
 
-    @Patch()
+    @Patch("abc/:id")
     private _patch(
         req: Request,
         res: Response
     ) {
+        console.log(req.params)
         res.json({ test: "success" }).send();
     }
 

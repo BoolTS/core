@@ -1,4 +1,5 @@
 export type TModuleOptions = Partial<{
+    prefix: string;
     controllers: Array<new (...args: any[]) => unknown>;
     dependencies: Array<new (...args: any[]) => unknown>;
     allowOrigins: string | Array<string>;

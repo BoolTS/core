@@ -9,6 +9,7 @@ export type TBoolFactoryOptions = Partial<{
         depth: 10;
         arrayLimit: 50;
     }>;
+    prefix: string;
 }>;
 /**
  *

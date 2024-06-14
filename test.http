@@ -2,10 +2,10 @@
 
 
 ### Send test GET method
-GET http://{{baseUrl}}/test
+GET http://{{baseUrl}}/test/abc
 
 ### Send test POST method
-POST http://{{baseUrl}}/test HTTP/1.1
+POST http://{{baseUrl}}/test/abc HTTP/1.1
 content-type: application/json
 
 {
@@ -18,7 +18,7 @@ PUT http://{{baseUrl}}/test
 Content-Type: "application/json"
 
 ### Send test PATCH method
-PATCH http://{{baseUrl}}/test
+PATCH http://{{baseUrl}}/test/abc/23
 Content-Type: "application/json"
 
 ### Send test DELETE method

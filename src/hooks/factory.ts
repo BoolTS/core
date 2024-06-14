@@ -19,6 +19,7 @@ export type TBoolFactoryOptions = Partial<{
         depth: 10,
         arrayLimit: 50
     }>;
+    prefix: string;
 }>;
 
 
@@ -28,45 +29,47 @@ export type TBoolFactoryOptions = Partial<{
  * @param router 
  */
 const controllerCreator = (
-    target: new (...args: any[]) => unknown,
-    router = Router()
+    controllerConstructor: new (...args: any[]) => unknown,
+    parentRouter: Router = Router()
 ) => {
-    if (!Reflect.getOwnMetadataKeys(target).includes(controllerKey)) {
-        throw Error(`${target.name} is not a controller.`);
+    if (!Reflect.getOwnMetadataKeys(controllerConstructor).includes(controllerKey)) {
+        throw Error(`${controllerConstructor.name} is not a controller.`);
     }
 
-    const controller = Injector.get(target);
+    const controller = Injector.get(controllerConstructor);
 
     if (!controller) {
         throw Error("Can not initialize controller.");
     }
 
-    const controllerMetadata = Reflect.getOwnMetadata(controllerKey, target) || "/";
-    const routesMetadata = (Reflect.getOwnMetadata(controllerRoutesKey, target) || []) as Array<IControllerRoute>;
-    const innerRouter = router.route(controllerMetadata);
+    const controllerMetadata = Reflect.getOwnMetadata(controllerKey, controllerConstructor) || "/";
+    const routesMetadata = (Reflect.getOwnMetadata(controllerRoutesKey, controllerConstructor) || []) as Array<IControllerRoute>;
+    const router = Router();
 
-    routesMetadata.forEach(route => {
-        if (typeof route.descriptor.value !== "function") {
+    routesMetadata.forEach(routeMetadata => {
+        if (typeof routeMetadata.descriptor.value !== "function") {
             return;
         }
 
-        switch (route.httpMethod) {
+        const route = router.route(routeMetadata.path);
+
+        switch (routeMetadata.httpMethod) {
             case "GET":
-                return innerRouter.get(route.descriptor.value.bind(controller));
+                return route.get(routeMetadata.descriptor.value.bind(controller));
             case "POST":
-                return innerRouter.post(route.descriptor.value.bind(controller));
+                return route.post(routeMetadata.descriptor.value.bind(controller));
             case "PUT":
-                return innerRouter.put(route.descriptor.value.bind(controller));
+                return route.put(routeMetadata.descriptor.value.bind(controller));
             case "PATCH":
-                return innerRouter.patch(route.descriptor.value.bind(controller));
+                return route.patch(routeMetadata.descriptor.value.bind(controller));
             case "DELETE":
-                return innerRouter.delete(route.descriptor.value.bind(controller));
+                return route.delete(routeMetadata.descriptor.value.bind(controller));
             case "OPTIONS":
-                return innerRouter.options(route.descriptor.value.bind(controller));
+                return route.options(routeMetadata.descriptor.value.bind(controller));
         }
     });
 
-    return router;
+    return parentRouter.use(controllerMetadata, router);
 }
 
 
@@ -83,7 +86,6 @@ export const BoolFactory = (
     }
 
     const metadata = Reflect.getOwnMetadata(moduleKey, target) as TModuleOptions;
-    const routers = !metadata?.controllers ? [] : metadata.controllers.map(controllerConstructor => controllerCreator(controllerConstructor));
     const allowOrigins = !metadata?.allowOrigins ?
         ["*"] : typeof metadata.allowOrigins !== "string" ?
             metadata.allowOrigins : [metadata.allowOrigins];
@@ -93,6 +95,8 @@ export const BoolFactory = (
     const factoryOptions = Object.freeze({
         allowLogsMethods: !options?.log?.methods ? ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : options.log.methods
     });
+    const routers = !metadata?.controllers ?
+        [] : metadata.controllers.map(controllerConstructor => controllerCreator(controllerConstructor));
 
     app.set("etag", "strong");
     app.set("query parser", (query: string) => Qs.parse(query, {
@@ -184,7 +188,9 @@ export const BoolFactory = (
     });
 
     if (routers.length > 0) {
-        app.use(routers);
+        !metadata?.prefix ?
+            app.use(routers) : app.use(!metadata.prefix.startsWith("/") ?
+                `/${metadata.prefix}` : metadata.prefix, routers);
     }
 
     return app;
