@@ -67,7 +67,7 @@ const errorInfer = (res, data) => {
         }
     }
     catch (error) {
-        console.error(error);
+        console.error(JSON.stringify(error));
         res.end();
     }
 };
