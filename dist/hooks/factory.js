@@ -123,27 +123,7 @@ const BoolFactory = (target, options) => {
             req.body = Object.freeze({});
         }
         next();
-    }, 
-    // Error catcher
-    (err, req, res, next) => {
-        (0, http_1.errorInfer)(res, err);
-        if (!options?.debug) {
-            return;
-        }
-        console.error("Headers:", JSON.stringify(req.headers), "\nBody:", JSON.stringify(req.body), "\nError:", JSON.stringify(err));
-    }, 
-    // Response time log
-    ResponseTime.default((req, res, time) => {
-        const requestMethod = req.method.toUpperCase();
-        if (!factoryOptions.allowLogsMethods.includes(requestMethod)) {
-            return;
-        }
-        const convertedMethod = `${requestMethod.yellow}`.bgBlue;
-        const convertedPID = `${process.pid}`.yellow;
-        const convertedReqIp = `${req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.ip || "<Unknown>"}`.yellow;
-        const convertedTime = `${Math.round((time + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
-        console.info(`PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${req.originalUrl.blue} - Time: ${convertedTime}`);
-    }));
+    });
     app.use((req, res, next) => {
         if (!allowOrigins.includes("*")) {
             if (!allowOrigins.includes(req.headers.origin || "*")) {
@@ -169,6 +149,27 @@ const BoolFactory = (target, options) => {
             app.use(routers) : app.use(!metadata.prefix.startsWith("/") ?
             `/${metadata.prefix}` : metadata.prefix, routers);
     }
+    app.use(
+    // Error catcher
+    (err, req, res, next) => {
+        (0, http_1.errorInfer)(res, err);
+        if (!options?.debug) {
+            return;
+        }
+        console.error("Headers:", JSON.stringify(req.headers), "\nBody:", JSON.stringify(req.body), "\nError:", JSON.stringify(err));
+    }, 
+    // Response time log
+    ResponseTime.default((req, res, time) => {
+        const requestMethod = req.method.toUpperCase();
+        if (!factoryOptions.allowLogsMethods.includes(requestMethod)) {
+            return;
+        }
+        const convertedMethod = `${requestMethod.yellow}`.bgBlue;
+        const convertedPID = `${process.pid}`.yellow;
+        const convertedReqIp = `${req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.ip || "<Unknown>"}`.yellow;
+        const convertedTime = `${Math.round((time + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
+        console.info(`PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${req.originalUrl.blue} - Time: ${convertedTime}`);
+    }));
     return app;
 };
 exports.BoolFactory = BoolFactory;
