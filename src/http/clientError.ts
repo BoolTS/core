@@ -1,6 +1,3 @@
-import * as ExpressJS from "express";
-
-
 export const httpClientErrors = Object.freeze({
     400: "BAD_REQUEST",
     401: "UNAUTHORIZED",
@@ -38,20 +35,22 @@ export class HttpClientError<
     K = any
 > extends Error {
     public readonly httpCode: T;
-    public readonly message: typeof httpClientErrors[T];
+    public readonly message: typeof httpClientErrors[T] | string;
     public readonly data: K;
 
     constructor({
         httpCode,
-        data
+        data,
+        message
     }: {
-        ["httpCode"]: T;
-        ["data"]: K;
+        httpCode: T;
+        data: K;
+        message?: string;
     }) {
         super();
 
         this.httpCode = httpCode;
-        this.message = httpClientErrors[httpCode];
+        this.message = !message?.trim() ? httpClientErrors[httpCode] : message.trim();
         this.data = data;
     }
 }

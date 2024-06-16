@@ -36,10 +36,10 @@ class HttpClientError extends Error {
     httpCode;
     message;
     data;
-    constructor({ httpCode, data }) {
+    constructor({ httpCode, data, message }) {
         super();
         this.httpCode = httpCode;
-        this.message = exports.httpClientErrors[httpCode];
+        this.message = !message?.trim() ? exports.httpClientErrors[httpCode] : message.trim();
         this.data = data;
     }
 }

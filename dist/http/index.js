@@ -34,7 +34,11 @@ const errorInfer = (res, data) => {
             res.status(500).json({
                 httpCode: 500,
                 message: "INTERNAL SERVER ERROR",
-                data: data
+                data: !(data instanceof Error) ? data : {
+                    message: data.message,
+                    code: data.name,
+                    cause: data.cause
+                }
             });
             return;
         }

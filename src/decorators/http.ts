@@ -1,4 +1,5 @@
-import { HttpClientError } from "../http";
+import { HttpClientError, HttpServerError } from "../http";
+import { AsyncFunction } from "../ultils";
 import { controllerRouteZodSchemaKey } from "./zodSchema";
 
 export interface IControllerRoute {
@@ -11,20 +12,17 @@ export interface IControllerRoute {
 
 export const controllerRoutesKey = "__bool:controller.routes__";
 
-/**
- * 
- * @param path 
- * @returns 
- */
-export const Get = (
-    path = "/"
+
+const defaultDecorator = (
+    path: string,
+    method: "Get" | "Post" | "Put" | "Patch" | "Delete" | "Options"
 ) => (
     target: Object,
     methodName: string,
     descriptor: PropertyDescriptor
 ) => {
-        if (typeof descriptor.value !== "function") {
-            throw Error("Get decorator only use for method.");
+        if (!(descriptor.value instanceof Function)) {
+            throw Error(`${method} decorator only use for method.`);
         }
 
         // Define controller metadata
@@ -32,7 +30,7 @@ export const Get = (
             ...Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || [],
             {
                 path: !path.startsWith("/") ? `/${path}` : path,
-                httpMethod: "GET",
+                httpMethod: method.toUpperCase(),
                 methodName: methodName,
                 descriptor: descriptor
             }
@@ -40,28 +38,98 @@ export const Get = (
 
         // Define route parameters zod validation
         const currentMethod = descriptor.value;
+        const isAsync = descriptor.value instanceof AsyncFunction;
 
-        descriptor.value = function () {
-            const zodSchemaMetadata = Reflect.getOwnMetadata(controllerRouteZodSchemaKey, target.constructor, methodName);
+        if (!isAsync) {
+            descriptor.value = function () {
+                const zodSchemaMetadata = Reflect.getOwnMetadata(controllerRouteZodSchemaKey, target.constructor, methodName);
 
-            if (zodSchemaMetadata) {
-                for (const zodSchemaProp in zodSchemaMetadata) {
-                    const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
+                if (zodSchemaMetadata) {
+                    for (const zodSchemaProp in zodSchemaMetadata) {
+                        const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
 
-                    const validation = tmpZodMetadata.schema.safeParse(arguments[tmpZodMetadata.index]);
+                        try {
+                            const validation = tmpZodMetadata.schema.safeParse(arguments[tmpZodMetadata.index]);
 
-                    if (!validation.success) {
-                        throw new HttpClientError({
-                            httpCode: 400,
-                            data: validation.error.issues
-                        })
+                            if (!validation.success) {
+                                throw new HttpClientError({
+                                    httpCode: 400,
+                                    message: `Validation at the [${methodName}] method fails at positional argument [${tmpZodMetadata.index}].`,
+                                    data: validation.error.issues
+                                });
+                            }
+                        }
+                        catch (error) {
+                            if (error instanceof HttpClientError) {
+                                throw error;
+                            }
+
+                            throw new HttpServerError({
+                                httpCode: 500,
+                                message: `Validation at the [${methodName}] method error at positional argument [${tmpZodMetadata.index}].`,
+                                data: !(error instanceof Error) ? error : [{
+                                    message: error.message,
+                                    code: error.name,
+                                    cause: error.cause
+                                }]
+                            });
+                        }
                     }
                 }
-            }
 
-            return currentMethod.apply(this, arguments);
+                return currentMethod.apply(this, arguments);
+            }
+        }
+        else {
+            descriptor.value = async function () {
+                const zodSchemaMetadata = Reflect.getOwnMetadata(controllerRouteZodSchemaKey, target.constructor, methodName);
+
+                if (zodSchemaMetadata) {
+                    for (const zodSchemaProp in zodSchemaMetadata) {
+                        const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
+
+                        try {
+                            const validation = await tmpZodMetadata.schema.safeParseAsync(arguments[tmpZodMetadata.index]);
+
+                            if (!validation.success) {
+                                throw new HttpClientError({
+                                    httpCode: 400,
+                                    message: `Validation at the [${methodName}] method fails at positional argument [${tmpZodMetadata.index}].`,
+                                    data: validation.error.issues
+                                });
+                            }
+                        }
+                        catch (error) {
+                            if (error instanceof HttpClientError) {
+                                throw error;
+                            }
+
+                            throw new HttpServerError({
+                                httpCode: 500,
+                                message: `Validation at the [${methodName}] method error at positional argument [${tmpZodMetadata.index}].`,
+                                data: !(error instanceof Error) ? error : [{
+                                    message: error.message,
+                                    code: error.name,
+                                    cause: error.cause
+                                }]
+                            });
+                        }
+                    }
+                }
+
+                return currentMethod.apply(this, arguments);
+            }
         }
     }
+
+/**
+ * 
+ * @param path 
+ * @returns 
+ */
+export const Get = (
+    path = "/"
+) => defaultDecorator(path, "Get");
 
 
 /**
@@ -71,49 +139,7 @@ export const Get = (
  */
 export const Post = (
     path = "/"
-) => (
-    target: Object,
-    methodName: string,
-    descriptor: PropertyDescriptor
-) => {
-        if (typeof descriptor.value !== "function") {
-            throw Error("Post decorator only use for method.");
-        }
-
-        Reflect.defineMetadata(controllerRoutesKey, [
-            ...Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || [],
-            {
-                path: !path.startsWith("/") ? `/${path}` : path,
-                httpMethod: "POST",
-                methodName: methodName,
-                descriptor: descriptor
-            }
-        ], target.constructor);
-
-        // Define route parameters zod validation
-        const currentMethod = descriptor.value;
-
-        descriptor.value = function () {
-            const zodSchemaMetadata = Reflect.getOwnMetadata(controllerRouteZodSchemaKey, target.constructor, methodName);
-
-            if (zodSchemaMetadata) {
-                for (const zodSchemaProp in zodSchemaMetadata) {
-                    const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
-
-                    const validation = tmpZodMetadata.schema.safeParse(arguments[tmpZodMetadata.index]);
-
-                    if (!validation.success) {
-                        throw new HttpClientError({
-                            httpCode: 400,
-                            data: validation.error.issues
-                        })
-                    }
-                }
-            }
-
-            return currentMethod.apply(this, arguments);
-        }
-    }
+) => defaultDecorator(path, "Post");
 
 
 /**
@@ -123,49 +149,7 @@ export const Post = (
  */
 export const Put = (
     path = "/"
-) => (
-    target: Object,
-    methodName: string,
-    descriptor: PropertyDescriptor
-) => {
-        if (typeof descriptor.value !== "function") {
-            throw Error("Put decorator only use for method.");
-        }
-
-        Reflect.defineMetadata(controllerRoutesKey, [
-            ...Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || [],
-            {
-                path: !path.startsWith("/") ? `/${path}` : path,
-                httpMethod: "PUT",
-                methodName: methodName,
-                descriptor: descriptor
-            }
-        ], target.constructor);
-
-        // Define route parameters zod validation
-        const currentMethod = descriptor.value;
-
-        descriptor.value = function () {
-            const zodSchemaMetadata = Reflect.getOwnMetadata(controllerRouteZodSchemaKey, target.constructor, methodName);
-
-            if (zodSchemaMetadata) {
-                for (const zodSchemaProp in zodSchemaMetadata) {
-                    const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
-
-                    const validation = tmpZodMetadata.schema.safeParse(arguments[tmpZodMetadata.index]);
-
-                    if (!validation.success) {
-                        throw new HttpClientError({
-                            httpCode: 400,
-                            data: validation.error.issues
-                        })
-                    }
-                }
-            }
-
-            return currentMethod.apply(this, arguments);
-        }
-    }
+) => defaultDecorator(path, "Put");
 
 
 /**
@@ -175,49 +159,7 @@ export const Put = (
  */
 export const Patch = (
     path = "/"
-) => (
-    target: Object,
-    methodName: string,
-    descriptor: PropertyDescriptor
-) => {
-        if (typeof descriptor.value !== "function") {
-            throw Error("Patch decorator only use for method.");
-        }
-
-        Reflect.defineMetadata(controllerRoutesKey, [
-            ...Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || [],
-            {
-                path: !path.startsWith("/") ? `/${path}` : path,
-                httpMethod: "PATCH",
-                methodName: methodName,
-                descriptor: descriptor
-            }
-        ], target.constructor);
-
-        // Define route parameters zod validation
-        const currentMethod = descriptor.value;
-
-        descriptor.value = function () {
-            const zodSchemaMetadata = Reflect.getOwnMetadata(controllerRouteZodSchemaKey, target.constructor, methodName);
-
-            if (zodSchemaMetadata) {
-                for (const zodSchemaProp in zodSchemaMetadata) {
-                    const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
-
-                    const validation = tmpZodMetadata.schema.safeParse(arguments[tmpZodMetadata.index]);
-
-                    if (!validation.success) {
-                        throw new HttpClientError({
-                            httpCode: 400,
-                            data: validation.error.issues
-                        })
-                    }
-                }
-            }
-
-            return currentMethod.apply(this, arguments);
-        }
-    }
+) => defaultDecorator(path, "Patch");
 
 
 /**
@@ -227,49 +169,7 @@ export const Patch = (
  */
 export const Delete = (
     path = "/"
-) => (
-    target: Object,
-    methodName: string,
-    descriptor: PropertyDescriptor
-) => {
-        if (typeof descriptor.value !== "function") {
-            throw Error("Delete decorator only use for method.");
-        }
-
-        Reflect.defineMetadata(controllerRoutesKey, [
-            ...Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || [],
-            {
-                path: !path.startsWith("/") ? `/${path}` : path,
-                httpMethod: "DELETE",
-                methodName: methodName,
-                descriptor: descriptor
-            }
-        ], target.constructor);
-
-        // Define route parameters zod validation
-        const currentMethod = descriptor.value;
-
-        descriptor.value = function () {
-            const zodSchemaMetadata = Reflect.getOwnMetadata(controllerRouteZodSchemaKey, target.constructor, methodName);
-
-            if (zodSchemaMetadata) {
-                for (const zodSchemaProp in zodSchemaMetadata) {
-                    const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
-
-                    const validation = tmpZodMetadata.schema.safeParse(arguments[tmpZodMetadata.index]);
-
-                    if (!validation.success) {
-                        throw new HttpClientError({
-                            httpCode: 400,
-                            data: validation.error.issues
-                        })
-                    }
-                }
-            }
-
-            return currentMethod.apply(this, arguments);
-        }
-    }
+) => defaultDecorator(path, "Delete");
 
 
 /**
@@ -279,49 +179,7 @@ export const Delete = (
  */
 export const Options = (
     path = "/"
-) => (
-    target: Object,
-    methodName: string,
-    descriptor: PropertyDescriptor
-) => {
-        if (typeof descriptor.value !== "function") {
-            throw Error("Options decorator only use for method.");
-        }
-
-        Reflect.defineMetadata(controllerRoutesKey, [
-            ...Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || [],
-            {
-                path: !path.startsWith("/") ? `/${path}` : path,
-                httpMethod: "OPTIONS",
-                methodName: methodName,
-                descriptor: descriptor
-            }
-        ], target.constructor);
-
-        // Define route parameters zod validation
-        const currentMethod = descriptor.value;
-
-        descriptor.value = function () {
-            const zodSchemaMetadata = Reflect.getOwnMetadata(controllerRouteZodSchemaKey, target.constructor, methodName);
-
-            if (zodSchemaMetadata) {
-                for (const zodSchemaProp in zodSchemaMetadata) {
-                    const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
-
-                    const validation = tmpZodMetadata.schema.safeParse(arguments[tmpZodMetadata.index]);
-
-                    if (!validation.success) {
-                        throw new HttpClientError({
-                            httpCode: 400,
-                            data: validation.error.issues
-                        })
-                    }
-                }
-            }
-
-            return currentMethod.apply(this, arguments);
-        }
-    }
+) => defaultDecorator(path, "Options");
 
 export default {
     Get,

@@ -193,7 +193,9 @@ export const BoolFactory = (
                 return;
             }
 
-            console.error("Headers:", JSON.stringify(req.headers), "\nBody:", JSON.stringify(req.body), "\nError:", JSON.stringify(err));
+            console.info("Headers:", JSON.stringify(req.headers, null, 4), "\nBody:", JSON.stringify(req.body, null, 4));
+            console.error("Error:");
+            console.error(err);
         }
     );
 

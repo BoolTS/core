@@ -18,10 +18,10 @@ class HttpServerError extends Error {
     httpCode;
     message;
     data;
-    constructor({ httpCode, data }) {
+    constructor({ httpCode, data, message }) {
         super();
         this.httpCode = httpCode;
-        this.message = exports.httpServerErrors[httpCode];
+        this.message = !message?.trim() ? exports.httpServerErrors[httpCode] : message.trim();
         this.data = data;
     }
 }

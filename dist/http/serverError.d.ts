@@ -13,10 +13,11 @@ export declare const httpServerErrors: Readonly<{
 }>;
 export declare class HttpServerError<T extends keyof typeof httpServerErrors = keyof typeof httpServerErrors, K = any> extends Error {
     readonly httpCode: T;
-    readonly message: typeof httpServerErrors[T];
+    readonly message: typeof httpServerErrors[T] | string;
     readonly data: K;
-    constructor({ httpCode, data }: {
-        ["httpCode"]: T;
-        ["data"]: K;
+    constructor({ httpCode, data, message }: {
+        httpCode: T;
+        data: K;
+        message?: string;
     });
 }

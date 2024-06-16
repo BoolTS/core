@@ -1,6 +1,3 @@
-import * as ExpressJS from "express";
-
-
 export const httpServerErrors = Object.freeze({
     500: "INTERNAL_SERVER_ERROR",
     501: "NOT_IMPLEMENTED",
@@ -20,20 +17,22 @@ export class HttpServerError<
     K = any
 > extends Error {
     public readonly httpCode: T;
-    public readonly message: typeof httpServerErrors[T];
+    public readonly message: typeof httpServerErrors[T] | string;
     public readonly data: K;
 
     constructor({
         httpCode,
-        data
+        data,
+        message
     }: {
-        ["httpCode"]: T;
-        ["data"]: K;
+        httpCode: T;
+        data: K;
+        message?: string;
     }) {
         super();
 
         this.httpCode = httpCode;
-        this.message = httpServerErrors[httpCode];
+        this.message = !message?.trim() ? httpServerErrors[httpCode] : message.trim();
         this.data = data;
     }
 }

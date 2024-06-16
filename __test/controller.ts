@@ -13,6 +13,13 @@ const getAbcSchema = Zod.object({
     })
 });
 
+const stringSchema = Zod.object({}).refine(async (val) => {
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    await delay(10000);
+
+    return val;
+});
+
 @Controller("test")
 export class TestController {
     constructor(
@@ -56,8 +63,8 @@ export class TestController {
 
     @Delete()
     private _delete(
-        @ZodSchema(getAbcSchema) req: Request,
-        res: Response
+        req: Request,
+        @ZodSchema(stringSchema) res: Response
     ) {
         res.json({ test: "success" }).send();
     }
