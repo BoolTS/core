@@ -37,6 +37,7 @@ const defaultDecorator = (path, method) => (target, methodName, descriptor) => {
                                 data: validation.error.issues
                             });
                         }
+                        arguments[tmpZodMetadata.index] = validation.data;
                     }
                     catch (error) {
                         if (error instanceof http_1.HttpClientError) {
@@ -72,6 +73,7 @@ const defaultDecorator = (path, method) => (target, methodName, descriptor) => {
                                 data: validation.error.issues
                             });
                         }
+                        arguments[tmpZodMetadata.index] = validation.data;
                     }
                     catch (error) {
                         if (error instanceof http_1.HttpClientError) {

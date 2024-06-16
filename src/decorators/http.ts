@@ -58,6 +58,8 @@ const defaultDecorator = (
                                     data: validation.error.issues
                                 });
                             }
+
+                            arguments[tmpZodMetadata.index] = validation.data;
                         }
                         catch (error) {
                             if (error instanceof HttpClientError) {
@@ -98,6 +100,8 @@ const defaultDecorator = (
                                     data: validation.error.issues
                                 });
                             }
+
+                            arguments[tmpZodMetadata.index] = validation.data;
                         }
                         catch (error) {
                             if (error instanceof HttpClientError) {
