@@ -136,7 +136,22 @@ export const BoolFactory = (
             }
 
             next();
-        }
+        },
+        // Response time log
+        ResponseTime.default((req: Request, res: Response, time: number) => {
+            const requestMethod = req.method.toUpperCase();
+
+            if (!factoryOptions.allowLogsMethods.includes(requestMethod)) {
+                return;
+            }
+
+            const convertedMethod = `${requestMethod.yellow}`.bgBlue;
+            const convertedPID = `${process.pid}`.yellow;
+            const convertedReqIp = `${req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.ip || "<Unknown>"}`.yellow;
+            const convertedTime = `${Math.round((time + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
+
+            console.info(`PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${req.originalUrl.blue} - Time: ${convertedTime}`);
+        })
     );
 
     app.use((req: Request, res: Response, next: NextFunction) => {
@@ -168,6 +183,7 @@ export const BoolFactory = (
                 `/${metadata.prefix}` : metadata.prefix, routers);
     }
 
+    // Register error catcher
     app.use(
         // Error catcher
         (err: Errback, req: Request, res: Response, next: NextFunction) => {
@@ -178,22 +194,7 @@ export const BoolFactory = (
             }
 
             console.error("Headers:", JSON.stringify(req.headers), "\nBody:", JSON.stringify(req.body), "\nError:", JSON.stringify(err));
-        },
-        // Response time log
-        ResponseTime.default((req: Request, res: Response, time: number) => {
-            const requestMethod = req.method.toUpperCase();
-
-            if (!factoryOptions.allowLogsMethods.includes(requestMethod)) {
-                return;
-            }
-
-            const convertedMethod = `${requestMethod.yellow}`.bgBlue;
-            const convertedPID = `${process.pid}`.yellow;
-            const convertedReqIp = `${req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.ip || "<Unknown>"}`.yellow;
-            const convertedTime = `${Math.round((time + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
-
-            console.info(`PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${req.originalUrl.blue} - Time: ${convertedTime}`);
-        })
+        }
     );
 
     return app;
