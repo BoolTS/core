@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Options = exports.Delete = exports.Patch = exports.Put = exports.Post = exports.Get = exports.controllerRoutesKey = void 0;
+const http_1 = require("../http");
+const zodSchema_1 = require("./zodSchema");
 exports.controllerRoutesKey = "__bool:controller.routes__";
 /**
  *
@@ -11,6 +13,7 @@ const Get = (path = "/") => (target, methodName, descriptor) => {
     if (typeof descriptor.value !== "function") {
         throw Error("Get decorator only use for method.");
     }
+    // Define controller metadata
     Reflect.defineMetadata(exports.controllerRoutesKey, [
         ...Reflect.getOwnMetadata(exports.controllerRoutesKey, target.constructor) || [],
         {
@@ -20,6 +23,24 @@ const Get = (path = "/") => (target, methodName, descriptor) => {
             descriptor: descriptor
         }
     ], target.constructor);
+    // Define route parameters zod validation
+    const currentMethod = descriptor.value;
+    descriptor.value = function () {
+        const zodSchemaMetadata = Reflect.getOwnMetadata(zodSchema_1.controllerRouteZodSchemaKey, target.constructor, methodName);
+        if (zodSchemaMetadata) {
+            for (const zodSchemaProp in zodSchemaMetadata) {
+                const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
+                const validation = tmpZodMetadata.schema.safeParse(arguments[tmpZodMetadata.index]);
+                if (!validation.success) {
+                    throw new http_1.HttpClientError({
+                        httpCode: 400,
+                        data: validation.error.issues
+                    });
+                }
+            }
+        }
+        return currentMethod.apply(this, arguments);
+    };
 };
 exports.Get = Get;
 /**
@@ -40,6 +61,24 @@ const Post = (path = "/") => (target, methodName, descriptor) => {
             descriptor: descriptor
         }
     ], target.constructor);
+    // Define route parameters zod validation
+    const currentMethod = descriptor.value;
+    descriptor.value = function () {
+        const zodSchemaMetadata = Reflect.getOwnMetadata(zodSchema_1.controllerRouteZodSchemaKey, target.constructor, methodName);
+        if (zodSchemaMetadata) {
+            for (const zodSchemaProp in zodSchemaMetadata) {
+                const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
+                const validation = tmpZodMetadata.schema.safeParse(arguments[tmpZodMetadata.index]);
+                if (!validation.success) {
+                    throw new http_1.HttpClientError({
+                        httpCode: 400,
+                        data: validation.error.issues
+                    });
+                }
+            }
+        }
+        return currentMethod.apply(this, arguments);
+    };
 };
 exports.Post = Post;
 /**
@@ -60,6 +99,24 @@ const Put = (path = "/") => (target, methodName, descriptor) => {
             descriptor: descriptor
         }
     ], target.constructor);
+    // Define route parameters zod validation
+    const currentMethod = descriptor.value;
+    descriptor.value = function () {
+        const zodSchemaMetadata = Reflect.getOwnMetadata(zodSchema_1.controllerRouteZodSchemaKey, target.constructor, methodName);
+        if (zodSchemaMetadata) {
+            for (const zodSchemaProp in zodSchemaMetadata) {
+                const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
+                const validation = tmpZodMetadata.schema.safeParse(arguments[tmpZodMetadata.index]);
+                if (!validation.success) {
+                    throw new http_1.HttpClientError({
+                        httpCode: 400,
+                        data: validation.error.issues
+                    });
+                }
+            }
+        }
+        return currentMethod.apply(this, arguments);
+    };
 };
 exports.Put = Put;
 /**
@@ -80,6 +137,24 @@ const Patch = (path = "/") => (target, methodName, descriptor) => {
             descriptor: descriptor
         }
     ], target.constructor);
+    // Define route parameters zod validation
+    const currentMethod = descriptor.value;
+    descriptor.value = function () {
+        const zodSchemaMetadata = Reflect.getOwnMetadata(zodSchema_1.controllerRouteZodSchemaKey, target.constructor, methodName);
+        if (zodSchemaMetadata) {
+            for (const zodSchemaProp in zodSchemaMetadata) {
+                const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
+                const validation = tmpZodMetadata.schema.safeParse(arguments[tmpZodMetadata.index]);
+                if (!validation.success) {
+                    throw new http_1.HttpClientError({
+                        httpCode: 400,
+                        data: validation.error.issues
+                    });
+                }
+            }
+        }
+        return currentMethod.apply(this, arguments);
+    };
 };
 exports.Patch = Patch;
 /**
@@ -100,6 +175,24 @@ const Delete = (path = "/") => (target, methodName, descriptor) => {
             descriptor: descriptor
         }
     ], target.constructor);
+    // Define route parameters zod validation
+    const currentMethod = descriptor.value;
+    descriptor.value = function () {
+        const zodSchemaMetadata = Reflect.getOwnMetadata(zodSchema_1.controllerRouteZodSchemaKey, target.constructor, methodName);
+        if (zodSchemaMetadata) {
+            for (const zodSchemaProp in zodSchemaMetadata) {
+                const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
+                const validation = tmpZodMetadata.schema.safeParse(arguments[tmpZodMetadata.index]);
+                if (!validation.success) {
+                    throw new http_1.HttpClientError({
+                        httpCode: 400,
+                        data: validation.error.issues
+                    });
+                }
+            }
+        }
+        return currentMethod.apply(this, arguments);
+    };
 };
 exports.Delete = Delete;
 /**
@@ -120,6 +213,24 @@ const Options = (path = "/") => (target, methodName, descriptor) => {
             descriptor: descriptor
         }
     ], target.constructor);
+    // Define route parameters zod validation
+    const currentMethod = descriptor.value;
+    descriptor.value = function () {
+        const zodSchemaMetadata = Reflect.getOwnMetadata(zodSchema_1.controllerRouteZodSchemaKey, target.constructor, methodName);
+        if (zodSchemaMetadata) {
+            for (const zodSchemaProp in zodSchemaMetadata) {
+                const tmpZodMetadata = zodSchemaMetadata[zodSchemaProp];
+                const validation = tmpZodMetadata.schema.safeParse(arguments[tmpZodMetadata.index]);
+                if (!validation.success) {
+                    throw new http_1.HttpClientError({
+                        httpCode: 400,
+                        data: validation.error.issues
+                    });
+                }
+            }
+        }
+        return currentMethod.apply(this, arguments);
+    };
 };
 exports.Options = Options;
 exports.default = {

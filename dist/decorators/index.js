@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.controllerRoutesKey = exports.Options = exports.Delete = exports.Patch = exports.Put = exports.Post = exports.Get = exports.moduleKey = exports.Module = exports.injectableKey = exports.Injectable = exports.injectKey = exports.Inject = exports.controllerKey = exports.Controller = void 0;
+exports.controllerRouteZodSchemaKey = exports.ZodSchema = exports.controllerRoutesKey = exports.Options = exports.Delete = exports.Patch = exports.Put = exports.Post = exports.Get = exports.moduleKey = exports.Module = exports.injectableKey = exports.Injectable = exports.injectKey = exports.Inject = exports.controllerKey = exports.Controller = void 0;
 var controller_1 = require("./controller");
 Object.defineProperty(exports, "Controller", { enumerable: true, get: function () { return controller_1.Controller; } });
 Object.defineProperty(exports, "controllerKey", { enumerable: true, get: function () { return controller_1.controllerKey; } });
@@ -21,3 +21,6 @@ Object.defineProperty(exports, "Patch", { enumerable: true, get: function () { r
 Object.defineProperty(exports, "Delete", { enumerable: true, get: function () { return http_1.Delete; } });
 Object.defineProperty(exports, "Options", { enumerable: true, get: function () { return http_1.Options; } });
 Object.defineProperty(exports, "controllerRoutesKey", { enumerable: true, get: function () { return http_1.controllerRoutesKey; } });
+var zodSchema_1 = require("./zodSchema");
+Object.defineProperty(exports, "ZodSchema", { enumerable: true, get: function () { return zodSchema_1.ZodSchema; } });
+Object.defineProperty(exports, "controllerRouteZodSchemaKey", { enumerable: true, get: function () { return zodSchema_1.controllerRouteZodSchemaKey; } });

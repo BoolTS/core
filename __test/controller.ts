@@ -1,9 +1,17 @@
 import type { IService } from "./interfaces";
 
-import { Controller, Delete, Get, Inject, Options, Patch, Post, Put } from "../src";
+import * as Zod from "zod";
+
+import { Controller, Delete, Get, Inject, Options, Patch, Post, Put, ZodSchema } from "../src";
 import { TestService } from "./service";
 import { Request, Response } from "express";
 
+
+const getAbcSchema = Zod.object({
+    headers: Zod.object({
+        authorization: Zod.string().min(10)
+    })
+});
 
 @Controller("test")
 export class TestController {
@@ -13,7 +21,7 @@ export class TestController {
 
     @Get("abc")
     private _get(
-        req: Request,
+        @ZodSchema(getAbcSchema) req: Request,
         res: Response
     ) {
         console.log("this.testService", this.testService.exec())
@@ -22,7 +30,7 @@ export class TestController {
 
     @Post("abc")
     private _post(
-        req: Request,
+        @ZodSchema(getAbcSchema) req: Request,
         res: Response
     ) {
         console.log("req.body", req.body);
@@ -31,7 +39,7 @@ export class TestController {
 
     @Put()
     private _put(
-        req: Request,
+        @ZodSchema(getAbcSchema) req: Request,
         res: Response
     ) {
         res.json({ test: "success" }).send();
@@ -39,7 +47,7 @@ export class TestController {
 
     @Patch("abc/:id")
     private _patch(
-        req: Request,
+        @ZodSchema(getAbcSchema) req: Request,
         res: Response
     ) {
         console.log(req.params)
@@ -48,7 +56,7 @@ export class TestController {
 
     @Delete()
     private _delete(
-        req: Request,
+        @ZodSchema(getAbcSchema) req: Request,
         res: Response
     ) {
         res.json({ test: "success" }).send();
@@ -56,7 +64,7 @@ export class TestController {
 
     @Options()
     private _options(
-        req: Request,
+        @ZodSchema(getAbcSchema) req: Request,
         res: Response
     ) {
         res.json({ test: "success" }).send();

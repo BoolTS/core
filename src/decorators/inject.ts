@@ -5,7 +5,7 @@ export const Inject = <T extends Object>(
 ) => {
     return (
         target: Object,
-        parameterName: string | Symbol | undefined,
+        methodName: string | symbol | undefined,
         parameterIndex: number
     ) => {
         const designParameterTypes: any[] = Reflect.getMetadata(injectKey, target) || [];
