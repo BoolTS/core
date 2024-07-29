@@ -1,37 +1,214 @@
-import "reflect-metadata";
 import "colors";
+import "reflect-metadata";
 
 import * as Qs from "qs";
-import * as ResponseTime from "response-time";
+import { Router, RouterGroup } from "../entities";
 
+// import { default as ExpressApp, Router as ExpressRouter, json, urlencoded } from "express";
 import { type IControllerRoute, type TModuleOptions, controllerKey, controllerRoutesKey, moduleKey } from "../decorators";
-import { default as ExpressApp, Router, json, urlencoded, Request, Response, NextFunction, Errback } from "express";
+import { HttpClientError, jsonErrorInfer, type THttpMethods } from "../http";
 import { Injector } from "./injector";
-import { errorInfer } from "../http";
 
-
-export type TBoolFactoryOptions = Partial<{
-    debug: boolean;
-    log: Partial<{
-        methods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
+export type TBoolFactoryOptions = Required<{
+    port: number;
+}> &
+    Partial<{
+        debug: boolean;
+        log: Partial<{
+            methods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
+        }>;
+        queryParser: Partial<{
+            depth: 10;
+            arrayLimit: 50;
+        }>;
+        prefix: string;
     }>;
-    queryParser: Partial<{
-        depth: 10,
-        arrayLimit: 50
-    }>;
-    prefix: string;
-}>;
 
+// /**
+//  *
+//  * @param target
+//  * @param router
+//  */
+// const controllerCreator = (
+//     controllerConstructor: new (...args: any[]) => unknown,
+//     parentRouter: ExpressRouter = ExpressRouter()
+// ) => {
+//     if (!Reflect.getOwnMetadataKeys(controllerConstructor).includes(controllerKey)) {
+//         throw Error(`${controllerConstructor.name} is not a controller.`);
+//     }
 
-/**
- * 
- * @param target 
- * @param router 
- */
-const controllerCreator = (
-    controllerConstructor: new (...args: any[]) => unknown,
-    parentRouter: Router = Router()
-) => {
+//     const controller = Injector.get(controllerConstructor);
+
+//     if (!controller) {
+//         throw Error("Can not initialize controller.");
+//     }
+
+//     const controllerMetadata = Reflect.getOwnMetadata(controllerKey, controllerConstructor) || "/";
+//     const routesMetadata = (Reflect.getOwnMetadata(controllerRoutesKey, controllerConstructor) ||
+//         []) as Array<IControllerRoute>;
+//     const router = ExpressRouter();
+
+//     routesMetadata.forEach((routeMetadata) => {
+//         if (typeof routeMetadata.descriptor.value !== "function") {
+//             return;
+//         }
+
+//         const route = router.route(routeMetadata.path);
+
+//         switch (routeMetadata.httpMethod) {
+//             case "GET":
+//                 return route.get(routeMetadata.descriptor.value.bind(controller));
+//             case "POST":
+//                 return route.post(routeMetadata.descriptor.value.bind(controller));
+//             case "PUT":
+//                 return route.put(routeMetadata.descriptor.value.bind(controller));
+//             case "PATCH":
+//                 return route.patch(routeMetadata.descriptor.value.bind(controller));
+//             case "DELETE":
+//                 return route.delete(routeMetadata.descriptor.value.bind(controller));
+//             case "OPTIONS":
+//                 return route.options(routeMetadata.descriptor.value.bind(controller));
+//         }
+//     });
+
+//     return parentRouter.use(controllerMetadata, router);
+// };
+
+// /**
+//  *
+//  * @param target
+//  */
+// export const BoolFactory = (target: new (...args: any[]) => unknown, options?: TBoolFactoryOptions) => {
+//     if (!Reflect.getOwnMetadataKeys(target).includes(moduleKey)) {
+//         throw Error(`${target.name} is not a module.`);
+//     }
+
+//     const metadata = Reflect.getOwnMetadata(moduleKey, target) as TModuleOptions;
+//     const allowOrigins = !metadata?.allowOrigins
+//         ? ["*"]
+//         : typeof metadata.allowOrigins !== "string"
+//         ? metadata.allowOrigins
+//         : [metadata.allowOrigins];
+//     const allowMethods = !metadata?.allowMethods ? ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : metadata.allowMethods;
+//     const app = ExpressApp();
+//     const factoryOptions = Object.freeze({
+//         allowLogsMethods: !options?.log?.methods ? ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : options.log.methods
+//     });
+//     const routers = !metadata?.controllers
+//         ? []
+//         : metadata.controllers.map((controllerConstructor) => controllerCreator(controllerConstructor));
+
+//     app.set("etag", "strong");
+//     app.set("query parser", (query: string) =>
+//         Qs.parse(query, {
+//             depth: !options?.queryParser?.depth || options.queryParser.depth < 0 ? 10 : options.queryParser.depth,
+//             arrayLimit:
+//                 !options?.queryParser?.arrayLimit || options.queryParser.arrayLimit < 0 ? 50 : options.queryParser.arrayLimit
+//         })
+//     );
+
+//     app.use(
+//         urlencoded({
+//             extended: true,
+//             inflate: true,
+//             limit: "1mb",
+//             parameterLimit: 20,
+//             type: "application/x-www-form-urlencoded",
+//             verify: undefined
+//         }),
+//         json({
+//             inflate: true,
+//             limit: "5mb",
+//             reviver: undefined,
+//             strict: true,
+//             type: "application/json",
+//             verify: undefined
+//         }),
+//         // Headers parser
+//         (req: Request, res: Response, next: NextFunction) => {
+//             for (const [key, value] of Object.entries(req.headers)) {
+//                 req.headers[key] = typeof value !== "string" ? value : decodeURI(value);
+//             }
+
+//             next();
+//         },
+//         // Body parser
+//         (req: Request, res: Response, next: NextFunction) => {
+//             if (typeof req.body !== "object" || !req.body) {
+//                 req.body = Object.freeze({});
+//             }
+
+//             next();
+//         },
+//         // Response time log
+//         ResponseTime.default((req: Request, res: Response, time: number) => {
+//             const requestMethod = req.method.toUpperCase();
+
+//             if (!factoryOptions.allowLogsMethods.includes(requestMethod)) {
+//                 return;
+//             }
+
+//             const convertedMethod = `${requestMethod.yellow}`.bgBlue;
+//             const convertedPID = `${process.pid}`.yellow;
+//             const convertedReqIp = `${req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.ip || "<Unknown>"}`
+//                 .yellow;
+//             const convertedTime = `${Math.round((time + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
+
+//             console.info(
+//                 `PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${req.originalUrl.blue} - Time: ${convertedTime}`
+//             );
+//         })
+//     );
+
+//     app.use((req: Request, res: Response, next: NextFunction) => {
+//         if (!allowOrigins.includes("*")) {
+//             if (!allowOrigins.includes(req.headers.origin || "*")) {
+//                 return res.status(403).json({
+//                     httpCode: 403,
+//                     data: {
+//                         origin: {
+//                             code: "origin:invalid:0x00001",
+//                             message: "Invalid origin."
+//                         }
+//                     }
+//                 });
+//             }
+//         }
+
+//         res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+//         res.header("Access-Control-Allow-Headers", "*");
+//         res.header("Access-Control-Allow-Credentials", "true");
+//         res.header("Access-Control-Allow-Methods", allowMethods.join(", "));
+
+//         next();
+//     });
+
+//     if (routers.length > 0) {
+//         !metadata?.prefix
+//             ? app.use(routers)
+//             : app.use(!metadata.prefix.startsWith("/") ? `/${metadata.prefix}` : metadata.prefix, routers);
+//     }
+
+//     // Register error catcher
+//     app.use(
+//         // Error catcher
+//         (err: Errback, req: Request, res: Response, next: NextFunction) => {
+//             errorInfer(res, err);
+
+//             if (!options?.debug) {
+//                 return;
+//             }
+
+//             console.info("Headers:", JSON.stringify(req.headers, null, 4), "\nBody:", JSON.stringify(req.body, null, 4));
+//             console.error("Error:");
+//             console.error(err);
+//         }
+//     );
+
+//     return app;
+// };
+
+export const controllerCreator = (controllerConstructor: new (...args: any[]) => unknown, group: RouterGroup) => {
     if (!Reflect.getOwnMetadataKeys(controllerConstructor).includes(controllerKey)) {
         throw Error(`${controllerConstructor.name} is not a controller.`);
     }
@@ -43,163 +220,212 @@ const controllerCreator = (
     }
 
     const controllerMetadata = Reflect.getOwnMetadata(controllerKey, controllerConstructor) || "/";
-    const routesMetadata = (Reflect.getOwnMetadata(controllerRoutesKey, controllerConstructor) || []) as Array<IControllerRoute>;
-    const router = Router();
+    const routesMetadata = (Reflect.getOwnMetadata(controllerRoutesKey, controllerConstructor) ||
+        []) as Array<IControllerRoute>;
+    const router = new Router(controllerMetadata);
 
-    routesMetadata.forEach(routeMetadata => {
+    routesMetadata.forEach((routeMetadata) => {
         if (typeof routeMetadata.descriptor.value !== "function") {
             return;
         }
 
-        const route = router.route(routeMetadata.path);
+        const route = router.route(`/${routeMetadata.path}`);
+        const handler = routeMetadata.descriptor.value.bind(controller);
 
         switch (routeMetadata.httpMethod) {
             case "GET":
-                return route.get(routeMetadata.descriptor.value.bind(controller));
+                return route.get(handler);
             case "POST":
-                return route.post(routeMetadata.descriptor.value.bind(controller));
+                return route.post(handler);
             case "PUT":
-                return route.put(routeMetadata.descriptor.value.bind(controller));
+                return route.put(handler);
             case "PATCH":
-                return route.patch(routeMetadata.descriptor.value.bind(controller));
+                return route.patch(handler);
             case "DELETE":
-                return route.delete(routeMetadata.descriptor.value.bind(controller));
+                return route.delete(handler);
             case "OPTIONS":
-                return route.options(routeMetadata.descriptor.value.bind(controller));
+                return route.options(handler);
         }
     });
 
-    return parentRouter.use(controllerMetadata, router);
-}
+    return group.add(router);
+};
 
-
-/**
- * 
- * @param target 
- */
-export const BoolFactory = (
-    target: new (...args: any[]) => unknown,
-    options?: TBoolFactoryOptions
-) => {
+export const BoolFactory = (target: new (...args: any[]) => unknown, options: TBoolFactoryOptions) => {
     if (!Reflect.getOwnMetadataKeys(target).includes(moduleKey)) {
         throw Error(`${target.name} is not a module.`);
     }
 
     const metadata = Reflect.getOwnMetadata(moduleKey, target) as TModuleOptions;
-    const allowOrigins = !metadata?.allowOrigins ?
-        ["*"] : typeof metadata.allowOrigins !== "string" ?
-            metadata.allowOrigins : [metadata.allowOrigins];
-    const allowMethods = !metadata?.allowMethods ?
-        ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : metadata.allowMethods;
-    const app = ExpressApp();
+    const allowOrigins = !metadata?.allowOrigins
+        ? ["*"]
+        : typeof metadata.allowOrigins !== "string"
+        ? metadata.allowOrigins
+        : [metadata.allowOrigins];
+    const allowMethods = !metadata?.allowMethods ? ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : metadata.allowMethods;
     const factoryOptions = Object.freeze({
         allowLogsMethods: !options?.log?.methods ? ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : options.log.methods
     });
-    const routers = !metadata?.controllers ?
-        [] : metadata.controllers.map(controllerConstructor => controllerCreator(controllerConstructor));
 
-    app.set("etag", "strong");
-    app.set("query parser", (query: string) => Qs.parse(query, {
-        depth: !options?.queryParser?.depth || options.queryParser.depth < 0 ? 10 : options.queryParser.depth,
-        arrayLimit: !options?.queryParser?.arrayLimit || options.queryParser.arrayLimit < 0 ? 50 : options.queryParser.arrayLimit
-    }));
+    const routerGroup = new RouterGroup();
 
-    app.use(
-        urlencoded({
-            extended: true,
-            inflate: true,
-            limit: "1mb",
-            parameterLimit: 20,
-            type: "application/x-www-form-urlencoded",
-            verify: undefined
-        }),
-        json({
-            inflate: true,
-            limit: "5mb",
-            reviver: undefined,
-            strict: true,
-            type: "application/json",
-            verify: undefined
-        }),
-        // Headers parser
-        (req: Request, res: Response, next: NextFunction) => {
-            for (const [key, value] of Object.entries(req.headers)) {
-                req.headers[key] = typeof value !== "string" ? value : decodeURI(value)
-            }
+    metadata?.controllers &&
+        metadata.controllers.map((controllerConstructor) => controllerCreator(controllerConstructor, routerGroup));
 
-            next();
-        },
-        // Body parser
-        (req: Request, res: Response, next: NextFunction) => {
-            if (typeof req.body !== "object" || !req.body) {
-                req.body = Object.freeze({});
-            }
+    Bun.serve({
+        port: options.port,
+        async fetch(request) {
+            const start = performance.now();
+            const url = new URL(request.url);
 
-            next();
-        },
-        // Response time log
-        ResponseTime.default((req: Request, res: Response, time: number) => {
-            const requestMethod = req.method.toUpperCase();
+            request.json();
 
-            if (!factoryOptions.allowLogsMethods.includes(requestMethod)) {
-                return;
-            }
+            try {
+                const result = routerGroup.find(url.pathname, request.method as keyof THttpMethods);
 
-            const convertedMethod = `${requestMethod.yellow}`.bgBlue;
-            const convertedPID = `${process.pid}`.yellow;
-            const convertedReqIp = `${req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.ip || "<Unknown>"}`.yellow;
-            const convertedTime = `${Math.round((time + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
+                if (!result) {
+                    throw new HttpClientError({
+                        httpCode: 404,
+                        message: "Route not found.",
+                        data: undefined
+                    });
+                }
 
-            console.info(`PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${req.originalUrl.blue} - Time: ${convertedTime}`);
-        })
-    );
+                for (let i = 0; i < result.handlers.length; i++) {
+                    const response = await result.handlers[i](request);
 
-    app.use((req: Request, res: Response, next: NextFunction) => {
-        if (!allowOrigins.includes("*")) {
-            if (!allowOrigins.includes(req.headers.origin || "*")) {
-                return res.status(403).json({
-                    httpCode: 403,
-                    data: {
-                        origin: {
-                            code: "origin:invalid:0x00001",
-                            message: "Invalid origin."
-                        }
+                    if (response instanceof Response) {
+                        return response;
                     }
-                });
+                }
+
+                return new Response();
+            } catch (error) {
+                return jsonErrorInfer(error);
+            } finally {
+                const end = performance.now();
+                const convertedPID = `${process.pid}`.yellow;
+                const convertedMethod = `${request.method.yellow}`.bgBlue;
+                const convertedReqIp = `${
+                    request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "<Unknown>"
+                }`.yellow;
+                const convertedTime = `${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
+
+                console.info(
+                    `PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${url.pathname.blue} - Time: ${convertedTime}`
+                );
             }
         }
-
-        res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
-        res.header("Access-Control-Allow-Headers", "*");
-        res.header("Access-Control-Allow-Credentials", "true");
-        res.header("Access-Control-Allow-Methods", allowMethods.join(", "));
-
-        next();
     });
 
-    if (routers.length > 0) {
-        !metadata?.prefix ?
-            app.use(routers) : app.use(!metadata.prefix.startsWith("/") ?
-                `/${metadata.prefix}` : metadata.prefix, routers);
-    }
+    // app.set("etag", "strong");
+    // app.set("query parser", (query: string) =>
+    //     Qs.parse(query, {
+    //         depth: !options?.queryParser?.depth || options.queryParser.depth < 0 ? 10 : options.queryParser.depth,
+    //         arrayLimit:
+    //             !options?.queryParser?.arrayLimit || options.queryParser.arrayLimit < 0 ? 50 : options.queryParser.arrayLimit
+    //     })
+    // );
 
-    // Register error catcher
-    app.use(
-        // Error catcher
-        (err: Errback, req: Request, res: Response, next: NextFunction) => {
-            errorInfer(res, err);
+    // app.use(
+    //     urlencoded({
+    //         extended: true,
+    //         inflate: true,
+    //         limit: "1mb",
+    //         parameterLimit: 20,
+    //         type: "application/x-www-form-urlencoded",
+    //         verify: undefined
+    //     }),
+    //     json({
+    //         inflate: true,
+    //         limit: "5mb",
+    //         reviver: undefined,
+    //         strict: true,
+    //         type: "application/json",
+    //         verify: undefined
+    //     }),
+    //     // Headers parser
+    //     (req: Request, res: Response, next: NextFunction) => {
+    //         for (const [key, value] of Object.entries(req.headers)) {
+    //             req.headers[key] = typeof value !== "string" ? value : decodeURI(value);
+    //         }
 
-            if (!options?.debug) {
-                return;
-            }
+    //         next();
+    //     },
+    //     // Body parser
+    //     (req: Request, res: Response, next: NextFunction) => {
+    //         if (typeof req.body !== "object" || !req.body) {
+    //             req.body = Object.freeze({});
+    //         }
 
-            console.info("Headers:", JSON.stringify(req.headers, null, 4), "\nBody:", JSON.stringify(req.body, null, 4));
-            console.error("Error:");
-            console.error(err);
-        }
-    );
+    //         next();
+    //     },
+    //     // Response time log
+    //     ResponseTime.default((req: Request, res: Response, time: number) => {
+    //         const requestMethod = req.method.toUpperCase();
 
-    return app;
-}
+    //         if (!factoryOptions.allowLogsMethods.includes(requestMethod)) {
+    //             return;
+    //         }
+
+    //         const convertedMethod = `${requestMethod.yellow}`.bgBlue;
+    //         const convertedPID = `${process.pid}`.yellow;
+    //         const convertedReqIp = `${req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.ip || "<Unknown>"}`
+    //             .yellow;
+    //         const convertedTime = `${Math.round((time + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
+
+    //         console.info(
+    //             `PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${req.originalUrl.blue} - Time: ${convertedTime}`
+    //         );
+    //     })
+    // );
+
+    // app.use((req: Request, res: Response, next: NextFunction) => {
+    //     if (!allowOrigins.includes("*")) {
+    //         if (!allowOrigins.includes(req.headers.origin || "*")) {
+    //             return res.status(403).json({
+    //                 httpCode: 403,
+    //                 data: {
+    //                     origin: {
+    //                         code: "origin:invalid:0x00001",
+    //                         message: "Invalid origin."
+    //                     }
+    //                 }
+    //             });
+    //         }
+    //     }
+
+    //     res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+    //     res.header("Access-Control-Allow-Headers", "*");
+    //     res.header("Access-Control-Allow-Credentials", "true");
+    //     res.header("Access-Control-Allow-Methods", allowMethods.join(", "));
+
+    //     next();
+    // });
+
+    // if (routers.length > 0) {
+    //     !metadata?.prefix
+    //         ? app.use(routers)
+    //         : app.use(!metadata.prefix.startsWith("/") ? `/${metadata.prefix}` : metadata.prefix, routers);
+    // }
+
+    // // Register error catcher
+    // app.use(
+    //     // Error catcher
+    //     (err: Errback, req: Request, res: Response, next: NextFunction) => {
+    //         errorInfer(res, err);
+
+    //         if (!options?.debug) {
+    //             return;
+    //         }
+
+    //         console.info("Headers:", JSON.stringify(req.headers, null, 4), "\nBody:", JSON.stringify(req.body, null, 4));
+    //         console.error("Error:");
+    //         console.error(err);
+    //     }
+    // );
+
+    return;
+};
 
 export default BoolFactory;

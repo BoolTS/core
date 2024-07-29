@@ -9,32 +9,29 @@ export interface IControllerRoute {
     descriptor: PropertyDescriptor;
 }
 
-
 export const controllerRoutesKey = "__bool:controller.routes__";
 
-
-const defaultDecorator = (
-    path: string,
-    method: "Get" | "Post" | "Put" | "Patch" | "Delete" | "Options"
-) => (
-    target: Object,
-    methodName: string,
-    descriptor: PropertyDescriptor
-) => {
+const defaultDecorator =
+    (path: string, method: "Get" | "Post" | "Put" | "Patch" | "Delete" | "Options") =>
+    (target: Object, methodName: string, descriptor: PropertyDescriptor) => {
         if (!(descriptor.value instanceof Function)) {
             throw Error(`${method} decorator only use for method.`);
         }
 
         // Define controller metadata
-        Reflect.defineMetadata(controllerRoutesKey, [
-            ...Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || [],
-            {
-                path: !path.startsWith("/") ? `/${path}` : path,
-                httpMethod: method.toUpperCase(),
-                methodName: methodName,
-                descriptor: descriptor
-            }
-        ], target.constructor);
+        Reflect.defineMetadata(
+            controllerRoutesKey,
+            [
+                ...(Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || []),
+                {
+                    path: !path.startsWith("/") ? `/${path}` : path,
+                    httpMethod: method.toUpperCase(),
+                    methodName: methodName,
+                    descriptor: descriptor
+                }
+            ],
+            target.constructor
+        );
 
         // Define route parameters zod validation
         const currentMethod = descriptor.value;
@@ -60,8 +57,7 @@ const defaultDecorator = (
                             }
 
                             arguments[tmpZodMetadata.index] = validation.data;
-                        }
-                        catch (error) {
+                        } catch (error) {
                             if (error instanceof HttpClientError) {
                                 throw error;
                             }
@@ -69,20 +65,23 @@ const defaultDecorator = (
                             throw new HttpServerError({
                                 httpCode: 500,
                                 message: `Validation at the [${methodName}] method error at positional argument [${tmpZodMetadata.index}].`,
-                                data: !(error instanceof Error) ? error : [{
-                                    message: error.message,
-                                    code: error.name,
-                                    cause: error.cause
-                                }]
+                                data: !(error instanceof Error)
+                                    ? error
+                                    : [
+                                          {
+                                              message: error.message,
+                                              code: error.name,
+                                              cause: error.cause
+                                          }
+                                      ]
                             });
                         }
                     }
                 }
 
                 return currentMethod.apply(this, arguments);
-            }
-        }
-        else {
+            };
+        } else {
             descriptor.value = async function () {
                 const zodSchemaMetadata = Reflect.getOwnMetadata(controllerRouteZodSchemaKey, target.constructor, methodName);
 
@@ -102,8 +101,7 @@ const defaultDecorator = (
                             }
 
                             arguments[tmpZodMetadata.index] = validation.data;
-                        }
-                        catch (error) {
+                        } catch (error) {
                             if (error instanceof HttpClientError) {
                                 throw error;
                             }
@@ -111,79 +109,66 @@ const defaultDecorator = (
                             throw new HttpServerError({
                                 httpCode: 500,
                                 message: `Validation at the [${methodName}] method error at positional argument [${tmpZodMetadata.index}].`,
-                                data: !(error instanceof Error) ? error : [{
-                                    message: error.message,
-                                    code: error.name,
-                                    cause: error.cause
-                                }]
+                                data: !(error instanceof Error)
+                                    ? error
+                                    : [
+                                          {
+                                              message: error.message,
+                                              code: error.name,
+                                              cause: error.cause
+                                          }
+                                      ]
                             });
                         }
                     }
                 }
 
                 return currentMethod.apply(this, arguments);
-            }
+            };
         }
-    }
+    };
 
 /**
- * 
- * @param path 
- * @returns 
+ *
+ * @param path
+ * @returns
  */
-export const Get = (
-    path = "/"
-) => defaultDecorator(path, "Get");
-
+export const Get = (path = "/") => defaultDecorator(path, "Get");
 
 /**
- * 
- * @param path 
- * @returns 
+ *
+ * @param path
+ * @returns
  */
-export const Post = (
-    path = "/"
-) => defaultDecorator(path, "Post");
-
+export const Post = (path = "/") => defaultDecorator(path, "Post");
 
 /**
- * 
- * @param path 
- * @returns 
+ *
+ * @param path
+ * @returns
  */
-export const Put = (
-    path = "/"
-) => defaultDecorator(path, "Put");
-
+export const Put = (path = "/") => defaultDecorator(path, "Put");
 
 /**
- * 
- * @param path 
- * @returns 
+ *
+ * @param path
+ * @returns
  */
-export const Patch = (
-    path = "/"
-) => defaultDecorator(path, "Patch");
-
+export const Patch = (path = "/") => defaultDecorator(path, "Patch");
 
 /**
- * 
- * @param path 
- * @returns 
+ *
+ * @param path
+ * @returns
  */
-export const Delete = (
-    path = "/"
-) => defaultDecorator(path, "Delete");
-
+export const Delete = (path = "/") => defaultDecorator(path, "Delete");
 
 /**
- * 
- * @param path 
- * @returns 
+ *
+ * @param path
+ * @returns
  */
-export const Options = (
-    path = "/"
-) => defaultDecorator(path, "Options");
+export const Options = (path = "/") => defaultDecorator(path, "Options");
 
 export default {
     Get,
@@ -192,4 +177,3 @@ export default {
     Patch,
     Delete
 };
-
