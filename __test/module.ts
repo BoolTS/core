@@ -4,14 +4,13 @@ import { TestController } from "./controller";
 import { TestService } from "./service";
 
 @Module({
-    controllers: [
-        TestController
-    ],
+    allowOrigins: ["http://localhost:7000"],
+    controllers: [TestController],
     dependencies: [
         // TestService,
         // TestRepository
     ]
 })
-export class TestModule { }
+export class TestModule {}
 
 export default TestModule;

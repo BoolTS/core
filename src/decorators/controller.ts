@@ -1,6 +1,6 @@
 import { injectableKey } from "./injectable";
 
-export const controllerKey = "__bool:controller__";
+export const controllerKey = Symbol.for("__bool:controller__");
 
 export const Controller =
     (prefix: string) =>

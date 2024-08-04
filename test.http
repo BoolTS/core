@@ -2,15 +2,17 @@
 
 
 ### Send test GET method
-GET http://{{baseUrl}}/test/abc
+GET http://{{baseUrl}}/test/abc/23234
 
 ### Send test POST method
-POST http://{{baseUrl}}/test/abc HTTP/1.1
+POST http://{{baseUrl}}/test/abc/23234 HTTP/1.1
 content-type: application/json
 
 {
-    "name": "sample",
-    "time": "Wed, 21 Oct 2015 18:27:50 GMT"
+    "data": {
+        "name": "sample",
+        "time": "Wed, 21 Oct 2015 18:27:50 GMT"
+    }
 }
 
 ### Send test PUT method

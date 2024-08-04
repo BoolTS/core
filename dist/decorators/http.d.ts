@@ -4,7 +4,7 @@ export interface IControllerRoute {
     methodName: string;
     descriptor: PropertyDescriptor;
 }
-export declare const controllerRoutesKey = "__bool:controller.routes__";
+export declare const controllerRoutesKey: unique symbol;
 /**
  *
  * @param path

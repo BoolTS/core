@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.HttpClientError = exports.httpClientErrors = void 0;
-exports.httpClientErrors = Object.freeze({
+export const httpClientErrors = Object.freeze({
     400: "BAD_REQUEST",
     401: "UNAUTHORIZED",
     402: "PAYMENT_REQUIRED",
@@ -32,15 +29,14 @@ exports.httpClientErrors = Object.freeze({
     431: "REQUEST_HEADER_FIELDS_TOO_LARGE",
     451: "UNAVAILABLE_FOR_LEGAL_REASONS"
 });
-class HttpClientError extends Error {
+export class HttpClientError extends Error {
     httpCode;
     message;
     data;
     constructor({ httpCode, data, message }) {
         super();
         this.httpCode = httpCode;
-        this.message = !message?.trim() ? exports.httpClientErrors[httpCode] : message.trim();
+        this.message = !message?.trim() ? httpClientErrors[httpCode] : message.trim();
         this.data = data;
     }
 }
-exports.HttpClientError = HttpClientError;

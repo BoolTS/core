@@ -1,3 +1,4 @@
+export { Headers, Body, Params, Query, EArgumentTypes } from "./arguments";
 export { Controller, controllerKey } from "./controller";
 export { Inject, injectKey } from "./inject";
 export { Injectable, injectableKey } from "./injectable";

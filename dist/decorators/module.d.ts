@@ -5,6 +5,8 @@ export type TModuleOptions = Partial<{
     allowOrigins: string | Array<string>;
     allowMethods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
 }> | undefined;
-export declare const moduleKey = "__bool:module__";
-export declare const Module: (args?: TModuleOptions) => <T extends new (...args: any[]) => {}>(target: T, context?: ClassDecoratorContext) => T;
+export declare const moduleKey: unique symbol;
+export declare const Module: (args?: TModuleOptions) => <T extends {
+    new (...args: any[]): {};
+}>(target: T) => T;
 export default Module;

@@ -8,7 +8,7 @@ export type TModuleOptions =
       }>
     | undefined;
 
-export const moduleKey = "__bool:module__";
+export const moduleKey = Symbol.for("__bool:module__");
 
 export const Module =
     (args?: TModuleOptions) =>

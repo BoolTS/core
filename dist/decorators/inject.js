@@ -1,13 +1,9 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Inject = exports.injectKey = void 0;
-exports.injectKey = "design:paramtypes";
-const Inject = (classDefinition) => {
+export const injectKey = "design:paramtypes";
+export const Inject = (classDefinition) => {
     return (target, methodName, parameterIndex) => {
-        const designParameterTypes = Reflect.getMetadata(exports.injectKey, target) || [];
+        const designParameterTypes = Reflect.getMetadata(injectKey, target) || [];
         designParameterTypes[parameterIndex] = classDefinition;
-        Reflect.defineMetadata(exports.injectKey, designParameterTypes, target);
+        Reflect.defineMetadata(injectKey, designParameterTypes, target);
     };
 };
-exports.Inject = Inject;
-exports.default = exports.Inject;
+export default Inject;
