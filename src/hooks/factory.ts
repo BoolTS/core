@@ -141,32 +141,53 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
             try {
                 const reqHeaders = request.headers;
                 const origin = reqHeaders.get("origin");
+                const resHeaders = new Headers({
+                    "Access-Control-Allow-Origin": origin || "*",
+                    "Access-Control-Allow-Headers": "*",
+                    "Access-Control-Allow-Credentials": "true",
+                    "Access-Control-Allow-Methods": allowMethods.join(", "),
+                    "Content-Type": "application/json"
+                });
 
                 if (!allowOrigins.includes("*")) {
                     if (!origin) {
-                        throw new HttpClientError({
-                            httpCode: 403,
-                            message: "Origin not found.",
-                            data: {
-                                origin: {
-                                    code: "origin:invalid:0x00001",
-                                    message: "Origin not found."
+                        return new Response(
+                            JSON.stringify({
+                                httpCode: 403,
+                                message: "Origin not found.",
+                                data: {
+                                    origin: {
+                                        code: "origin:invalid:0x00001",
+                                        message: "Origin not found."
+                                    }
                                 }
+                            }),
+                            {
+                                status: 403,
+                                statusText: "Origin not found.",
+                                headers: resHeaders
                             }
-                        });
+                        );
                     }
 
                     if (!allowOrigins.includes(origin)) {
-                        throw new HttpClientError({
-                            httpCode: 403,
-                            message: "Invalid origin.",
-                            data: {
-                                origin: {
-                                    code: "origin:invalid:0x00002",
-                                    message: "Invalid origin."
+                        return new Response(
+                            JSON.stringify({
+                                httpCode: 403,
+                                message: "Origin not found.",
+                                data: {
+                                    origin: {
+                                        code: "origin:invalid:0x00002",
+                                        message: "Invalid origin."
+                                    }
                                 }
+                            }),
+                            {
+                                status: 403,
+                                statusText: "Invalid origin.",
+                                headers: resHeaders
                             }
-                        });
+                        );
                     }
                 }
 
@@ -273,14 +294,6 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
 
                     responseBody = responseData;
                 }
-
-                const resHeaders = new Headers({
-                    "Access-Control-Allow-Origin": origin || "*",
-                    "Access-Control-Allow-Headers": "*",
-                    "Access-Control-Allow-Credentials": "true",
-                    "Access-Control-Allow-Methods": allowMethods.join(", "),
-                    "Content-Type": "application/json"
-                });
 
                 const response = new Response(
                     JSON.stringify({
