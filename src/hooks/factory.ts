@@ -139,9 +139,8 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
             const url = new URL(request.url);
 
             try {
-                const headers = request.headers;
-                const origin = headers.get("origin");
-                const response = new Response();
+                const reqHeaders = request.headers;
+                const origin = reqHeaders.get("origin");
 
                 if (!allowOrigins.includes("*")) {
                     if (!origin) {
@@ -171,11 +170,6 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                     }
                 }
 
-                response.headers.set("Access-Control-Allow-Origin", origin || "*");
-                response.headers.set("Access-Control-Allow-Headers", "*");
-                response.headers.set("Access-Control-Allow-Credentials", "true");
-                response.headers.set("Access-Control-Allow-Methods", allowMethods.join(", "));
-
                 if (!allowMethods.includes(request.method.toUpperCase())) {
                     throw new HttpClientError({
                         httpCode: 405,
@@ -197,6 +191,8 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                 const params = result.params;
                 const query = Qs.parse(url.search, options.queryParser);
 
+                let responseBody = undefined;
+
                 for (let i = 0; i < result.handlers.length; i++) {
                     const handler = result.handlers[i];
                     const handlerMetadata = (Reflect.getOwnMetadata(
@@ -212,9 +208,9 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                             switch (argsMetadata.type) {
                                 case EArgumentTypes.headers:
                                     controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                        ? headers
+                                        ? reqHeaders
                                         : await controllerActionArgumentsResolution(
-                                              headers,
+                                              reqHeaders,
                                               argsMetadata.zodSchema,
                                               argsMetadata.index,
                                               handler.funcName
@@ -250,16 +246,54 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                                               handler.funcName
                                           );
                                     break;
+                                case EArgumentTypes.param:
+                                    controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? !(argsMetadata.key in params)
+                                            ? undefined
+                                            : params[argsMetadata.key]
+                                        : await controllerActionArgumentsResolution(
+                                              query,
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              handler.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.request:
+                                    controllerActionArguments[argsMetadata.index] = request;
+                                    break;
                             }
                         }
                     }
 
-                    const response = await handler.func(...controllerActionArguments);
+                    const responseData = await handler.func(...controllerActionArguments);
 
-                    if (response instanceof Response) {
-                        return response;
+                    if (responseData instanceof Response) {
+                        return responseData;
                     }
+
+                    responseBody = responseData;
                 }
+
+                const resHeaders = new Headers({
+                    "Access-Control-Allow-Origin": origin || "*",
+                    "Access-Control-Allow-Headers": "*",
+                    "Access-Control-Allow-Credentials": "true",
+                    "Access-Control-Allow-Methods": allowMethods.join(", "),
+                    "Content-Type": "application/json"
+                });
+
+                const response = new Response(
+                    JSON.stringify({
+                        httpCode: 200,
+                        message: "Success",
+                        data: responseBody
+                    }),
+                    {
+                        status: 200,
+                        statusText: "Success",
+                        headers: resHeaders
+                    }
+                );
 
                 return response;
             } catch (error) {

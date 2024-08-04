@@ -4,7 +4,9 @@ export var EArgumentTypes;
     EArgumentTypes["headers"] = "HEADERS";
     EArgumentTypes["body"] = "BODY";
     EArgumentTypes["params"] = "PARAMS";
+    EArgumentTypes["param"] = "PARAM";
     EArgumentTypes["query"] = "QUERY";
+    EArgumentTypes["request"] = "REQUEST";
 })(EArgumentTypes || (EArgumentTypes = {}));
 export const controllerActionArgumentsKey = Symbol.for("__bool:controller.action::arguments__");
 export const Headers = (zodSchema) => {
@@ -36,7 +38,7 @@ export const Body = (zodSchema, parser) => {
         Reflect.defineMetadata(controllerActionArgumentsKey, bodyMetadata, target.constructor, methodName);
     };
 };
-export const Params = (key, zodSchema) => {
+export const Params = (zodSchema) => {
     return (target, methodName, parameterIndex) => {
         if (!methodName) {
             return;
@@ -45,6 +47,20 @@ export const Params = (key, zodSchema) => {
         paramsMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
             type: EArgumentTypes.params,
+            zodSchema: zodSchema
+        };
+        Reflect.defineMetadata(controllerActionArgumentsKey, paramsMetadata, target.constructor, methodName);
+    };
+};
+export const Param = (key, zodSchema) => {
+    return (target, methodName, parameterIndex) => {
+        if (!methodName) {
+            return;
+        }
+        const paramsMetadata = Reflect.getOwnMetadata(controllerActionArgumentsKey, target.constructor, methodName) || {};
+        paramsMetadata[`argumentIndexes.${parameterIndex}`] = {
+            index: parameterIndex,
+            type: EArgumentTypes.param,
             key: key,
             zodSchema: zodSchema
         };
@@ -60,6 +76,20 @@ export const Query = (zodSchema) => {
         queryMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
             type: EArgumentTypes.params,
+            zodSchema: zodSchema
+        };
+        Reflect.defineMetadata(controllerActionArgumentsKey, queryMetadata, target.constructor, methodName);
+    };
+};
+export const Request = (zodSchema) => {
+    return (target, methodName, parameterIndex) => {
+        if (!methodName) {
+            return;
+        }
+        const queryMetadata = Reflect.getOwnMetadata(controllerActionArgumentsKey, target.constructor, methodName) || {};
+        queryMetadata[`argumentIndexes.${parameterIndex}`] = {
+            index: parameterIndex,
+            type: EArgumentTypes.request,
             zodSchema: zodSchema
         };
         Reflect.defineMetadata(controllerActionArgumentsKey, queryMetadata, target.constructor, methodName);
