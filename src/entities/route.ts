@@ -3,7 +3,7 @@
 import type { THttpMethods } from "../http";
 
 type THandler<T = unknown> = Required<{
-    constructor: new (...args: Array<any>) => T;
+    constructor?: new (...args: Array<any>) => T;
     funcName: string | symbol;
     func: (...args: Array<any>) => unknown;
 }>;

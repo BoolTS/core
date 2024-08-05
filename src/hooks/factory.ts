@@ -22,7 +22,11 @@ export type TBoolFactoryOptions = Required<{
         queryParser: Parameters<typeof Qs.parse>[1];
     }>;
 
-export const controllerCreator = (controllerConstructor: new (...args: any[]) => unknown, group: RouterGroup) => {
+export const controllerCreator = (
+    controllerConstructor: new (...args: any[]) => unknown,
+    group: RouterGroup,
+    prefix?: string
+) => {
     if (!Reflect.getOwnMetadataKeys(controllerConstructor).includes(controllerKey)) {
         throw Error(`${controllerConstructor.name} is not a controller.`);
     }
@@ -43,7 +47,7 @@ export const controllerCreator = (controllerConstructor: new (...args: any[]) =>
             return;
         }
 
-        const route = router.route(`/${routeMetadata.path}`);
+        const route = router.route(`/${prefix || ""}/${routeMetadata.path}`);
         const handler = routeMetadata.descriptor.value.bind(controller);
         const routeArgument = {
             constructor: controllerConstructor,
@@ -130,7 +134,9 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
     const routerGroup = new RouterGroup();
 
     moduleMetadata?.controllers &&
-        moduleMetadata.controllers.map((controllerConstructor) => controllerCreator(controllerConstructor, routerGroup));
+        moduleMetadata.controllers.map((controllerConstructor) =>
+            controllerCreator(controllerConstructor, routerGroup, options.prefix)
+        );
 
     Bun.serve({
         port: options.port,
@@ -282,6 +288,9 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                                 case EArgumentTypes.request:
                                     controllerActionArguments[argsMetadata.index] = request;
                                     break;
+                                case EArgumentTypes.responseHeaders:
+                                    controllerActionArguments[argsMetadata.index] = resHeaders;
+                                    break;
                             }
                         }
                     }
@@ -295,7 +304,7 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                     responseBody = responseData;
                 }
 
-                const response = new Response(
+                return new Response(
                     JSON.stringify({
                         httpCode: 200,
                         message: "Success",
@@ -307,8 +316,6 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                         headers: resHeaders
                     }
                 );
-
-                return response;
             } catch (error) {
                 return jsonErrorInfer(error);
             } finally {

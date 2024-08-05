@@ -6,7 +6,8 @@ export enum EArgumentTypes {
     params = "PARAMS",
     param = "PARAM",
     query = "QUERY",
-    request = "REQUEST"
+    request = "REQUEST",
+    responseHeaders = "RESPONSE_HEADERS"
 }
 
 export type TMetadata =
@@ -40,6 +41,11 @@ export type TMetadata =
     | {
           index: number;
           type: EArgumentTypes.request;
+          zodSchema?: Zod.Schema;
+      }
+    | {
+          index: number;
+          type: EArgumentTypes.responseHeaders;
           zodSchema?: Zod.Schema;
       };
 
@@ -178,6 +184,29 @@ export const Request = (zodSchema?: Zod.Schema) => {
             TMetadata,
             {
                 type: EArgumentTypes.request;
+            }
+        >;
+
+        Reflect.defineMetadata(controllerActionArgumentsKey, queryMetadata, target.constructor, methodName);
+    };
+};
+
+export const ResponseHeaders = (zodSchema?: Zod.Schema) => {
+    return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+        if (!methodName) {
+            return;
+        }
+
+        const queryMetadata = Reflect.getOwnMetadata(controllerActionArgumentsKey, target.constructor, methodName) || {};
+
+        queryMetadata[`argumentIndexes.${parameterIndex}`] = {
+            index: parameterIndex,
+            type: EArgumentTypes.responseHeaders,
+            zodSchema: zodSchema
+        } satisfies Extract<
+            TMetadata,
+            {
+                type: EArgumentTypes.responseHeaders;
             }
         >;
 
