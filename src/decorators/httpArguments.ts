@@ -1,7 +1,7 @@
 import * as Zod from "zod";
 
 export enum EArgumentTypes {
-    headers = "HEADERS",
+    requestHeaders = "REQUEST_HEADERS",
     body = "BODY",
     params = "PARAMS",
     param = "PARAM",
@@ -10,10 +10,10 @@ export enum EArgumentTypes {
     responseHeaders = "RESPONSE_HEADERS"
 }
 
-export type TMetadata =
+export type TArgumentsMetadata =
     | {
           index: number;
-          type: EArgumentTypes.headers;
+          type: EArgumentTypes.requestHeaders;
           zodSchema?: Zod.Schema;
       }
     | {
@@ -49,28 +49,28 @@ export type TMetadata =
           zodSchema?: Zod.Schema;
       };
 
-export const controllerActionArgumentsKey = Symbol.for("__bool:controller.action::arguments__");
+export const httpArgumentsKey = Symbol.for("__bool:controller.http::arguments__");
 
-export const Headers = (zodSchema?: Zod.Schema) => {
+export const RequestHeaders = (zodSchema?: Zod.Schema) => {
     return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
 
-        const headersMetadata = Reflect.getOwnMetadata(controllerActionArgumentsKey, target.constructor, methodName) || {};
+        const headersMetadata = Reflect.getOwnMetadata(httpArgumentsKey, target.constructor, methodName) || {};
 
         headersMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
-            type: EArgumentTypes.headers,
+            type: EArgumentTypes.requestHeaders,
             zodSchema: zodSchema
         } satisfies Extract<
-            TMetadata,
+            TArgumentsMetadata,
             {
-                type: EArgumentTypes.headers;
+                type: EArgumentTypes.requestHeaders;
             }
         >;
 
-        Reflect.defineMetadata(controllerActionArgumentsKey, headersMetadata, target.constructor, methodName);
+        Reflect.defineMetadata(httpArgumentsKey, headersMetadata, target.constructor, methodName);
     };
 };
 
@@ -80,7 +80,7 @@ export const Body = (zodSchema?: Zod.Schema, parser?: "arrayBuffer" | "blob" | "
             return;
         }
 
-        const bodyMetadata = Reflect.getOwnMetadata(controllerActionArgumentsKey, target.constructor, methodName) || {};
+        const bodyMetadata = Reflect.getOwnMetadata(httpArgumentsKey, target.constructor, methodName) || {};
 
         bodyMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
@@ -88,38 +88,37 @@ export const Body = (zodSchema?: Zod.Schema, parser?: "arrayBuffer" | "blob" | "
             zodSchema: zodSchema,
             parser: parser
         } satisfies Extract<
-            TMetadata,
+            TArgumentsMetadata,
             {
                 type: EArgumentTypes.body;
             }
         >;
 
-        Reflect.defineMetadata(controllerActionArgumentsKey, bodyMetadata, target.constructor, methodName);
+        Reflect.defineMetadata(httpArgumentsKey, bodyMetadata, target.constructor, methodName);
     };
 };
 
-export const Params = (zodSchema?: Zod.Schema) => {
-    return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+export const Params =
+    (zodSchema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
 
-        const paramsMetadata = Reflect.getOwnMetadata(controllerActionArgumentsKey, target.constructor, methodName) || {};
+        const paramsMetadata = Reflect.getOwnMetadata(httpArgumentsKey, target.constructor, methodName) || {};
 
         paramsMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
             type: EArgumentTypes.params,
             zodSchema: zodSchema
         } satisfies Extract<
-            TMetadata,
+            TArgumentsMetadata,
             {
                 type: EArgumentTypes.params;
             }
         >;
 
-        Reflect.defineMetadata(controllerActionArgumentsKey, paramsMetadata, target.constructor, methodName);
+        Reflect.defineMetadata(httpArgumentsKey, paramsMetadata, target.constructor, methodName);
     };
-};
 
 export const Param = (key: string, zodSchema?: Zod.Schema) => {
     return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
@@ -127,7 +126,7 @@ export const Param = (key: string, zodSchema?: Zod.Schema) => {
             return;
         }
 
-        const paramsMetadata = Reflect.getOwnMetadata(controllerActionArgumentsKey, target.constructor, methodName) || {};
+        const paramsMetadata = Reflect.getOwnMetadata(httpArgumentsKey, target.constructor, methodName) || {};
 
         paramsMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
@@ -135,13 +134,13 @@ export const Param = (key: string, zodSchema?: Zod.Schema) => {
             key: key,
             zodSchema: zodSchema
         } satisfies Extract<
-            TMetadata,
+            TArgumentsMetadata,
             {
                 type: EArgumentTypes.param;
             }
         >;
 
-        Reflect.defineMetadata(controllerActionArgumentsKey, paramsMetadata, target.constructor, methodName);
+        Reflect.defineMetadata(httpArgumentsKey, paramsMetadata, target.constructor, methodName);
     };
 };
 
@@ -151,20 +150,20 @@ export const Query = (zodSchema?: Zod.Schema) => {
             return;
         }
 
-        const queryMetadata = Reflect.getOwnMetadata(controllerActionArgumentsKey, target.constructor, methodName) || {};
+        const queryMetadata = Reflect.getOwnMetadata(httpArgumentsKey, target.constructor, methodName) || {};
 
         queryMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
             type: EArgumentTypes.params,
             zodSchema: zodSchema
         } satisfies Extract<
-            TMetadata,
+            TArgumentsMetadata,
             {
                 type: EArgumentTypes.params;
             }
         >;
 
-        Reflect.defineMetadata(controllerActionArgumentsKey, queryMetadata, target.constructor, methodName);
+        Reflect.defineMetadata(httpArgumentsKey, queryMetadata, target.constructor, methodName);
     };
 };
 
@@ -174,20 +173,20 @@ export const Request = (zodSchema?: Zod.Schema) => {
             return;
         }
 
-        const queryMetadata = Reflect.getOwnMetadata(controllerActionArgumentsKey, target.constructor, methodName) || {};
+        const queryMetadata = Reflect.getOwnMetadata(httpArgumentsKey, target.constructor, methodName) || {};
 
         queryMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
             type: EArgumentTypes.request,
             zodSchema: zodSchema
         } satisfies Extract<
-            TMetadata,
+            TArgumentsMetadata,
             {
                 type: EArgumentTypes.request;
             }
         >;
 
-        Reflect.defineMetadata(controllerActionArgumentsKey, queryMetadata, target.constructor, methodName);
+        Reflect.defineMetadata(httpArgumentsKey, queryMetadata, target.constructor, methodName);
     };
 };
 
@@ -197,19 +196,19 @@ export const ResponseHeaders = (zodSchema?: Zod.Schema) => {
             return;
         }
 
-        const queryMetadata = Reflect.getOwnMetadata(controllerActionArgumentsKey, target.constructor, methodName) || {};
+        const queryMetadata = Reflect.getOwnMetadata(httpArgumentsKey, target.constructor, methodName) || {};
 
         queryMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
             type: EArgumentTypes.responseHeaders,
             zodSchema: zodSchema
         } satisfies Extract<
-            TMetadata,
+            TArgumentsMetadata,
             {
                 type: EArgumentTypes.responseHeaders;
             }
         >;
 
-        Reflect.defineMetadata(controllerActionArgumentsKey, queryMetadata, target.constructor, methodName);
+        Reflect.defineMetadata(httpArgumentsKey, queryMetadata, target.constructor, methodName);
     };
 };

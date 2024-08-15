@@ -43,7 +43,7 @@ export class TestController {
 
     @Post("abc/:id/provider/:providerId")
     public async post(
-        @Params(undefined, postParamsSchema)
+        @Params(postParamsSchema)
         params: any,
         @Body(bodySchema)
         req: Zod.infer<typeof bodySchema>

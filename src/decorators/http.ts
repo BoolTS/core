@@ -1,11 +1,13 @@
-export interface IControllerRoute {
+export type TRoute = {
     path: string;
     httpMethod: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
     methodName: string;
     descriptor: PropertyDescriptor;
-}
+};
 
-export const controllerRoutesKey = Symbol.for("__bool:controller.routes__");
+export type THttpMetadata = Array<TRoute>;
+
+export const controllerHttpKey = Symbol.for("__bool:controller.http__");
 
 const defaultDecorator =
     (path: string, method: "Get" | "Post" | "Put" | "Patch" | "Delete" | "Options") =>
@@ -14,20 +16,18 @@ const defaultDecorator =
             throw Error(`${method} decorator only use for class method.`);
         }
 
+        const metadata: THttpMetadata = [
+            ...(Reflect.getOwnMetadata(controllerHttpKey, target.constructor) || []),
+            {
+                path: !path.startsWith("/") ? `/${path}` : path,
+                httpMethod: method.toUpperCase(),
+                methodName: methodName,
+                descriptor: descriptor
+            }
+        ];
+
         // Define controller metadata
-        Reflect.defineMetadata(
-            controllerRoutesKey,
-            [
-                ...(Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || []),
-                {
-                    path: !path.startsWith("/") ? `/${path}` : path,
-                    httpMethod: method.toUpperCase(),
-                    methodName: methodName,
-                    descriptor: descriptor
-                }
-            ],
-            target.constructor
-        );
+        Reflect.defineMetadata(controllerHttpKey, metadata, target.constructor);
     };
 
 /**

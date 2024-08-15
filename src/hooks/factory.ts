@@ -4,11 +4,12 @@ import "reflect-metadata";
 import Qs from "qs";
 import * as Zod from "zod";
 
+import type { TModuleMetadata, TArgumentsMetadata, THttpMetadata } from "../decorators";
+
 import { Router, RouterGroup } from "../entities";
-import { type IControllerRoute, type TModuleOptions, controllerKey, controllerRoutesKey, moduleKey } from "../decorators";
+import { controllerHttpKey, controllerKey, middlewareKey, httpArgumentsKey, moduleKey, EArgumentTypes } from "../decorators";
 import { HttpClientError, HttpServerError, jsonErrorInfer, type THttpMethods } from "../http";
 import { Injector } from "./injector";
-import { controllerActionArgumentsKey, EArgumentTypes, type TMetadata as TArgumentsMetadata } from "../decorators/arguments";
 
 export type TBoolFactoryOptions = Required<{
     port: number;
@@ -38,8 +39,7 @@ export const controllerCreator = (
     }
 
     const controllerMetadata = Reflect.getOwnMetadata(controllerKey, controllerConstructor) || "/";
-    const routesMetadata = (Reflect.getOwnMetadata(controllerRoutesKey, controllerConstructor) ||
-        []) as Array<IControllerRoute>;
+    const routesMetadata = (Reflect.getOwnMetadata(controllerHttpKey, controllerConstructor) || []) as THttpMetadata;
     const router = new Router(controllerMetadata);
 
     routesMetadata.forEach((routeMetadata) => {
@@ -118,18 +118,16 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
         throw Error(`${target.name} is not a module.`);
     }
 
-    const moduleMetadata = Reflect.getOwnMetadata(moduleKey, target) as TModuleOptions;
-    const allowOrigins = !moduleMetadata?.allowOrigins
-        ? ["*"]
-        : typeof moduleMetadata.allowOrigins !== "string"
-        ? moduleMetadata.allowOrigins
-        : [moduleMetadata.allowOrigins];
-    const allowMethods = !moduleMetadata?.allowMethods
-        ? ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-        : moduleMetadata.allowMethods;
-    const { allowLogsMethods } = Object.freeze({
-        allowLogsMethods: !options?.log?.methods ? ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] : options.log.methods
-    });
+    const moduleMetadata = Reflect.getOwnMetadata(moduleKey, target) as TModuleMetadata;
+
+    if (!moduleMetadata) {
+        return Bun.serve({
+            port: options.port,
+            fetch: () => new Response()
+        });
+    }
+
+    const { middlewares, guards, beforeDispatchers, controllers, afterDispatchers, options: moduleOptions } = moduleMetadata;
 
     const routerGroup = new RouterGroup();
 
@@ -138,9 +136,21 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
             controllerCreator(controllerConstructor, routerGroup, options.prefix)
         );
 
+    const allowOrigins = !moduleOptions?.allowOrigins
+        ? ["*"]
+        : typeof moduleOptions.allowOrigins !== "string"
+        ? moduleOptions.allowOrigins
+        : [moduleOptions.allowOrigins];
+    const allowMethods = !moduleOptions?.allowMethods
+        ? ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+        : moduleOptions.allowMethods;
+    const { allowLogsMethods } = Object.freeze({
+        allowLogsMethods: options?.log?.methods
+    });
+
     Bun.serve({
         port: options.port,
-        async fetch(request) {
+        fetch: async (request) => {
             const start = performance.now();
             const url = new URL(request.url);
 
@@ -222,18 +232,15 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
 
                 for (let i = 0; i < result.handlers.length; i++) {
                     const handler = result.handlers[i];
-                    const handlerMetadata = (Reflect.getOwnMetadata(
-                        controllerActionArgumentsKey,
-                        handler.constructor,
-                        handler.funcName
-                    ) || {}) as Record<string, TArgumentsMetadata>;
+                    const handlerMetadata = (Reflect.getOwnMetadata(controllerHttpKey, handler.constructor, handler.funcName) ||
+                        {}) as Record<string, TArgumentsMetadata>;
 
                     const controllerActionArguments = [];
 
                     if (handlerMetadata) {
                         for (const [_key, argsMetadata] of Object.entries(handlerMetadata)) {
                             switch (argsMetadata.type) {
-                                case EArgumentTypes.headers:
+                                case EArgumentTypes.requestHeaders:
                                     controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                         ? reqHeaders
                                         : await controllerActionArgumentsResolution(
@@ -319,18 +326,20 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
             } catch (error) {
                 return jsonErrorInfer(error);
             } finally {
-                const end = performance.now();
-                const convertedPID = `${process.pid}`.yellow;
-                const convertedMethod = `${request.method.yellow}`.bgBlue;
-                const convertedReqIp = `${
-                    request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "<Unknown>"
-                }`.yellow;
-                const convertedTime = `${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
+                if (allowLogsMethods) {
+                    const end = performance.now();
+                    const convertedPID = `${process.pid}`.yellow;
+                    const convertedMethod = `${request.method.yellow}`.bgBlue;
+                    const convertedReqIp = `${
+                        request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "<Unknown>"
+                    }`.yellow;
+                    const convertedTime = `${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
 
-                allowLogsMethods.includes(request.method.toUpperCase()) &&
-                    console.info(
-                        `PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${url.pathname.blue} - Time: ${convertedTime}`
-                    );
+                    allowLogsMethods.includes(request.method.toUpperCase() as (typeof allowLogsMethods)[number]) &&
+                        console.info(
+                            `PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${url.pathname.blue} - Time: ${convertedTime}`
+                        );
+                }
             }
         }
     });

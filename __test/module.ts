@@ -4,7 +4,9 @@ import { TestController } from "./controller";
 import { TestService } from "./service";
 
 @Module({
-    allowOrigins: ["http://localhost:7000"],
+    options: {
+        allowOrigins: ["http://localhost:7000"]
+    },
     controllers: [TestController],
     dependencies: [
         // TestService,

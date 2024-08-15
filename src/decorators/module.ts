@@ -1,10 +1,37 @@
+import type {} from "./controller";
+import { injectableKey } from "./injectable";
+
+type TInstances = Array<new (...args: any[]) => unknown>;
+
 export type TModuleOptions =
     | Partial<{
-          prefix: string;
-          controllers: Array<new (...args: any[]) => unknown>;
-          dependencies: Array<new (...args: any[]) => unknown>;
-          allowOrigins: string | Array<string>;
-          allowMethods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
+          options: Partial<{
+              prefix: string;
+              allowOrigins: string | Array<string>;
+              allowMethods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
+          }>;
+          dependencies: TInstances;
+          controllers: TInstances;
+          middlewares: TInstances;
+          guards: TInstances;
+          beforeDispatchers: TInstances;
+          afterDispatchers: TInstances;
+      }>
+    | undefined;
+
+export type TModuleMetadata =
+    | Partial<{
+          options: Partial<{
+              prefix: string;
+              allowOrigins: string | Array<string>;
+              allowMethods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
+          }>;
+          controllers: TInstances;
+          dependencies: TInstances;
+          middlewares: TInstances;
+          guards: TInstances;
+          beforeDispatchers: TInstances;
+          afterDispatchers: TInstances;
       }>
     | undefined;
 
@@ -14,8 +41,6 @@ export const Module =
     (args?: TModuleOptions) =>
     <T extends { new (...args: any[]): {} }>(target: T) => {
         Reflect.defineMetadata(moduleKey, args, target);
-
-        return target;
     };
 
 export default Module;
