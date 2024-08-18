@@ -7,8 +7,8 @@ export {
     Request,
     ResponseHeaders,
     EArgumentTypes,
-    httpArgumentsKey
-} from "./httpArguments";
+    argumentsKey
+} from "./arguments";
 export { Controller, controllerKey } from "./controller";
 export { Guard, guardKey } from "./guard";
 export { Inject, injectKey } from "./inject";
@@ -17,10 +17,12 @@ export { Middleware, middlewareKey } from "./middleware";
 export { Module, moduleKey } from "./module";
 export { Get, Post, Put, Patch, Delete, Options, controllerHttpKey } from "./http";
 export { ZodSchema, controllerRouteZodSchemaKey } from "./zodSchema";
+export { Dispatcher, dispatcherKey } from "./dispatcher";
 
 export type { TControllerMetadata } from "./controller";
 export type { TModuleMetadata, TModuleOptions } from "./module";
 export type { THttpMetadata } from "./http";
-export type { TArgumentsMetadata } from "./httpArguments";
+export type { TArgumentsMetadata } from "./arguments";
 export type { TMiddlewareMetadata } from "./middleware";
 export type { TGuardMetadata } from "./guard";
+export type { TDispatcherMetadata } from "./dispatcher";

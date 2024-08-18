@@ -2,7 +2,7 @@ import type { IService } from "./interfaces";
 
 import * as Zod from "zod";
 
-import { Body, Controller, Delete, Get, Inject, Options, Params, Patch, Post, Put, ZodSchema } from "../src";
+import { Body, Controller, Delete, Get, Inject, Options, Params, Patch, Post, Put, Param } from "../src";
 import { TestService } from "./service";
 
 const postParamsSchema = Zod.object({
@@ -35,20 +35,20 @@ const stringSchema = Zod.object({}).refine(async (val) => {
 export class TestController {
     constructor(@Inject(TestService) private readonly testService: IService) {}
 
-    @Get("abc")
-    public get(req: Request) {
-        console.log("HEHE");
+    @Get("abc/:id")
+    public get(@Param("id") id: string) {
+        console.log("HEHE", id, typeof id);
         console.log("this.testService", this.testService.exec());
     }
 
     @Post("abc/:id/provider/:providerId")
     public async post(
-        @Params(postParamsSchema)
+        @Params()
         params: any,
         @Body(bodySchema)
-        req: Zod.infer<typeof bodySchema>
+        body: Zod.infer<typeof bodySchema>
     ) {
-        console.log("req.headers", req);
+        console.log("req.headers", body, params);
         console.log("===========================");
     }
 

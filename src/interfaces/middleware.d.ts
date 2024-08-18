@@ -1,3 +1,3 @@
-export interface IMiddleware<T> {
-    enforce(): T;
+export interface IMiddleware<T = any> {
+    enforce(...args: any[]): T;
 }

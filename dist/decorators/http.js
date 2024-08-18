@@ -1,18 +1,19 @@
-export const controllerRoutesKey = Symbol.for("__bool:controller.routes__");
+export const controllerHttpKey = Symbol.for("__bool:controller.http__");
 const defaultDecorator = (path, method) => (target, methodName, descriptor) => {
     if (!(descriptor.value instanceof Function)) {
         throw Error(`${method} decorator only use for class method.`);
     }
-    // Define controller metadata
-    Reflect.defineMetadata(controllerRoutesKey, [
-        ...(Reflect.getOwnMetadata(controllerRoutesKey, target.constructor) || []),
+    const metadata = [
+        ...(Reflect.getOwnMetadata(controllerHttpKey, target.constructor) || []),
         {
             path: !path.startsWith("/") ? `/${path}` : path,
             httpMethod: method.toUpperCase(),
             methodName: methodName,
             descriptor: descriptor
         }
-    ], target.constructor);
+    ];
+    // Define controller metadata
+    Reflect.defineMetadata(controllerHttpKey, metadata, target.constructor);
 };
 /**
  *

@@ -1,6 +1,6 @@
 import type { THttpMethods } from "../http";
 type THandler<T = unknown> = Required<{
-    constructor: new (...args: Array<any>) => T;
+    class: new (...args: Array<any>) => T;
     funcName: string | symbol;
     func: (...args: Array<any>) => unknown;
 }>;
@@ -47,7 +47,7 @@ export declare class Route {
      * @returns
      */
     connect(...handlers: Array<THandler>): this | Map<keyof THttpMethods, Required<{
-        constructor: new (...args: Array<any>) => unknown;
+        class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
     }>[]>;
@@ -57,7 +57,7 @@ export declare class Route {
      * @returns
      */
     options(...handlers: Array<THandler>): this | Map<keyof THttpMethods, Required<{
-        constructor: new (...args: Array<any>) => unknown;
+        class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
     }>[]>;
@@ -67,7 +67,7 @@ export declare class Route {
      * @returns
      */
     trace(...handlers: Array<THandler>): this | Map<keyof THttpMethods, Required<{
-        constructor: new (...args: Array<any>) => unknown;
+        class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
     }>[]>;
@@ -77,7 +77,7 @@ export declare class Route {
      * @returns
      */
     patch(...handlers: Array<THandler>): this | Map<keyof THttpMethods, Required<{
-        constructor: new (...args: Array<any>) => unknown;
+        class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
     }>[]>;

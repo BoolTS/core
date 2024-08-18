@@ -1,10 +1,11 @@
-export interface IControllerRoute {
+export type TRoute = {
     path: string;
     httpMethod: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
     methodName: string;
     descriptor: PropertyDescriptor;
-}
-export declare const controllerRoutesKey: unique symbol;
+};
+export type THttpMetadata = Array<TRoute>;
+export declare const controllerHttpKey: unique symbol;
 /**
  *
  * @param path

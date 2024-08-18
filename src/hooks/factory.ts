@@ -4,12 +4,14 @@ import "reflect-metadata";
 import Qs from "qs";
 import * as Zod from "zod";
 
-import type { TModuleMetadata, TArgumentsMetadata, THttpMetadata } from "../decorators";
+import type { TModuleMetadata, TArgumentsMetadata, THttpMetadata, TControllerMetadata } from "../decorators";
 
 import { Router, RouterGroup } from "../entities";
-import { controllerHttpKey, controllerKey, middlewareKey, httpArgumentsKey, moduleKey, EArgumentTypes } from "../decorators";
+import { controllerHttpKey, controllerKey, argumentsKey, moduleKey, EArgumentTypes } from "../decorators";
 import { HttpClientError, HttpServerError, jsonErrorInfer, type THttpMethods } from "../http";
 import { Injector } from "./injector";
+import type { IGuard, IMiddleware } from "../interfaces";
+import type { IDispatcher } from "../interfaces/dispatcher";
 
 export type TBoolFactoryOptions = Required<{
     port: number;
@@ -38,9 +40,11 @@ export const controllerCreator = (
         throw Error("Can not initialize controller.");
     }
 
-    const controllerMetadata = Reflect.getOwnMetadata(controllerKey, controllerConstructor) || "/";
+    const controllerMetadata: TControllerMetadata = Reflect.getOwnMetadata(controllerKey, controllerConstructor) || {
+        prefix: "/"
+    };
     const routesMetadata = (Reflect.getOwnMetadata(controllerHttpKey, controllerConstructor) || []) as THttpMetadata;
-    const router = new Router(controllerMetadata);
+    const router = new Router(controllerMetadata.prefix);
 
     routesMetadata.forEach((routeMetadata) => {
         if (typeof routeMetadata.descriptor.value !== "function") {
@@ -50,7 +54,7 @@ export const controllerCreator = (
         const route = router.route(`/${prefix || ""}/${routeMetadata.path}`);
         const handler = routeMetadata.descriptor.value.bind(controller);
         const routeArgument = {
-            constructor: controllerConstructor,
+            class: controllerConstructor,
             funcName: routeMetadata.methodName,
             func: handler
         };
@@ -74,7 +78,7 @@ export const controllerCreator = (
     return group.add(router);
 };
 
-export const controllerActionArgumentsResolution = async (
+export const argumentsResolution = async (
     data: unknown,
     zodSchema: Zod.Schema,
     argumentIndex: number,
@@ -129,12 +133,50 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
 
     const { middlewares, guards, beforeDispatchers, controllers, afterDispatchers, options: moduleOptions } = moduleMetadata;
 
+    // Middleware(s)
+    const middlewareGroup = !middlewares
+        ? []
+        : middlewares.map((middleware) => {
+              const middlewareInstance = Injector.get<IMiddleware>(middleware);
+
+              return Object.freeze({
+                  class: middleware,
+                  funcName: "enforce",
+                  func: middlewareInstance.enforce.bind(middlewareInstance)
+              });
+          });
+
+    // Guard(s)
+    const guardGroup = !guards
+        ? []
+        : guards.map((guard) => {
+              const guardInstance = Injector.get<IGuard>(guard);
+
+              return Object.freeze({
+                  class: guard,
+                  funcName: "enforce",
+                  func: guardInstance.enforce.bind(guardInstance)
+              });
+          });
+
+    // Before dispatcher(s)
+    const beforeDispatcherGroup = !beforeDispatchers
+        ? []
+        : beforeDispatchers.map((beforeDispatcher) => {
+              const beforeDispatcherInstance = Injector.get<IDispatcher>(beforeDispatcher);
+
+              return Object.freeze({
+                  class: beforeDispatcher,
+                  funcName: "execute",
+                  func: beforeDispatcherInstance.execute.bind(beforeDispatcherInstance)
+              });
+          });
+
+    // Controller(s)
     const routerGroup = new RouterGroup();
 
-    moduleMetadata?.controllers &&
-        moduleMetadata.controllers.map((controllerConstructor) =>
-            controllerCreator(controllerConstructor, routerGroup, options.prefix)
-        );
+    controllers &&
+        controllers.map((controllerConstructor) => controllerCreator(controllerConstructor, routerGroup, options.prefix));
 
     const allowOrigins = !moduleOptions?.allowOrigins
         ? ["*"]
@@ -147,6 +189,19 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
     const { allowLogsMethods } = Object.freeze({
         allowLogsMethods: options?.log?.methods
     });
+
+    // After dispatcher(s)
+    const afterDispatcherGroup = !afterDispatchers
+        ? []
+        : afterDispatchers.map((afterDispatcher) => {
+              const afterDispatcherInstance = Injector.get<IDispatcher>(afterDispatcher);
+
+              return Object.freeze({
+                  class: afterDispatcher,
+                  funcName: "execute",
+                  func: afterDispatcherInstance.execute.bind(afterDispatcherInstance)
+              });
+          });
 
     Bun.serve({
         port: options.port,
@@ -215,6 +270,100 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                     });
                 }
 
+                // Execute middleware(s)
+                for (let i = 0; i < middlewareGroup.length; i++) {
+                    const middlewareArguments = [];
+                    const middlewareCollection = middlewareGroup[i];
+                    const middlewareMetadata: Record<string, TArgumentsMetadata> =
+                        Reflect.getOwnMetadata(argumentsKey, middlewareCollection.class, middlewareCollection.funcName) || {};
+
+                    if (middlewareMetadata) {
+                        for (const [_key, argsMetadata] of Object.entries(middlewareMetadata)) {
+                            switch (argsMetadata.type) {
+                                case EArgumentTypes.requestHeaders:
+                                    middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? reqHeaders
+                                        : await argumentsResolution(
+                                              reqHeaders,
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              middlewareCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.body:
+                                    middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? await request[argsMetadata.parser || "json"]()
+                                        : await argumentsResolution(
+                                              await request[argsMetadata.parser || "json"](),
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              middlewareCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.request:
+                                    middlewareArguments[argsMetadata.index] = request;
+                                    break;
+                                case EArgumentTypes.responseHeaders:
+                                    middlewareArguments[argsMetadata.index] = resHeaders;
+                                    break;
+                            }
+                        }
+                    }
+
+                    await middlewareCollection.func(...middlewareArguments);
+                }
+
+                // Execute guard(s)
+                for (let i = 0; i < guardGroup.length; i++) {
+                    const guardArguments = [];
+                    const guardCollection = guardGroup[i];
+                    const guardMetadata: Record<string, TArgumentsMetadata> =
+                        Reflect.getOwnMetadata(argumentsKey, guardCollection.class, guardCollection.funcName) || {};
+
+                    if (guardMetadata) {
+                        for (const [_key, argsMetadata] of Object.entries(guardMetadata)) {
+                            switch (argsMetadata.type) {
+                                case EArgumentTypes.requestHeaders:
+                                    guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? reqHeaders
+                                        : await argumentsResolution(
+                                              reqHeaders,
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              guardCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.body:
+                                    guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? await request[argsMetadata.parser || "json"]()
+                                        : await argumentsResolution(
+                                              await request[argsMetadata.parser || "json"](),
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              guardCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.request:
+                                    guardArguments[argsMetadata.index] = request;
+                                    break;
+                                case EArgumentTypes.responseHeaders:
+                                    guardArguments[argsMetadata.index] = resHeaders;
+                                    break;
+                            }
+                        }
+                    }
+
+                    const guardResult = await guardCollection.func(...guardArguments);
+
+                    if (typeof guardResult !== "boolean" || !guardResult) {
+                        throw new HttpClientError({
+                            httpCode: 401,
+                            message: "Unauthorization.",
+                            data: undefined
+                        });
+                    }
+                }
+
                 const result = routerGroup.find(url.pathname, request.method as keyof THttpMethods);
 
                 if (!result) {
@@ -230,12 +379,91 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
 
                 let responseBody = undefined;
 
-                for (let i = 0; i < result.handlers.length; i++) {
-                    const handler = result.handlers[i];
-                    const handlerMetadata = (Reflect.getOwnMetadata(controllerHttpKey, handler.constructor, handler.funcName) ||
-                        {}) as Record<string, TArgumentsMetadata>;
+                // Execute before dispatcher(s)
+                for (let i = 0; i < beforeDispatcherGroup.length; i++) {
+                    const beforeDispatcherArguments = [];
+                    const beforeDispatcherCollection = beforeDispatcherGroup[i];
+                    const beforeDispatcherMetadata: Record<string, TArgumentsMetadata> =
+                        Reflect.getOwnMetadata(
+                            argumentsKey,
+                            beforeDispatcherCollection.class,
+                            beforeDispatcherCollection.funcName
+                        ) || {};
 
+                    if (beforeDispatcherMetadata) {
+                        for (const [_key, argsMetadata] of Object.entries(beforeDispatcherMetadata)) {
+                            switch (argsMetadata.type) {
+                                case EArgumentTypes.requestHeaders:
+                                    beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? reqHeaders
+                                        : await argumentsResolution(
+                                              reqHeaders,
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              beforeDispatcherCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.body:
+                                    beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? await request[argsMetadata.parser || "json"]()
+                                        : await argumentsResolution(
+                                              await request[argsMetadata.parser || "json"](),
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              beforeDispatcherCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.params:
+                                    beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? params
+                                        : await argumentsResolution(
+                                              params,
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              beforeDispatcherCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.query:
+                                    beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? query
+                                        : await argumentsResolution(
+                                              query,
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              beforeDispatcherCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.param:
+                                    beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? !(argsMetadata.key in params)
+                                            ? undefined
+                                            : params[argsMetadata.key]
+                                        : await argumentsResolution(
+                                              query,
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              beforeDispatcherCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.request:
+                                    beforeDispatcherArguments[argsMetadata.index] = request;
+                                    break;
+                                case EArgumentTypes.responseHeaders:
+                                    beforeDispatcherArguments[argsMetadata.index] = resHeaders;
+                                    break;
+                            }
+                        }
+                    }
+
+                    await beforeDispatcherCollection.func(...beforeDispatcherArguments);
+                }
+
+                // Execute controller action
+                for (let i = 0; i < result.handlers.length; i++) {
                     const controllerActionArguments = [];
+                    const handler = result.handlers[i];
+                    const handlerMetadata: Record<string, TArgumentsMetadata> =
+                        Reflect.getOwnMetadata(argumentsKey, handler.class, handler.funcName) || {};
 
                     if (handlerMetadata) {
                         for (const [_key, argsMetadata] of Object.entries(handlerMetadata)) {
@@ -243,7 +471,7 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                                 case EArgumentTypes.requestHeaders:
                                     controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                         ? reqHeaders
-                                        : await controllerActionArgumentsResolution(
+                                        : await argumentsResolution(
                                               reqHeaders,
                                               argsMetadata.zodSchema,
                                               argsMetadata.index,
@@ -253,7 +481,7 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                                 case EArgumentTypes.body:
                                     controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                         ? await request[argsMetadata.parser || "json"]()
-                                        : await controllerActionArgumentsResolution(
+                                        : await argumentsResolution(
                                               await request[argsMetadata.parser || "json"](),
                                               argsMetadata.zodSchema,
                                               argsMetadata.index,
@@ -263,7 +491,7 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                                 case EArgumentTypes.params:
                                     controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                         ? params
-                                        : await controllerActionArgumentsResolution(
+                                        : await argumentsResolution(
                                               params,
                                               argsMetadata.zodSchema,
                                               argsMetadata.index,
@@ -273,7 +501,7 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                                 case EArgumentTypes.query:
                                     controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                         ? query
-                                        : await controllerActionArgumentsResolution(
+                                        : await argumentsResolution(
                                               query,
                                               argsMetadata.zodSchema,
                                               argsMetadata.index,
@@ -285,7 +513,7 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                                         ? !(argsMetadata.key in params)
                                             ? undefined
                                             : params[argsMetadata.key]
-                                        : await controllerActionArgumentsResolution(
+                                        : await argumentsResolution(
                                               query,
                                               argsMetadata.zodSchema,
                                               argsMetadata.index,
@@ -302,27 +530,104 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                         }
                     }
 
-                    const responseData = await handler.func(...controllerActionArguments);
-
-                    if (responseData instanceof Response) {
-                        return responseData;
-                    }
-
-                    responseBody = responseData;
+                    responseBody = await handler.func(...controllerActionArguments);
                 }
 
-                return new Response(
-                    JSON.stringify({
-                        httpCode: 200,
-                        message: "Success",
-                        data: responseBody
-                    }),
-                    {
-                        status: 200,
-                        statusText: "Success",
-                        headers: resHeaders
+                // Execute after dispatcher(s)
+                for (let i = 0; i < afterDispatcherGroup.length; i++) {
+                    const afterDispatcherArguments = [];
+                    const afterDispatcherCollection = afterDispatcherGroup[i];
+                    const afterDispatcherMetadata: Record<string, TArgumentsMetadata> =
+                        Reflect.getOwnMetadata(
+                            argumentsKey,
+                            afterDispatcherCollection.class,
+                            afterDispatcherCollection.funcName
+                        ) || {};
+
+                    if (afterDispatcherMetadata) {
+                        for (const [_key, argsMetadata] of Object.entries(afterDispatcherMetadata)) {
+                            switch (argsMetadata.type) {
+                                case EArgumentTypes.requestHeaders:
+                                    afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? reqHeaders
+                                        : await argumentsResolution(
+                                              reqHeaders,
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              afterDispatcherCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.body:
+                                    afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? await request[argsMetadata.parser || "json"]()
+                                        : await argumentsResolution(
+                                              await request[argsMetadata.parser || "json"](),
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              afterDispatcherCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.params:
+                                    afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? params
+                                        : await argumentsResolution(
+                                              params,
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              afterDispatcherCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.query:
+                                    afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? query
+                                        : await argumentsResolution(
+                                              query,
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              afterDispatcherCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.param:
+                                    afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? !(argsMetadata.key in params)
+                                            ? undefined
+                                            : params[argsMetadata.key]
+                                        : await argumentsResolution(
+                                              query,
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              afterDispatcherCollection.funcName
+                                          );
+                                    break;
+                                case EArgumentTypes.request:
+                                    afterDispatcherArguments[argsMetadata.index] = request;
+                                    break;
+                                case EArgumentTypes.responseHeaders:
+                                    afterDispatcherArguments[argsMetadata.index] = resHeaders;
+                                    break;
+                            }
+                        }
                     }
-                );
+
+                    await afterDispatcherCollection.func(...afterDispatcherArguments);
+                }
+
+                return responseBody instanceof Response
+                    ? responseBody
+                    : new Response(
+                          !responseBody
+                              ? undefined
+                              : JSON.stringify({
+                                    httpCode: 200,
+                                    message: "SUCCESS",
+                                    data: responseBody
+                                }),
+                          {
+                              status: !responseBody ? 204 : 200,
+                              statusText: "SUCCESS",
+                              headers: resHeaders
+                          }
+                      );
             } catch (error) {
                 return jsonErrorInfer(error);
             } finally {

@@ -1,11 +1,13 @@
+import type { IGuard } from "../interfaces";
+
 export type TGuardMetadata = undefined;
 
 export const guardKey = Symbol.for("__bool:guard__");
 
 export const Guard =
     () =>
-    <T extends { new (...args: any[]): {} }>(target: T) => {
-        if (!("excute" in target.prototype) || typeof target.prototype.excute !== "function") {
+    <T extends { new (...args: any[]): IGuard }>(target: T) => {
+        if (!("enforce" in target.prototype) || typeof target.prototype.enforce !== "function") {
             return;
         }
 

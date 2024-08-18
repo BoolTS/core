@@ -1,3 +1,3 @@
 export interface IGuard {
-    enforce(): boolean | Promise<boolean>;
+    enforce(...args: any[]): boolean | Promise<boolean>;
 }

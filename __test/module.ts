@@ -1,17 +1,24 @@
 import { Module } from "../src";
+import { AfterDispatcher } from "./afterDispatcher";
+import { BeforeDispatcher } from "./beforeDispatcher";
 import { TestController } from "./controller";
-// import { TestRepository } from "./repository";
+import { FirstGuard } from "./firstGuard";
+import { FirstMiddleware } from "./firstMiddleware";
+import { SecondMiddleware } from "./secondMiddleware";
+import { TestRepository } from "./repository";
 import { TestService } from "./service";
+import { SecondGuard } from "./secondGuard";
 
 @Module({
     options: {
-        allowOrigins: ["http://localhost:7000"]
+        allowOrigins: ["*"]
     },
+    middlewares: [FirstMiddleware, SecondMiddleware],
+    guards: [FirstGuard, SecondGuard],
+    beforeDispatchers: [BeforeDispatcher],
+    afterDispatchers: [AfterDispatcher],
     controllers: [TestController],
-    dependencies: [
-        // TestService,
-        // TestRepository
-    ]
+    dependencies: [TestService, TestRepository]
 })
 export class TestModule {}
 
