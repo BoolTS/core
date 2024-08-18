@@ -41,17 +41,18 @@ export const controllerCreator = (
     }
 
     const controllerMetadata: TControllerMetadata = Reflect.getOwnMetadata(controllerKey, controllerConstructor) || {
-        prefix: "/"
+        prefix: "/",
+        httpMetadata: []
     };
     const routesMetadata = (Reflect.getOwnMetadata(controllerHttpKey, controllerConstructor) || []) as THttpMetadata;
-    const router = new Router(controllerMetadata.prefix);
+    const router = new Router(`/${prefix || ""}/${controllerMetadata.prefix}`);
 
     routesMetadata.forEach((routeMetadata) => {
         if (typeof routeMetadata.descriptor.value !== "function") {
             return;
         }
 
-        const route = router.route(`/${prefix || ""}/${routeMetadata.path}`);
+        const route = router.route(routeMetadata.path);
         const handler = routeMetadata.descriptor.value.bind(controller);
         const routeArgument = {
             class: controllerConstructor,
@@ -176,7 +177,9 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
     const routerGroup = new RouterGroup();
 
     controllers &&
-        controllers.map((controllerConstructor) => controllerCreator(controllerConstructor, routerGroup, options.prefix));
+        controllers.map((controllerConstructor) =>
+            controllerCreator(controllerConstructor, routerGroup, `${options.prefix || ""}/${moduleOptions?.prefix || ""}`)
+        );
 
     const allowOrigins = !moduleOptions?.allowOrigins
         ? ["*"]

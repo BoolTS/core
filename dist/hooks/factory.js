@@ -15,15 +15,16 @@ export const controllerCreator = (controllerConstructor, group, prefix) => {
         throw Error("Can not initialize controller.");
     }
     const controllerMetadata = Reflect.getOwnMetadata(controllerKey, controllerConstructor) || {
-        prefix: "/"
+        prefix: "/",
+        httpMetadata: []
     };
     const routesMetadata = (Reflect.getOwnMetadata(controllerHttpKey, controllerConstructor) || []);
-    const router = new Router(controllerMetadata.prefix);
+    const router = new Router(`/${prefix || ""}/${controllerMetadata.prefix}`);
     routesMetadata.forEach((routeMetadata) => {
         if (typeof routeMetadata.descriptor.value !== "function") {
             return;
         }
-        const route = router.route(`/${prefix || ""}/${routeMetadata.path}`);
+        const route = router.route(routeMetadata.path);
         const handler = routeMetadata.descriptor.value.bind(controller);
         const routeArgument = {
             class: controllerConstructor,
@@ -126,7 +127,7 @@ export const BoolFactory = (target, options) => {
     // Controller(s)
     const routerGroup = new RouterGroup();
     controllers &&
-        controllers.map((controllerConstructor) => controllerCreator(controllerConstructor, routerGroup, options.prefix));
+        controllers.map((controllerConstructor) => controllerCreator(controllerConstructor, routerGroup, `${options.prefix || ""}/${moduleOptions?.prefix || ""}`));
     const allowOrigins = !moduleOptions?.allowOrigins
         ? ["*"]
         : typeof moduleOptions.allowOrigins !== "string"
