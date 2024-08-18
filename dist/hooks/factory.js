@@ -184,7 +184,7 @@ export const BoolFactory = (target, options) => {
                     }
                     if (!allowOrigins.includes(origin)) {
                         return new Response(JSON.stringify({
-                            httpCode: 403,
+                            httpCode: 400,
                             message: "Origin not found.",
                             data: {
                                 origin: {
@@ -193,11 +193,18 @@ export const BoolFactory = (target, options) => {
                                 }
                             }
                         }), {
-                            status: 403,
+                            status: 400,
                             statusText: "Invalid origin.",
                             headers: resHeaders
                         });
                     }
+                }
+                if (request.method.toUpperCase() === "OPTIONS") {
+                    return new Response(undefined, {
+                        status: 204,
+                        statusText: "SUCCESS",
+                        headers: resHeaders
+                    });
                 }
                 if (!allowMethods.includes(request.method.toUpperCase())) {
                     throw new HttpClientError({
