@@ -74,7 +74,7 @@ export const Query = (zodSchema) => {
         const queryMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
         queryMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
-            type: EArgumentTypes.params,
+            type: EArgumentTypes.query,
             zodSchema: zodSchema
         };
         Reflect.defineMetadata(argumentsKey, queryMetadata, target.constructor, methodName);

@@ -149,6 +149,7 @@ export const BoolFactory = (target, options) => {
             const url = new URL(request.url);
             const reqHeaders = request.headers;
             const resHeaders = new Headers();
+            const query = Qs.parse(url.searchParams.toString(), options.queryParser);
             try {
                 // Execute middleware(s)
                 for (let i = 0; i < middlewareGroup.length; i++) {
@@ -167,6 +168,11 @@ export const BoolFactory = (target, options) => {
                                     middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                         ? await request[argsMetadata.parser || "json"]()
                                         : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, middlewareCollection.funcName);
+                                    break;
+                                case EArgumentTypes.query:
+                                    middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? query
+                                        : await argumentsResolution(query, argsMetadata.zodSchema, argsMetadata.index, middlewareCollection.funcName);
                                     break;
                                 case EArgumentTypes.request:
                                     middlewareArguments[argsMetadata.index] = request;
@@ -201,6 +207,11 @@ export const BoolFactory = (target, options) => {
                                         ? await request[argsMetadata.parser || "json"]()
                                         : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, guardCollection.funcName);
                                     break;
+                                case EArgumentTypes.query:
+                                    guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                                        ? query
+                                        : await argumentsResolution(query, argsMetadata.zodSchema, argsMetadata.index, guardCollection.funcName);
+                                    break;
                                 case EArgumentTypes.request:
                                     guardArguments[argsMetadata.index] = request;
                                     break;
@@ -228,7 +239,6 @@ export const BoolFactory = (target, options) => {
                     });
                 }
                 const params = result.params;
-                const query = Qs.parse(url.search, options.queryParser);
                 let responseBody = undefined;
                 // Execute before dispatcher(s)
                 for (let i = 0; i < beforeDispatcherGroup.length; i++) {

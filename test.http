@@ -5,7 +5,7 @@
 GET http://{{baseUrl}}/test/abc/23234
 
 ### Send test POST method
-POST http://{{baseUrl}}/test/abc/123/provider/23234 HTTP/1.1
+POST http://{{baseUrl}}/test/abc/123/provider/23234?options[page]=1&options[limit]=6&options[sort][metadata.latestReviewAt]=desc&options[sort][info.searchCount]=desc&options[sort][createdAt]=desc&populate[0]=__headquarters&populate[1]=__logoMedia HTTP/1.1
 content-type: application/json
 
 {

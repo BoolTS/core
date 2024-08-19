@@ -10,9 +10,6 @@ import { TestService } from "./service";
 import { SecondGuard } from "./secondGuard";
 
 @Module({
-    options: {
-        allowOrigins: ["*"]
-    },
     middlewares: [FirstMiddleware, SecondMiddleware],
     guards: [FirstGuard, SecondGuard],
     beforeDispatchers: [BeforeDispatcher],

@@ -154,12 +154,12 @@ export const Query = (zodSchema?: Zod.Schema) => {
 
         queryMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
-            type: EArgumentTypes.params,
+            type: EArgumentTypes.query,
             zodSchema: zodSchema
         } satisfies Extract<
             TArgumentsMetadata,
             {
-                type: EArgumentTypes.params;
+                type: EArgumentTypes.query;
             }
         >;
 
