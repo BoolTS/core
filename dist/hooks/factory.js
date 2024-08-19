@@ -177,7 +177,11 @@ export const BoolFactory = (target, options) => {
                             }
                         }
                     }
-                    await middlewareCollection.func(...middlewareArguments);
+                    const middlewareResult = await middlewareCollection.func(...middlewareArguments);
+                    if (!(middlewareResult instanceof Response)) {
+                        continue;
+                    }
+                    return middlewareResult;
                 }
                 // Execute guard(s)
                 for (let i = 0; i < guardGroup.length; i++) {

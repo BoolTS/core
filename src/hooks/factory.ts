@@ -247,7 +247,13 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                         }
                     }
 
-                    await middlewareCollection.func(...middlewareArguments);
+                    const middlewareResult = await middlewareCollection.func(...middlewareArguments);
+
+                    if (!(middlewareResult instanceof Response)) {
+                        continue;
+                    }
+
+                    return middlewareResult;
                 }
 
                 // Execute guard(s)
