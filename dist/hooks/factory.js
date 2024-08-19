@@ -90,7 +90,7 @@ export const BoolFactory = (target, options) => {
             fetch: () => new Response()
         });
     }
-    const { middlewares, guards, beforeDispatchers, controllers, afterDispatchers, options: moduleOptions } = moduleMetadata;
+    const { middlewares, guards, beforeDispatchers, controllers, afterDispatchers, prefix: modulePrefix } = moduleMetadata;
     // Middleware(s)
     const middlewareGroup = !middlewares
         ? []
@@ -127,15 +127,7 @@ export const BoolFactory = (target, options) => {
     // Controller(s)
     const routerGroup = new RouterGroup();
     controllers &&
-        controllers.map((controllerConstructor) => controllerCreator(controllerConstructor, routerGroup, `${options.prefix || ""}/${moduleOptions?.prefix || ""}`));
-    const allowOrigins = !moduleOptions?.allowOrigins
-        ? ["*"]
-        : typeof moduleOptions.allowOrigins !== "string"
-            ? moduleOptions.allowOrigins
-            : [moduleOptions.allowOrigins];
-    const allowMethods = !moduleOptions?.allowMethods
-        ? ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-        : moduleOptions.allowMethods;
+        controllers.map((controllerConstructor) => controllerCreator(controllerConstructor, routerGroup, `${options.prefix || ""}/${modulePrefix || ""}`));
     const { allowLogsMethods } = Object.freeze({
         allowLogsMethods: options?.log?.methods
     });
@@ -155,64 +147,9 @@ export const BoolFactory = (target, options) => {
         fetch: async (request) => {
             const start = performance.now();
             const url = new URL(request.url);
+            const reqHeaders = request.headers;
+            const resHeaders = new Headers();
             try {
-                const reqHeaders = request.headers;
-                const origin = reqHeaders.get("origin");
-                const resHeaders = new Headers({
-                    "Access-Control-Allow-Origin": origin || "*",
-                    "Access-Control-Allow-Headers": "*",
-                    "Access-Control-Allow-Credentials": "true",
-                    "Access-Control-Allow-Methods": allowMethods.join(", "),
-                    "Content-Type": "application/json"
-                });
-                if (!allowOrigins.includes("*")) {
-                    if (!origin) {
-                        return new Response(JSON.stringify({
-                            httpCode: 403,
-                            message: "Origin not found.",
-                            data: {
-                                origin: {
-                                    code: "origin:invalid:0x00001",
-                                    message: "Origin not found."
-                                }
-                            }
-                        }), {
-                            status: 403,
-                            statusText: "Origin not found.",
-                            headers: resHeaders
-                        });
-                    }
-                    if (!allowOrigins.includes(origin)) {
-                        return new Response(JSON.stringify({
-                            httpCode: 400,
-                            message: "Origin not found.",
-                            data: {
-                                origin: {
-                                    code: "origin:invalid:0x00002",
-                                    message: "Invalid origin."
-                                }
-                            }
-                        }), {
-                            status: 400,
-                            statusText: "Invalid origin.",
-                            headers: resHeaders
-                        });
-                    }
-                }
-                if (request.method.toUpperCase() === "OPTIONS") {
-                    return new Response(undefined, {
-                        status: 204,
-                        statusText: "SUCCESS",
-                        headers: resHeaders
-                    });
-                }
-                if (!allowMethods.includes(request.method.toUpperCase())) {
-                    throw new HttpClientError({
-                        httpCode: 405,
-                        message: "Method Not Allowed.",
-                        data: undefined
-                    });
-                }
                 // Execute middleware(s)
                 for (let i = 0; i < middlewareGroup.length; i++) {
                     const middlewareArguments = [];

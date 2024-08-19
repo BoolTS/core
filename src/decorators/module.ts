@@ -9,11 +9,7 @@ type TInstances = Array<new (...args: any[]) => any>;
 
 export type TModuleOptions =
     | Partial<{
-          options: Partial<{
-              prefix: string;
-              allowOrigins: string | Array<string>;
-              allowMethods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
-          }>;
+          prefix: string;
           dependencies: TInstances;
           controllers: TInstances;
           middlewares: TInstances;
@@ -25,11 +21,7 @@ export type TModuleOptions =
 
 export type TModuleMetadata =
     | Partial<{
-          options: Partial<{
-              prefix: string;
-              allowOrigins: string | Array<string>;
-              allowMethods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
-          }>;
+          prefix: string;
           controllers: TInstances;
           dependencies: TInstances;
           middlewares: TInstances;
