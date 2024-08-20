@@ -9,6 +9,6 @@ export type THttpMethods = {
     TRACE: "TRACE";
     PATCH: "PATCH";
 };
-export declare const jsonErrorInfer: (data: any) => import("undici-types").Response;
+export declare const jsonErrorInfer: (data: any, headers?: Headers) => Response;
 export * from "./clientError";
 export * from "./serverError";

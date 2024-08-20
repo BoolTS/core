@@ -592,7 +592,7 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                           }
                       );
             } catch (error) {
-                return jsonErrorInfer(error);
+                return jsonErrorInfer(error, resHeaders);
             } finally {
                 if (allowLogsMethods) {
                     const end = performance.now();
