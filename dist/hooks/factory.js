@@ -393,7 +393,7 @@ export const BoolFactory = (target, options) => {
                     });
             }
             catch (error) {
-                return jsonErrorInfer(error);
+                return jsonErrorInfer(error, resHeaders);
             }
             finally {
                 if (allowLogsMethods) {
