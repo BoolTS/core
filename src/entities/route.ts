@@ -60,7 +60,6 @@ export class Route {
                     });
 
                     if (isFailed) {
-                        console.log(3, "isFailed", isFailed);
                         return undefined;
                     }
                 }

@@ -38,7 +38,6 @@ export class Route {
                         return match;
                     });
                     if (isFailed) {
-                        console.log(3, "isFailed", isFailed);
                         return undefined;
                     }
                 }
