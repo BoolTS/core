@@ -378,6 +378,8 @@ export const BoolFactory = (target, options) => {
                     }
                     await afterDispatcherCollection.func(...afterDispatcherArguments);
                 }
+                // Set default header(s)
+                resHeaders.set("X-Powered-By", "Bool Typescript");
                 return responseBody instanceof Response
                     ? responseBody
                     : new Response(!responseBody
@@ -393,6 +395,8 @@ export const BoolFactory = (target, options) => {
                     });
             }
             catch (error) {
+                // Set default header(s)
+                resHeaders.set("X-Powered-By", "Bool Typescript");
                 return jsonErrorInfer(error, resHeaders);
             }
             finally {

@@ -575,6 +575,9 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                     await afterDispatcherCollection.func(...afterDispatcherArguments);
                 }
 
+                // Set default header(s)
+                resHeaders.set("X-Powered-By", "Bool Typescript");
+
                 return responseBody instanceof Response
                     ? responseBody
                     : new Response(
@@ -592,6 +595,9 @@ export const BoolFactory = (target: new (...args: any[]) => unknown, options: TB
                           }
                       );
             } catch (error) {
+                // Set default header(s)
+                resHeaders.set("X-Powered-By", "Bool Typescript");
+
                 return jsonErrorInfer(error, resHeaders);
             } finally {
                 if (allowLogsMethods) {
