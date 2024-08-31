@@ -1,6 +1,6 @@
 {
     "name": "@bool-ts/core",
-    "version": "1.5.8.1",
+    "version": "1.5.9",
     "description": "",
     "main": "dist/index.js",
     "scripts": {
