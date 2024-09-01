@@ -9,6 +9,7 @@ type TInstances = Array<new (...args: any[]) => any>;
 
 export type TModuleOptions =
     | Partial<{
+          config: Record<string | symbol, any> | (() => Record<string | symbol, any> | Promise<Record<string | symbol, any>>);
           prefix: string;
           dependencies: TInstances;
           controllers: TInstances;
@@ -21,6 +22,7 @@ export type TModuleOptions =
 
 export type TModuleMetadata =
     | Partial<{
+          config: Record<string | symbol, any> | (() => Record<string | symbol, any> | Promise<Record<string | symbol, any>>);
           prefix: string;
           controllers: TInstances;
           dependencies: TInstances;

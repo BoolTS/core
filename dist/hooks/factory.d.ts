@@ -6,6 +6,7 @@ import { RouterGroup } from "../entities";
 export type TBoolFactoryOptions = Required<{
     port: number;
 }> & Partial<{
+    config: Record<string | symbol, any> | (() => Record<string | symbol, any>);
     prefix: string;
     debug: boolean;
     log: Partial<{
@@ -15,5 +16,5 @@ export type TBoolFactoryOptions = Required<{
 }>;
 export declare const controllerCreator: (controllerConstructor: new (...args: any[]) => unknown, group: RouterGroup, prefix?: string) => RouterGroup;
 export declare const argumentsResolution: (data: unknown, zodSchema: Zod.Schema, argumentIndex: number, funcName: string | symbol) => Promise<any>;
-export declare const BoolFactory: (target: new (...args: any[]) => unknown, options: TBoolFactoryOptions) => import("bun").Server | undefined;
+export declare const BoolFactory: (target: new (...args: any[]) => unknown, options: TBoolFactoryOptions) => Promise<import("bun").Server | undefined>;
 export default BoolFactory;

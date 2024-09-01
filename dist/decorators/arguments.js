@@ -8,6 +8,7 @@ export var EArgumentTypes;
     EArgumentTypes["query"] = "QUERY";
     EArgumentTypes["request"] = "REQUEST";
     EArgumentTypes["responseHeaders"] = "RESPONSE_HEADERS";
+    EArgumentTypes["config"] = "CONFIG";
 })(EArgumentTypes || (EArgumentTypes = {}));
 export const argumentsKey = Symbol.for("__bool:arguments__");
 export const RequestHeaders = (zodSchema) => {
@@ -103,6 +104,20 @@ export const ResponseHeaders = (zodSchema) => {
         queryMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
             type: EArgumentTypes.responseHeaders,
+            zodSchema: zodSchema
+        };
+        Reflect.defineMetadata(argumentsKey, queryMetadata, target.constructor, methodName);
+    };
+};
+export const Config = (zodSchema) => {
+    return (target, methodName, parameterIndex) => {
+        if (!methodName) {
+            return;
+        }
+        const queryMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
+        queryMetadata[`argumentIndexes.${parameterIndex}`] = {
+            index: parameterIndex,
+            type: EArgumentTypes.config,
             zodSchema: zodSchema
         };
         Reflect.defineMetadata(argumentsKey, queryMetadata, target.constructor, methodName);

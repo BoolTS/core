@@ -7,7 +7,8 @@ export enum EArgumentTypes {
     param = "PARAM",
     query = "QUERY",
     request = "REQUEST",
-    responseHeaders = "RESPONSE_HEADERS"
+    responseHeaders = "RESPONSE_HEADERS",
+    config = "CONFIG"
 }
 
 export type TArgumentsMetadata =
@@ -46,6 +47,11 @@ export type TArgumentsMetadata =
     | {
           index: number;
           type: EArgumentTypes.responseHeaders;
+          zodSchema?: Zod.Schema;
+      }
+    | {
+          index: number;
+          type: EArgumentTypes.config;
           zodSchema?: Zod.Schema;
       };
 
@@ -206,6 +212,29 @@ export const ResponseHeaders = (zodSchema?: Zod.Schema) => {
             TArgumentsMetadata,
             {
                 type: EArgumentTypes.responseHeaders;
+            }
+        >;
+
+        Reflect.defineMetadata(argumentsKey, queryMetadata, target.constructor, methodName);
+    };
+};
+
+export const Config = (zodSchema?: Zod.Schema) => {
+    return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+        if (!methodName) {
+            return;
+        }
+
+        const queryMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
+
+        queryMetadata[`argumentIndexes.${parameterIndex}`] = {
+            index: parameterIndex,
+            type: EArgumentTypes.config,
+            zodSchema: zodSchema
+        } satisfies Extract<
+            TArgumentsMetadata,
+            {
+                type: EArgumentTypes.config;
             }
         >;
 

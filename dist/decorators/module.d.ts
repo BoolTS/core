@@ -1,6 +1,7 @@
 import type { IModule } from "../interfaces/module";
 type TInstances = Array<new (...args: any[]) => any>;
 export type TModuleOptions = Partial<{
+    config: Record<string | symbol, any> | (() => Record<string | symbol, any> | Promise<Record<string | symbol, any>>);
     prefix: string;
     dependencies: TInstances;
     controllers: TInstances;
@@ -10,6 +11,7 @@ export type TModuleOptions = Partial<{
     afterDispatchers: TInstances;
 }> | undefined;
 export type TModuleMetadata = Partial<{
+    config: Record<string | symbol, any> | (() => Record<string | symbol, any> | Promise<Record<string | symbol, any>>);
     prefix: string;
     controllers: TInstances;
     dependencies: TInstances;
