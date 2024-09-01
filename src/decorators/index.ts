@@ -1,10 +1,11 @@
 export {
-    RequestHeaders,
     Body,
+    Config,
     Params,
     Param,
     Query,
     Request,
+    RequestHeaders,
     ResponseHeaders,
     EArgumentTypes,
     argumentsKey

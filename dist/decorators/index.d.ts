@@ -1,4 +1,4 @@
-export { RequestHeaders, Body, Params, Param, Query, Request, ResponseHeaders, EArgumentTypes, argumentsKey } from "./arguments";
+export { Body, Config, Params, Param, Query, Request, RequestHeaders, ResponseHeaders, EArgumentTypes, argumentsKey } from "./arguments";
 export { Controller, controllerKey } from "./controller";
 export { Guard, guardKey } from "./guard";
 export { Inject, injectKey } from "./inject";
