@@ -415,6 +415,7 @@ export const BoolFactory = async (target, options) => {
                         });
                 }
                 catch (error) {
+                    options.debug && console.error(error);
                     // Set default header(s)
                     context[responseHeadersArgsKey].set("X-Powered-By", "Bool Typescript");
                     return jsonErrorInfer(error, context[responseHeadersArgsKey]);
