@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { injectableKey, controllerKey, middlewareKey, guardKey, dispatcherKey, injectKey } from "../keys";
+import { controllerKey, dispatcherKey, guardKey, injectableKey, injectKey, middlewareKey } from "../keys";
 
 type TDefinition<T = any> = { new (...args: any[]): T } | string | symbol;
 

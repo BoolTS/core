@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { injectableKey, controllerKey, middlewareKey, guardKey, dispatcherKey, injectKey } from "../keys";
+import { controllerKey, dispatcherKey, guardKey, injectableKey, injectKey, middlewareKey } from "../keys";
 export const Injector = new (class {
     _mapper = new Map();
     /**
