@@ -155,6 +155,7 @@ export const BoolFactory = async (target: new (...args: any[]) => unknown, optio
             beforeDispatchers,
             controllers,
             afterDispatchers,
+            dependencies,
             prefix: modulePrefix,
             config: moduleConfig
         } = moduleMetadata;
@@ -199,6 +200,9 @@ export const BoolFactory = async (target: new (...args: any[]) => unknown, optio
                 Injector.set(key, value);
             }
         }
+
+        // Dependencies
+        !dependencies || dependencies.map((dependency) => Injector.get(dependency));
 
         // Middleware(s)
         const middlewareGroup = !middlewares

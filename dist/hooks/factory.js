@@ -91,7 +91,7 @@ export const BoolFactory = async (target, options) => {
                 fetch: () => new Response()
             });
         }
-        const { loaders, middlewares, guards, beforeDispatchers, controllers, afterDispatchers, prefix: modulePrefix, config: moduleConfig } = moduleMetadata;
+        const { loaders, middlewares, guards, beforeDispatchers, controllers, afterDispatchers, dependencies, prefix: modulePrefix, config: moduleConfig } = moduleMetadata;
         // Configuration(s)
         const { allowLogsMethods, config } = Object.freeze({
             allowLogsMethods: options?.log?.methods,
@@ -128,6 +128,8 @@ export const BoolFactory = async (target, options) => {
                 Injector.set(key, value);
             }
         }
+        // Dependencies
+        !dependencies || dependencies.map((dependency) => Injector.get(dependency));
         // Middleware(s)
         const middlewareGroup = !middlewares
             ? []

@@ -15,7 +15,6 @@ export const Injector = new (class {
         }
         const ownMetadataKeys = Reflect.getMetadataKeys(definition);
         if (![injectableKey, controllerKey, middlewareKey, guardKey, dispatcherKey].some((value) => ownMetadataKeys.includes(value))) {
-            console.error(definition);
             throw Error("Missing dependency declaration, please check @Injectable() used on dependency(ies).");
         }
         // Initialize dependencies injection

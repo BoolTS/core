@@ -31,7 +31,6 @@ export const Injector: IInjector = new (class {
                 ownMetadataKeys.includes(value)
             )
         ) {
-            console.error(definition);
             throw Error("Missing dependency declaration, please check @Injectable() used on dependency(ies).");
         }
 
