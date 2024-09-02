@@ -1,8 +1,7 @@
 import type { IGuard } from "../interfaces";
+import { guardKey } from "../keys";
 
 export type TGuardMetadata = undefined;
-
-export const guardKey = Symbol.for("__bool:guard__");
 
 export const Guard =
     () =>

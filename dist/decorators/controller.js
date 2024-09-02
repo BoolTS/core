@@ -1,5 +1,5 @@
-import { controllerHttpKey } from "./http";
-export const controllerKey = Symbol.for("__bool:controller__");
+import { controllerHttpKey, controllerKey } from "../keys";
+import {} from "./http";
 export const Controller = (prefix) => (target) => {
     const metadata = {
         prefix: !prefix.startsWith("/") ? `/${prefix}` : prefix,

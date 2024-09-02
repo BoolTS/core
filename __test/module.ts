@@ -9,7 +9,17 @@ import { TestRepository } from "./repository";
 import { TestService } from "./service";
 import { SecondGuard } from "./secondGuard";
 
-@Module({
+@Module<{
+    mongodb: string;
+}>({
+    config: {
+        mongodb: "123"
+    },
+    loaders: {
+        mongodb: ({ config }) => {
+            return [Symbol.for("etst"), { hehe: "435345" }];
+        }
+    },
     middlewares: [FirstMiddleware, SecondMiddleware],
     guards: [FirstGuard, SecondGuard],
     beforeDispatchers: [BeforeDispatcher],
@@ -18,5 +28,3 @@ import { SecondGuard } from "./secondGuard";
     dependencies: [TestService, TestRepository]
 })
 export class TestModule {}
-
-export default TestModule;

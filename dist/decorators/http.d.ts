@@ -5,7 +5,6 @@ export type TRoute = {
     descriptor: PropertyDescriptor;
 };
 export type THttpMetadata = Array<TRoute>;
-export declare const controllerHttpKey: unique symbol;
 /**
  *
  * @param path

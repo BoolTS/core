@@ -1,8 +1,8 @@
-export const injectKey = "design:paramtypes";
-export const Inject = (classDefinition) => {
+import { injectKey } from "../keys";
+export const Inject = (definition) => {
     return (target, methodName, parameterIndex) => {
         const designParameterTypes = Reflect.getMetadata(injectKey, target) || [];
-        designParameterTypes[parameterIndex] = classDefinition;
+        designParameterTypes[parameterIndex] = definition;
         Reflect.defineMetadata(injectKey, designParameterTypes, target);
     };
 };

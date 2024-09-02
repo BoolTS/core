@@ -33,7 +33,12 @@ const stringSchema = Zod.object({}).refine(async (val) => {
 
 @Controller("test")
 export class TestController {
-    constructor(@Inject(TestService) private readonly testService: IService) {}
+    constructor(
+        @Inject(Symbol.for("etst")) private readonly testInject: any,
+        @Inject(TestService) private readonly testService: IService
+    ) {
+        console.log("testInject", testInject);
+    }
 
     @Get("abc/:id")
     public get(@Param("id") id: string) {

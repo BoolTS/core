@@ -1,4 +1,4 @@
-export const middlewareKey = Symbol.for("__bool:middleware__");
+import { middlewareKey } from "../keys";
 export const Middleware = () => (target) => {
     if (!("enforce" in target.prototype) || typeof target.prototype.enforce !== "function") {
         return;

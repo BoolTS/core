@@ -1,8 +1,7 @@
 import type { IDispatcher } from "../interfaces/dispatcher";
+import { dispatcherKey } from "../keys";
 
 export type TDispatcherMetadata = undefined;
-
-export const dispatcherKey = Symbol.for("__bool:dispatcher__");
 
 export const Dispatcher =
     () =>

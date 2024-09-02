@@ -1,9 +1,4 @@
-import { controllerKey } from "./controller";
-import { dispatcherKey } from "./dispatcher";
-import { guardKey } from "./guard";
-import { injectableKey } from "./injectable";
-import { middlewareKey } from "./middleware";
-export const moduleKey = Symbol.for("__bool:module__");
+import { controllerKey, dispatcherKey, guardKey, injectableKey, middlewareKey, moduleKey } from "../keys";
 export const Module = (args) => (target) => {
     const { middlewares, guards, beforeDispatchers, controllers, afterDispatchers, dependencies } = args || {};
     if (middlewares) {

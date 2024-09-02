@@ -1,8 +1,7 @@
 import type { IMiddleware } from "../interfaces";
+import { middlewareKey } from "../keys";
 
 export type TMiddlewareMetadata = undefined;
-
-export const middlewareKey = Symbol.for("__bool:middleware__");
 
 export const Middleware =
     () =>

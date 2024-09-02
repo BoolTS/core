@@ -1,27 +1,31 @@
 import type { IModule } from "../interfaces/module";
 type TInstances = Array<new (...args: any[]) => any>;
-export type TModuleOptions = Partial<{
-    config: Record<string | symbol, any> | (() => Record<string | symbol, any> | Promise<Record<string | symbol, any>>);
+type TLoaders<TConfig extends {} = {}> = Record<string | symbol, (args: {
+    config: TConfig;
+}) => [string | symbol, any] | Promise<[string | symbol, any]>>;
+export type TModuleOptions<TConfig extends {} = {}> = Partial<{
+    config: TConfig | (() => TConfig | Promise<TConfig>);
     prefix: string;
     dependencies: TInstances;
-    controllers: TInstances;
+    loaders: TLoaders<TConfig>;
     middlewares: TInstances;
     guards: TInstances;
     beforeDispatchers: TInstances;
+    controllers: TInstances;
     afterDispatchers: TInstances;
 }> | undefined;
-export type TModuleMetadata = Partial<{
-    config: Record<string | symbol, any> | (() => Record<string | symbol, any> | Promise<Record<string | symbol, any>>);
+export type TModuleMetadata<TConfig extends {} = {}> = Partial<{
+    config: TConfig | ((...args: any[]) => TConfig | Promise<TConfig>);
     prefix: string;
-    controllers: TInstances;
     dependencies: TInstances;
+    loaders: TLoaders<TConfig>;
     middlewares: TInstances;
     guards: TInstances;
     beforeDispatchers: TInstances;
+    controllers: TInstances;
     afterDispatchers: TInstances;
 }> | undefined;
-export declare const moduleKey: unique symbol;
-export declare const Module: (args?: TModuleOptions) => <T extends {
+export declare const Module: <TConfig extends {} = {}>(args?: TModuleOptions<TConfig>) => <T extends {
     new (...args: any[]): IModule;
 }>(target: T) => void;
 export default Module;

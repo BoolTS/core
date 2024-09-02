@@ -1,8 +1,10 @@
 import "reflect-metadata";
+type TDefinition<T = any> = {
+    new (...args: any[]): T;
+} | string | symbol;
 interface IInjector {
-    get<T>(classDefinition: {
-        new (...args: any[]): T;
-    }): T;
+    set(key: TDefinition, value: any): void;
+    get<T>(definition: TDefinition): T;
 }
 export declare const Injector: IInjector;
 export default Injector;

@@ -1,4 +1,4 @@
-export const dispatcherKey = Symbol.for("__bool:dispatcher__");
+import { dispatcherKey } from "../keys";
 export const Dispatcher = () => (target) => {
     if (!("execute" in target.prototype) || typeof target.prototype.execute !== "function") {
         return;

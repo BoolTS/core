@@ -1,4 +1,4 @@
-export const guardKey = Symbol.for("__bool:guard__");
+import { guardKey } from "../keys";
 export const Guard = () => (target) => {
     if (!("enforce" in target.prototype) || typeof target.prototype.enforce !== "function") {
         return;

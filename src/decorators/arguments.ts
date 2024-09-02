@@ -1,87 +1,84 @@
 import * as Zod from "zod";
-
-export enum EArgumentTypes {
-    requestHeaders = "REQUEST_HEADERS",
-    body = "BODY",
-    params = "PARAMS",
-    param = "PARAM",
-    query = "QUERY",
-    request = "REQUEST",
-    responseHeaders = "RESPONSE_HEADERS",
-    config = "CONFIG"
-}
+import {
+    argumentsKey,
+    bodyArgsKey,
+    contextArgsKey,
+    paramArgsKey,
+    paramsArgsKey,
+    queryArgsKey,
+    requestArgsKey,
+    requestHeadersArgsKey,
+    responseHeadersArgsKey
+} from "../keys";
 
 export type TArgumentsMetadata =
     | {
           index: number;
-          type: EArgumentTypes.requestHeaders;
+          type: typeof requestHeadersArgsKey;
           zodSchema?: Zod.Schema;
       }
     | {
           index: number;
-          type: EArgumentTypes.body;
+          type: typeof bodyArgsKey;
           zodSchema?: Zod.Schema;
           parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text";
       }
     | {
           index: number;
-          type: EArgumentTypes.params;
+          type: typeof paramsArgsKey;
           zodSchema?: Zod.Schema;
       }
     | {
           index: number;
-          type: EArgumentTypes.param;
+          type: typeof paramArgsKey;
           key: string;
           zodSchema?: Zod.Schema;
       }
     | {
           index: number;
-          type: EArgumentTypes.query;
+          type: typeof queryArgsKey;
           zodSchema?: Zod.Schema;
       }
     | {
           index: number;
-          type: EArgumentTypes.request;
+          type: typeof requestArgsKey;
           zodSchema?: Zod.Schema;
       }
     | {
           index: number;
-          type: EArgumentTypes.responseHeaders;
+          type: typeof responseHeadersArgsKey;
           zodSchema?: Zod.Schema;
       }
     | {
           index: number;
-          type: EArgumentTypes.config;
-          zodSchema?: Zod.Schema;
+          type: typeof contextArgsKey;
       };
 
-export const argumentsKey = Symbol.for("__bool:arguments__");
-
-export const RequestHeaders = (zodSchema?: Zod.Schema) => {
-    return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+export const RequestHeaders =
+    (zodSchema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
 
-        const headersMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
+        const requestHeadersMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
 
-        headersMetadata[`argumentIndexes.${parameterIndex}`] = {
+        requestHeadersMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
-            type: EArgumentTypes.requestHeaders,
+            type: requestHeadersArgsKey,
             zodSchema: zodSchema
         } satisfies Extract<
             TArgumentsMetadata,
             {
-                type: EArgumentTypes.requestHeaders;
+                type: typeof requestHeadersArgsKey;
             }
         >;
 
-        Reflect.defineMetadata(argumentsKey, headersMetadata, target.constructor, methodName);
+        Reflect.defineMetadata(argumentsKey, requestHeadersMetadata, target.constructor, methodName);
     };
-};
 
-export const Body = (zodSchema?: Zod.Schema, parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text") => {
-    return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+export const Body =
+    (zodSchema?: Zod.Schema, parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text") =>
+    (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -90,19 +87,18 @@ export const Body = (zodSchema?: Zod.Schema, parser?: "arrayBuffer" | "blob" | "
 
         bodyMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
-            type: EArgumentTypes.body,
+            type: bodyArgsKey,
             zodSchema: zodSchema,
             parser: parser
         } satisfies Extract<
             TArgumentsMetadata,
             {
-                type: EArgumentTypes.body;
+                type: typeof bodyArgsKey;
             }
         >;
 
         Reflect.defineMetadata(argumentsKey, bodyMetadata, target.constructor, methodName);
     };
-};
 
 export const Params =
     (zodSchema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
@@ -114,44 +110,44 @@ export const Params =
 
         paramsMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
-            type: EArgumentTypes.params,
+            type: paramsArgsKey,
             zodSchema: zodSchema
         } satisfies Extract<
             TArgumentsMetadata,
             {
-                type: EArgumentTypes.params;
+                type: typeof paramsArgsKey;
             }
         >;
 
         Reflect.defineMetadata(argumentsKey, paramsMetadata, target.constructor, methodName);
     };
 
-export const Param = (key: string, zodSchema?: Zod.Schema) => {
-    return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+export const Param =
+    (key: string, zodSchema?: Zod.Schema) =>
+    (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
 
-        const paramsMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
+        const paramMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
 
-        paramsMetadata[`argumentIndexes.${parameterIndex}`] = {
+        paramMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
-            type: EArgumentTypes.param,
+            type: paramArgsKey,
             key: key,
             zodSchema: zodSchema
         } satisfies Extract<
             TArgumentsMetadata,
             {
-                type: EArgumentTypes.param;
+                type: typeof paramArgsKey;
             }
         >;
 
-        Reflect.defineMetadata(argumentsKey, paramsMetadata, target.constructor, methodName);
+        Reflect.defineMetadata(argumentsKey, paramMetadata, target.constructor, methodName);
     };
-};
 
-export const Query = (zodSchema?: Zod.Schema) => {
-    return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+export const Query =
+    (zodSchema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -160,84 +156,78 @@ export const Query = (zodSchema?: Zod.Schema) => {
 
         queryMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
-            type: EArgumentTypes.query,
+            type: queryArgsKey,
             zodSchema: zodSchema
         } satisfies Extract<
             TArgumentsMetadata,
             {
-                type: EArgumentTypes.query;
+                type: typeof queryArgsKey;
             }
         >;
 
         Reflect.defineMetadata(argumentsKey, queryMetadata, target.constructor, methodName);
     };
-};
 
-export const Request = (zodSchema?: Zod.Schema) => {
-    return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+export const Request =
+    (zodSchema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
 
-        const queryMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
+        const requestMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
 
-        queryMetadata[`argumentIndexes.${parameterIndex}`] = {
+        requestMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
-            type: EArgumentTypes.request,
+            type: requestArgsKey,
             zodSchema: zodSchema
         } satisfies Extract<
             TArgumentsMetadata,
             {
-                type: EArgumentTypes.request;
+                type: typeof requestArgsKey;
             }
         >;
 
-        Reflect.defineMetadata(argumentsKey, queryMetadata, target.constructor, methodName);
+        Reflect.defineMetadata(argumentsKey, requestMetadata, target.constructor, methodName);
     };
-};
 
-export const ResponseHeaders = (zodSchema?: Zod.Schema) => {
-    return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+export const ResponseHeaders =
+    (zodSchema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
 
-        const queryMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
+        const responseHeadersMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
 
-        queryMetadata[`argumentIndexes.${parameterIndex}`] = {
+        responseHeadersMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
-            type: EArgumentTypes.responseHeaders,
+            type: responseHeadersArgsKey,
             zodSchema: zodSchema
         } satisfies Extract<
             TArgumentsMetadata,
             {
-                type: EArgumentTypes.responseHeaders;
+                type: typeof responseHeadersArgsKey;
             }
         >;
 
-        Reflect.defineMetadata(argumentsKey, queryMetadata, target.constructor, methodName);
+        Reflect.defineMetadata(argumentsKey, responseHeadersMetadata, target.constructor, methodName);
     };
-};
 
-export const Config = (zodSchema?: Zod.Schema) => {
-    return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
-        if (!methodName) {
-            return;
+export const Context = () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    if (!methodName) {
+        return;
+    }
+
+    const responseHeadersMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
+
+    responseHeadersMetadata[`argumentIndexes.${parameterIndex}`] = {
+        index: parameterIndex,
+        type: contextArgsKey
+    } satisfies Extract<
+        TArgumentsMetadata,
+        {
+            type: typeof contextArgsKey;
         }
+    >;
 
-        const queryMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
-
-        queryMetadata[`argumentIndexes.${parameterIndex}`] = {
-            index: parameterIndex,
-            type: EArgumentTypes.config,
-            zodSchema: zodSchema
-        } satisfies Extract<
-            TArgumentsMetadata,
-            {
-                type: EArgumentTypes.config;
-            }
-        >;
-
-        Reflect.defineMetadata(argumentsKey, queryMetadata, target.constructor, methodName);
-    };
+    Reflect.defineMetadata(argumentsKey, responseHeadersMetadata, target.constructor, methodName);
 };

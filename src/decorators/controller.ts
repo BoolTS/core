@@ -1,12 +1,11 @@
 import type { IController } from "../interfaces/controller";
-import { controllerHttpKey, type THttpMetadata } from "./http";
+import { controllerHttpKey, controllerKey } from "../keys";
+import { type THttpMetadata } from "./http";
 
 export type TControllerMetadata = Required<{
     prefix: string;
     httpMetadata: THttpMetadata;
 }>;
-
-export const controllerKey = Symbol.for("__bool:controller__");
 
 export const Controller =
     (prefix: string) =>

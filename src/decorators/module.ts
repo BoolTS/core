@@ -1,42 +1,42 @@
 import type { IModule } from "../interfaces/module";
-import { controllerKey } from "./controller";
-import { dispatcherKey } from "./dispatcher";
-import { guardKey } from "./guard";
-import { injectableKey } from "./injectable";
-import { middlewareKey } from "./middleware";
+import { controllerKey, dispatcherKey, guardKey, injectableKey, middlewareKey, moduleKey } from "../keys";
 
 type TInstances = Array<new (...args: any[]) => any>;
+type TLoaders<TConfig extends {} = {}> = Record<
+    string | symbol,
+    (args: { config: TConfig }) => [string | symbol, any] | Promise<[string | symbol, any]>
+>;
 
-export type TModuleOptions =
+export type TModuleOptions<TConfig extends {} = {}> =
     | Partial<{
-          config: Record<string | symbol, any> | (() => Record<string | symbol, any> | Promise<Record<string | symbol, any>>);
+          config: TConfig | (() => TConfig | Promise<TConfig>);
           prefix: string;
           dependencies: TInstances;
-          controllers: TInstances;
+          loaders: TLoaders<TConfig>;
           middlewares: TInstances;
           guards: TInstances;
           beforeDispatchers: TInstances;
+          controllers: TInstances;
           afterDispatchers: TInstances;
       }>
     | undefined;
 
-export type TModuleMetadata =
+export type TModuleMetadata<TConfig extends {} = {}> =
     | Partial<{
-          config: Record<string | symbol, any> | (() => Record<string | symbol, any> | Promise<Record<string | symbol, any>>);
+          config: TConfig | ((...args: any[]) => TConfig | Promise<TConfig>);
           prefix: string;
-          controllers: TInstances;
           dependencies: TInstances;
+          loaders: TLoaders<TConfig>;
           middlewares: TInstances;
           guards: TInstances;
           beforeDispatchers: TInstances;
+          controllers: TInstances;
           afterDispatchers: TInstances;
       }>
     | undefined;
-
-export const moduleKey = Symbol.for("__bool:module__");
 
 export const Module =
-    (args?: TModuleOptions) =>
+    <TConfig extends {} = {}>(args?: TModuleOptions<TConfig>) =>
     <T extends { new (...args: any[]): IModule }>(target: T) => {
         const { middlewares, guards, beforeDispatchers, controllers, afterDispatchers, dependencies } = args || {};
 

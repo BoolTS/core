@@ -1,4 +1,4 @@
-export const injectableKey = Symbol.for("__bool:injectable__");
+import { injectableKey } from "../keys";
 
 export const Injectable =
     () =>

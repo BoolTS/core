@@ -1,42 +1,57 @@
 import "reflect-metadata";
+import { injectableKey, controllerKey, middlewareKey, guardKey, dispatcherKey, injectKey } from "../keys";
 
-import { controllerKey, dispatcherKey, guardKey, injectableKey, injectKey, middlewareKey } from "../decorators";
+type TDefinition<T = any> = { new (...args: any[]): T } | string | symbol;
 
 interface IInjector {
-    get<T>(classDefinition: { new (...args: any[]): T }): T;
+    set(key: TDefinition, value: any): void;
+    get<T>(definition: TDefinition): T;
 }
 
 export const Injector: IInjector = new (class {
-    private readonly _mapper: Map<Function, any> = new Map();
+    private readonly _mapper: Map<Function | string | symbol, any> = new Map();
 
     /**
      *
      * @param constructor
      */
-    get<T>(classDefinition: { new (...args: any[]): T }) {
-        if (this._mapper.has(classDefinition)) {
-            return this._mapper.get(classDefinition) as T;
+    get<T>(definition: TDefinition) {
+        if (this._mapper.has(definition)) {
+            return this._mapper.get(definition) as T;
         }
 
-        const ownMetadataKeys = Reflect.getMetadataKeys(classDefinition);
+        if (typeof definition !== "function") {
+            return undefined;
+        }
+
+        const ownMetadataKeys = Reflect.getMetadataKeys(definition);
 
         if (
             ![injectableKey, controllerKey, middlewareKey, guardKey, dispatcherKey].some((value) =>
                 ownMetadataKeys.includes(value)
             )
         ) {
-            console.error(classDefinition);
+            console.error(definition);
             throw Error("Missing dependency declaration, please check @Injectable() used on dependency(ies).");
         }
 
         // Initialize dependencies injection
-        const dependencies: any[] = Reflect.getOwnMetadata(injectKey, classDefinition) || [];
+        const dependencies: any[] = Reflect.getOwnMetadata(injectKey, definition) || [];
         const injections: any[] = dependencies.map((dependency) => Injector.get(dependency));
-        const instance = new classDefinition(...injections);
+        const instance = new definition(...injections);
 
-        this._mapper.set(classDefinition, instance);
+        this._mapper.set(definition, instance);
 
         return instance;
+    }
+
+    /**
+     *
+     * @param key
+     * @param value
+     */
+    set(key: TDefinition, value: any) {
+        this._mapper.set(key, value);
     }
 })();
 

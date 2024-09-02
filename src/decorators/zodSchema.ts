@@ -1,6 +1,5 @@
 import * as Zod from "zod";
-
-export const controllerRouteZodSchemaKey = Symbol.for("__bool:controller.route.zodSchema__");
+import { controllerRouteZodSchemaKey } from "../keys";
 
 export const ZodSchema = (schema: Zod.Schema) => {
     return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {

@@ -1,24 +1,13 @@
-export {
-    Body,
-    Config,
-    Params,
-    Param,
-    Query,
-    Request,
-    RequestHeaders,
-    ResponseHeaders,
-    EArgumentTypes,
-    argumentsKey
-} from "./arguments";
-export { Controller, controllerKey } from "./controller";
-export { Guard, guardKey } from "./guard";
-export { Inject, injectKey } from "./inject";
-export { Injectable, injectableKey } from "./injectable";
-export { Middleware, middlewareKey } from "./middleware";
-export { Module, moduleKey } from "./module";
-export { Get, Post, Put, Patch, Delete, Options, controllerHttpKey } from "./http";
-export { ZodSchema, controllerRouteZodSchemaKey } from "./zodSchema";
-export { Dispatcher, dispatcherKey } from "./dispatcher";
+export { Body, Params, Param, Query, Request, RequestHeaders, ResponseHeaders } from "./arguments";
+export { Controller } from "./controller";
+export { Guard } from "./guard";
+export { Inject } from "./inject";
+export { Injectable } from "./injectable";
+export { Middleware } from "./middleware";
+export { Module } from "./module";
+export { Get, Post, Put, Patch, Delete, Options } from "./http";
+export { ZodSchema } from "./zodSchema";
+export { Dispatcher } from "./dispatcher";
 
 export type { TControllerMetadata } from "./controller";
 export type { TModuleMetadata, TModuleOptions } from "./module";

@@ -1,4 +1,4 @@
-export const controllerHttpKey = Symbol.for("__bool:controller.http__");
+import { controllerHttpKey } from "../keys";
 const defaultDecorator = (path, method) => (target, methodName, descriptor) => {
     if (!(descriptor.value instanceof Function)) {
         throw Error(`${method} decorator only use for class method.`);

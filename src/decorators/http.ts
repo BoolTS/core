@@ -1,3 +1,5 @@
+import { controllerHttpKey } from "../keys";
+
 export type TRoute = {
     path: string;
     httpMethod: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
@@ -6,8 +8,6 @@ export type TRoute = {
 };
 
 export type THttpMetadata = Array<TRoute>;
-
-export const controllerHttpKey = Symbol.for("__bool:controller.http__");
 
 const defaultDecorator =
     (path: string, method: "Get" | "Post" | "Put" | "Patch" | "Delete" | "Options") =>
