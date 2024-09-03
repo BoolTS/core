@@ -343,9 +343,9 @@ export const BoolFactory = async (target: new (...args: any[]) => unknown, optio
                                         break;
                                     case requestHeaderArgsKey:
                                         middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? headers.get(argsMetadata.key)
+                                            ? headers.get(argsMetadata.key) || undefined
                                             : await argumentsResolution(
-                                                  headers.get(argsMetadata.key),
+                                                  headers.get(argsMetadata.key) || undefined,
                                                   argsMetadata.zodSchema,
                                                   argsMetadata.index,
                                                   middlewareCollection.funcName
@@ -426,9 +426,9 @@ export const BoolFactory = async (target: new (...args: any[]) => unknown, optio
                                         break;
                                     case requestHeaderArgsKey:
                                         guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? headers.get(argsMetadata.key)
+                                            ? headers.get(argsMetadata.key) || undefined
                                             : await argumentsResolution(
-                                                  headers.get(argsMetadata.key),
+                                                  headers.get(argsMetadata.key) || undefined,
                                                   argsMetadata.zodSchema,
                                                   argsMetadata.index,
                                                   guardCollection.funcName
@@ -529,7 +529,7 @@ export const BoolFactory = async (target: new (...args: any[]) => unknown, optio
                                         beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers.get(argsMetadata.key) || undefined
                                             : await argumentsResolution(
-                                                  headers.get(argsMetadata.key),
+                                                  headers.get(argsMetadata.key) || undefined,
                                                   argsMetadata.zodSchema,
                                                   argsMetadata.index,
                                                   beforeDispatcherCollection.funcName
@@ -618,7 +618,7 @@ export const BoolFactory = async (target: new (...args: any[]) => unknown, optio
                                         controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers.get(argsMetadata.key) || undefined
                                             : await argumentsResolution(
-                                                  headers.get(argsMetadata.key),
+                                                  headers.get(argsMetadata.key) || undefined,
                                                   argsMetadata.zodSchema,
                                                   argsMetadata.index,
                                                   controllerActionCollection.funcName
@@ -707,7 +707,7 @@ export const BoolFactory = async (target: new (...args: any[]) => unknown, optio
                                         afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers.get(argsMetadata.key) || undefined
                                             : await argumentsResolution(
-                                                  headers.get(argsMetadata.key),
+                                                  headers.get(argsMetadata.key) || undefined,
                                                   argsMetadata.zodSchema,
                                                   argsMetadata.index,
                                                   afterDispatcherCollection.funcName

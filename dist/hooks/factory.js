@@ -235,8 +235,8 @@ export const BoolFactory = async (target, options) => {
                                         break;
                                     case requestHeaderArgsKey:
                                         middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? headers.get(argsMetadata.key)
-                                            : await argumentsResolution(headers.get(argsMetadata.key), argsMetadata.zodSchema, argsMetadata.index, middlewareCollection.funcName);
+                                            ? headers.get(argsMetadata.key) || undefined
+                                            : await argumentsResolution(headers.get(argsMetadata.key) || undefined, argsMetadata.zodSchema, argsMetadata.index, middlewareCollection.funcName);
                                         break;
                                     default:
                                         middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
@@ -287,8 +287,8 @@ export const BoolFactory = async (target, options) => {
                                         break;
                                     case requestHeaderArgsKey:
                                         guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? headers.get(argsMetadata.key)
-                                            : await argumentsResolution(headers.get(argsMetadata.key), argsMetadata.zodSchema, argsMetadata.index, guardCollection.funcName);
+                                            ? headers.get(argsMetadata.key) || undefined
+                                            : await argumentsResolution(headers.get(argsMetadata.key) || undefined, argsMetadata.zodSchema, argsMetadata.index, guardCollection.funcName);
                                         break;
                                     default:
                                         guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
@@ -351,7 +351,7 @@ export const BoolFactory = async (target, options) => {
                                     case requestHeaderArgsKey:
                                         beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers.get(argsMetadata.key) || undefined
-                                            : await argumentsResolution(headers.get(argsMetadata.key), argsMetadata.zodSchema, argsMetadata.index, beforeDispatcherCollection.funcName);
+                                            : await argumentsResolution(headers.get(argsMetadata.key) || undefined, argsMetadata.zodSchema, argsMetadata.index, beforeDispatcherCollection.funcName);
                                         break;
                                     case paramArgsKey:
                                         beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
@@ -402,7 +402,7 @@ export const BoolFactory = async (target, options) => {
                                     case requestHeaderArgsKey:
                                         controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers.get(argsMetadata.key) || undefined
-                                            : await argumentsResolution(headers.get(argsMetadata.key), argsMetadata.zodSchema, argsMetadata.index, controllerActionCollection.funcName);
+                                            : await argumentsResolution(headers.get(argsMetadata.key) || undefined, argsMetadata.zodSchema, argsMetadata.index, controllerActionCollection.funcName);
                                         break;
                                     case paramArgsKey:
                                         controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
@@ -453,7 +453,7 @@ export const BoolFactory = async (target, options) => {
                                     case requestHeaderArgsKey:
                                         afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers.get(argsMetadata.key) || undefined
-                                            : await argumentsResolution(headers.get(argsMetadata.key), argsMetadata.zodSchema, argsMetadata.index, afterDispatcherCollection.funcName);
+                                            : await argumentsResolution(headers.get(argsMetadata.key) || undefined, argsMetadata.zodSchema, argsMetadata.index, afterDispatcherCollection.funcName);
                                         break;
                                     case paramArgsKey:
                                         afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
