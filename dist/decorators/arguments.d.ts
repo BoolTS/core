@@ -1,8 +1,13 @@
 import * as Zod from "zod";
-import { bodyArgsKey, contextArgsKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestHeadersArgsKey, responseHeadersArgsKey } from "../keys";
+import { bodyArgsKey, contextArgsKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestHeaderArgsKey, requestHeadersArgsKey, responseHeadersArgsKey } from "../keys";
 export type TArgumentsMetadata = {
     index: number;
     type: typeof requestHeadersArgsKey;
+    zodSchema?: Zod.Schema;
+} | {
+    index: number;
+    type: typeof requestHeaderArgsKey;
+    key: string;
     zodSchema?: Zod.Schema;
 } | {
     index: number;
@@ -29,17 +34,17 @@ export type TArgumentsMetadata = {
 } | {
     index: number;
     type: typeof responseHeadersArgsKey;
-    zodSchema?: Zod.Schema;
 } | {
     index: number;
     type: typeof contextArgsKey;
-    injectKey?: symbol;
+    key?: symbol;
 };
-export declare const RequestHeaders: (zodSchema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const Body: (zodSchema?: Zod.Schema, parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text") => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const Params: (zodSchema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const Param: (key: string, zodSchema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const Query: (zodSchema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const Request: (zodSchema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const ResponseHeaders: (zodSchema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const Context: (injectKey?: symbol) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const RequestHeaders: (schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const RequestHeader: (key: string, schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const Body: (schema?: Zod.Schema, parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text") => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const Params: (schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const Param: (key: string, schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const Query: (schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const Request: (schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const ResponseHeaders: () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const Context: (key?: symbol) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;

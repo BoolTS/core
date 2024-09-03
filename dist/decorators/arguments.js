@@ -1,6 +1,6 @@
 import * as Zod from "zod";
-import { argumentsKey, bodyArgsKey, contextArgsKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestHeadersArgsKey, responseHeadersArgsKey } from "../keys";
-export const RequestHeaders = (zodSchema) => (target, methodName, parameterIndex) => {
+import { argumentsKey, bodyArgsKey, contextArgsKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestHeaderArgsKey, requestHeadersArgsKey, responseHeadersArgsKey } from "../keys";
+export const RequestHeaders = (schema) => (target, methodName, parameterIndex) => {
     if (!methodName) {
         return;
     }
@@ -8,11 +8,24 @@ export const RequestHeaders = (zodSchema) => (target, methodName, parameterIndex
     requestHeadersMetadata[`argumentIndexes.${parameterIndex}`] = {
         index: parameterIndex,
         type: requestHeadersArgsKey,
-        zodSchema: zodSchema
+        zodSchema: schema
     };
     Reflect.defineMetadata(argumentsKey, requestHeadersMetadata, target.constructor, methodName);
 };
-export const Body = (zodSchema, parser) => (target, methodName, parameterIndex) => {
+export const RequestHeader = (key, schema) => (target, methodName, parameterIndex) => {
+    if (!methodName) {
+        return;
+    }
+    const requestHeaderMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
+    requestHeaderMetadata[`argumentIndexes.${parameterIndex}`] = {
+        index: parameterIndex,
+        type: requestHeaderArgsKey,
+        key: key,
+        zodSchema: schema
+    };
+    Reflect.defineMetadata(argumentsKey, requestHeaderMetadata, target.constructor, methodName);
+};
+export const Body = (schema, parser) => (target, methodName, parameterIndex) => {
     if (!methodName) {
         return;
     }
@@ -20,12 +33,12 @@ export const Body = (zodSchema, parser) => (target, methodName, parameterIndex) 
     bodyMetadata[`argumentIndexes.${parameterIndex}`] = {
         index: parameterIndex,
         type: bodyArgsKey,
-        zodSchema: zodSchema,
+        zodSchema: schema,
         parser: parser
     };
     Reflect.defineMetadata(argumentsKey, bodyMetadata, target.constructor, methodName);
 };
-export const Params = (zodSchema) => (target, methodName, parameterIndex) => {
+export const Params = (schema) => (target, methodName, parameterIndex) => {
     if (!methodName) {
         return;
     }
@@ -33,11 +46,11 @@ export const Params = (zodSchema) => (target, methodName, parameterIndex) => {
     paramsMetadata[`argumentIndexes.${parameterIndex}`] = {
         index: parameterIndex,
         type: paramsArgsKey,
-        zodSchema: zodSchema
+        zodSchema: schema
     };
     Reflect.defineMetadata(argumentsKey, paramsMetadata, target.constructor, methodName);
 };
-export const Param = (key, zodSchema) => (target, methodName, parameterIndex) => {
+export const Param = (key, schema) => (target, methodName, parameterIndex) => {
     if (!methodName) {
         return;
     }
@@ -46,11 +59,11 @@ export const Param = (key, zodSchema) => (target, methodName, parameterIndex) =>
         index: parameterIndex,
         type: paramArgsKey,
         key: key,
-        zodSchema: zodSchema
+        zodSchema: schema
     };
     Reflect.defineMetadata(argumentsKey, paramMetadata, target.constructor, methodName);
 };
-export const Query = (zodSchema) => (target, methodName, parameterIndex) => {
+export const Query = (schema) => (target, methodName, parameterIndex) => {
     if (!methodName) {
         return;
     }
@@ -58,11 +71,11 @@ export const Query = (zodSchema) => (target, methodName, parameterIndex) => {
     queryMetadata[`argumentIndexes.${parameterIndex}`] = {
         index: parameterIndex,
         type: queryArgsKey,
-        zodSchema: zodSchema
+        zodSchema: schema
     };
     Reflect.defineMetadata(argumentsKey, queryMetadata, target.constructor, methodName);
 };
-export const Request = (zodSchema) => (target, methodName, parameterIndex) => {
+export const Request = (schema) => (target, methodName, parameterIndex) => {
     if (!methodName) {
         return;
     }
@@ -70,23 +83,22 @@ export const Request = (zodSchema) => (target, methodName, parameterIndex) => {
     requestMetadata[`argumentIndexes.${parameterIndex}`] = {
         index: parameterIndex,
         type: requestArgsKey,
-        zodSchema: zodSchema
+        zodSchema: schema
     };
     Reflect.defineMetadata(argumentsKey, requestMetadata, target.constructor, methodName);
 };
-export const ResponseHeaders = (zodSchema) => (target, methodName, parameterIndex) => {
+export const ResponseHeaders = () => (target, methodName, parameterIndex) => {
     if (!methodName) {
         return;
     }
     const responseHeadersMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
     responseHeadersMetadata[`argumentIndexes.${parameterIndex}`] = {
         index: parameterIndex,
-        type: responseHeadersArgsKey,
-        zodSchema: zodSchema
+        type: responseHeadersArgsKey
     };
     Reflect.defineMetadata(argumentsKey, responseHeadersMetadata, target.constructor, methodName);
 };
-export const Context = (injectKey) => (target, methodName, parameterIndex) => {
+export const Context = (key) => (target, methodName, parameterIndex) => {
     if (!methodName) {
         return;
     }
@@ -94,7 +106,7 @@ export const Context = (injectKey) => (target, methodName, parameterIndex) => {
     responseHeadersMetadata[`argumentIndexes.${parameterIndex}`] = {
         index: parameterIndex,
         type: contextArgsKey,
-        injectKey: injectKey
+        key: key
     };
     Reflect.defineMetadata(argumentsKey, responseHeadersMetadata, target.constructor, methodName);
 };

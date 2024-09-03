@@ -10,6 +10,7 @@ export declare const middlewareKey: unique symbol;
 export declare const moduleKey: unique symbol;
 export declare const controllerRouteZodSchemaKey: unique symbol;
 export declare const requestHeadersArgsKey: unique symbol;
+export declare const requestHeaderArgsKey: unique symbol;
 export declare const bodyArgsKey: unique symbol;
 export declare const paramsArgsKey: unique symbol;
 export declare const paramArgsKey: unique symbol;

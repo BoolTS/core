@@ -2,7 +2,7 @@ import type { IService } from "./interfaces";
 
 import * as Zod from "zod";
 
-import { Body, Controller, Delete, Get, Inject, Options, Params, Patch, Post, Put, Param, Query } from "../src";
+import { Body, Controller, Delete, Get, Inject, Options, Param, Params, Patch, Post, Put, Query, RequestHeaders } from "../src";
 import { TestService } from "./service";
 
 const postParamsSchema = Zod.object({
@@ -31,6 +31,10 @@ const stringSchema = Zod.object({}).refine(async (val) => {
     return val;
 });
 
+const headersSchema = Zod.object({
+    "content-type": Zod.string()
+});
+
 @Controller("test")
 export class TestController {
     constructor(
@@ -48,6 +52,8 @@ export class TestController {
 
     @Post("abc/:id/provider/:providerId")
     public async post(
+        @RequestHeaders(headersSchema)
+        headers: Zod.infer<typeof headersSchema>,
         @Params()
         params: any,
         @Query()
@@ -55,7 +61,7 @@ export class TestController {
         @Body(bodySchema)
         body: Zod.infer<typeof bodySchema>
     ) {
-        console.log("req.headers", query);
+        console.log("req.headers", headers);
         console.log("===========================");
     }
 

@@ -11,6 +11,7 @@ export const moduleKey = Symbol("__bool:module__");
 export const controllerRouteZodSchemaKey = Symbol("__bool:controller.route.zodSchema__");
 
 export const requestHeadersArgsKey = Symbol("__bool:arguments:requestHeaders__");
+export const requestHeaderArgsKey = Symbol("__bool:arguments:requestHeader__");
 export const bodyArgsKey = Symbol("__bool:arguments:body__");
 export const paramsArgsKey = Symbol("__bool:arguments:params__");
 export const paramArgsKey = Symbol("__bool:arguments:param__");
