@@ -52,6 +52,7 @@ export type TArgumentsMetadata =
     | {
           index: number;
           type: typeof contextArgsKey;
+          injectKey?: symbol;
       };
 
 export const RequestHeaders =
@@ -212,22 +213,24 @@ export const ResponseHeaders =
         Reflect.defineMetadata(argumentsKey, responseHeadersMetadata, target.constructor, methodName);
     };
 
-export const Context = () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
-    if (!methodName) {
-        return;
-    }
-
-    const responseHeadersMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
-
-    responseHeadersMetadata[`argumentIndexes.${parameterIndex}`] = {
-        index: parameterIndex,
-        type: contextArgsKey
-    } satisfies Extract<
-        TArgumentsMetadata,
-        {
-            type: typeof contextArgsKey;
+export const Context =
+    (injectKey?: symbol) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+        if (!methodName) {
+            return;
         }
-    >;
 
-    Reflect.defineMetadata(argumentsKey, responseHeadersMetadata, target.constructor, methodName);
-};
+        const responseHeadersMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
+
+        responseHeadersMetadata[`argumentIndexes.${parameterIndex}`] = {
+            index: parameterIndex,
+            type: contextArgsKey,
+            injectKey: injectKey
+        } satisfies Extract<
+            TArgumentsMetadata,
+            {
+                type: typeof contextArgsKey;
+            }
+        >;
+
+        Reflect.defineMetadata(argumentsKey, responseHeadersMetadata, target.constructor, methodName);
+    };

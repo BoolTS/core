@@ -221,7 +221,9 @@ export const BoolFactory = async (target, options) => {
                                             : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, middlewareCollection.funcName);
                                         break;
                                     case contextArgsKey:
-                                        middlewareArguments[argsMetadata.index] = contextHook;
+                                        middlewareArguments[argsMetadata.index] = !argsMetadata.injectKey
+                                            ? contextHook
+                                            : contextHook.get(argsMetadata.injectKey);
                                         break;
                                     default:
                                         middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
@@ -258,7 +260,9 @@ export const BoolFactory = async (target, options) => {
                                             : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, guardCollection.funcName);
                                         break;
                                     case contextArgsKey:
-                                        guardArguments[argsMetadata.index] = contextHook;
+                                        guardArguments[argsMetadata.index] = !argsMetadata.injectKey
+                                            ? contextHook
+                                            : contextHook.get(argsMetadata.injectKey);
                                         break;
                                     default:
                                         guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
@@ -311,7 +315,9 @@ export const BoolFactory = async (target, options) => {
                                             : await argumentsResolution(context[paramsArgsKey]?.[argsMetadata.key], argsMetadata.zodSchema, argsMetadata.index, beforeDispatcherCollection.funcName);
                                         break;
                                     case contextArgsKey:
-                                        beforeDispatcherArguments[argsMetadata.index] = contextHook;
+                                        beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.injectKey
+                                            ? contextHook
+                                            : contextHook.get(argsMetadata.injectKey);
                                         break;
                                     default:
                                         beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
@@ -348,7 +354,9 @@ export const BoolFactory = async (target, options) => {
                                             : await argumentsResolution(context[paramsArgsKey]?.[argsMetadata.key], argsMetadata.zodSchema, argsMetadata.index, controllerCollection.funcName);
                                         break;
                                     case contextArgsKey:
-                                        controllerActionArguments[argsMetadata.index] = contextHook;
+                                        controllerActionArguments[argsMetadata.index] = !argsMetadata.injectKey
+                                            ? contextHook
+                                            : contextHook.get(argsMetadata.injectKey);
                                         break;
                                     default:
                                         controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
@@ -384,7 +392,9 @@ export const BoolFactory = async (target, options) => {
                                             : await argumentsResolution(context[paramsArgsKey]?.[argsMetadata.key], argsMetadata.zodSchema, argsMetadata.index, afterDispatcherCollection.funcName);
                                         break;
                                     case contextArgsKey:
-                                        afterDispatcherArguments[argsMetadata.index] = contextHook;
+                                        afterDispatcherArguments[argsMetadata.index] = !argsMetadata.injectKey
+                                            ? contextHook
+                                            : contextHook.get(argsMetadata.injectKey);
                                         break;
                                     default:
                                         afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema

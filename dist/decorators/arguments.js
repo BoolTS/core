@@ -86,14 +86,15 @@ export const ResponseHeaders = (zodSchema) => (target, methodName, parameterInde
     };
     Reflect.defineMetadata(argumentsKey, responseHeadersMetadata, target.constructor, methodName);
 };
-export const Context = () => (target, methodName, parameterIndex) => {
+export const Context = (injectKey) => (target, methodName, parameterIndex) => {
     if (!methodName) {
         return;
     }
     const responseHeadersMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
     responseHeadersMetadata[`argumentIndexes.${parameterIndex}`] = {
         index: parameterIndex,
-        type: contextArgsKey
+        type: contextArgsKey,
+        injectKey: injectKey
     };
     Reflect.defineMetadata(argumentsKey, responseHeadersMetadata, target.constructor, methodName);
 };
