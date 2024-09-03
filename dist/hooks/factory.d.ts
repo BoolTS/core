@@ -15,6 +15,6 @@ export type TBoolFactoryOptions = Required<{
     queryParser: Parameters<typeof Qs.parse>[1];
 }>;
 export declare const controllerCreator: (controllerConstructor: new (...args: any[]) => unknown, group: RouterGroup, prefix?: string) => RouterGroup;
-export declare const argumentsResolution: (data: unknown, zodSchema: Zod.Schema, argumentIndex: number, funcName: string | symbol) => Promise<unknown>;
+export declare const argumentsResolution: (data: unknown, zodSchema: Zod.Schema, argumentIndex: number, funcName: string | symbol) => Promise<any>;
 export declare const BoolFactory: (target: new (...args: any[]) => unknown, options: TBoolFactoryOptions) => Promise<import("bun").Server | undefined>;
 export default BoolFactory;

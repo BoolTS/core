@@ -58,7 +58,7 @@ export const argumentsResolution = async (data, zodSchema, argumentIndex, funcNa
                 data: validation.error.issues
             });
         }
-        return data;
+        return validation.data;
     }
     catch (error) {
         if (error instanceof HttpClientError) {
