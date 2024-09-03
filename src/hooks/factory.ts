@@ -111,7 +111,7 @@ export const argumentsResolution = async (
             });
         }
 
-        return data;
+        return validation.data;
     } catch (error) {
         if (error instanceof HttpClientError) {
             throw error;
