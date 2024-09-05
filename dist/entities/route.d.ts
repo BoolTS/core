@@ -1,17 +1,17 @@
 import type { THttpMethods } from "../http";
-type THandler<T = unknown> = Required<{
+export type TRouteModel<T = unknown> = Readonly<Required<{
     class: new (...args: Array<any>) => T;
     funcName: string | symbol;
     func: (...args: Array<any>) => unknown;
-}>;
+}>>;
 export declare class Route {
     static rootPattern: string;
     readonly alias: string;
     private _map;
     constructor(alias: string);
     test(pathname: string, method: keyof THttpMethods): Readonly<{
-        params: Record<string, string>;
-        handlers: Array<THandler>;
+        parameters: Record<string, string>;
+        model: TRouteModel;
     }> | false | undefined;
     /**
      *
@@ -22,65 +22,65 @@ export declare class Route {
      * @param handlers
      * @returns
      */
-    get(...handlers: Array<THandler>): this;
+    get(handler: TRouteModel): this;
     /**
      *
      * @param handlers
      * @returns
      */
-    post(...handlers: Array<THandler>): this;
+    post(handler: TRouteModel): this;
     /**
      *
      * @param handlers
      * @returns
      */
-    put(...handlers: Array<THandler>): this;
+    put(handler: TRouteModel): this;
     /**
      *
      * @param handlers
      * @returns
      */
-    delete(...handlers: Array<THandler>): this;
+    delete(handler: TRouteModel): this;
     /**
      *
      * @param handlers
      * @returns
      */
-    connect(...handlers: Array<THandler>): this | Map<keyof THttpMethods, Required<{
+    connect(handler: TRouteModel): this | Map<keyof THttpMethods, Readonly<Required<{
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
-    }>[]>;
+    }>>>;
     /**
      *
      * @param handlers
      * @returns
      */
-    options(...handlers: Array<THandler>): this | Map<keyof THttpMethods, Required<{
+    options(handler: TRouteModel): this | Map<keyof THttpMethods, Readonly<Required<{
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
-    }>[]>;
+    }>>>;
     /**
      *
      * @param handlers
      * @returns
      */
-    trace(...handlers: Array<THandler>): this | Map<keyof THttpMethods, Required<{
+    trace(handler: TRouteModel): this | Map<keyof THttpMethods, Readonly<Required<{
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
-    }>[]>;
+    }>>>;
     /**
      *
      * @param handlers
      * @returns
      */
-    patch(...handlers: Array<THandler>): this | Map<keyof THttpMethods, Required<{
+    patch(handler: TRouteModel): this | Map<keyof THttpMethods, Readonly<Required<{
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
-    }>[]>;
+    }>>>;
     /**
      *
      * @param handlers

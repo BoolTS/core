@@ -19,3 +19,4 @@ export const queryArgsKey = Symbol("__bool:arguments:query__");
 export const requestArgsKey = Symbol("__bool:arguments:request__");
 export const responseHeadersArgsKey = Symbol("__bool:arguments:responseHeaders__");
 export const contextArgsKey = Symbol("__bool:arguments:context__");
+export const routeModelArgsKey = Symbol("__bool:arguments:routeModel__");

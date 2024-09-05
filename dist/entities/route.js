@@ -8,10 +8,10 @@ export class Route {
     }
     test(pathname, method) {
         try {
-            const handlers = this._map.get(method);
+            const model = this._map.get(method);
             const aliasSplitted = this.alias.split("/");
             const currentPathNameSplitted = this._thinAlias(pathname).split("/");
-            if (!handlers) {
+            if (!model) {
                 return undefined;
             }
             // Compare splitted length
@@ -44,8 +44,8 @@ export class Route {
                 continue;
             }
             return Object.freeze({
-                params: parameters,
-                handlers: handlers
+                parameters: parameters,
+                model: model
             });
         }
         catch (err) {
@@ -109,10 +109,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    get(...handlers) {
-        const currentHandlers = this._map.get("GET");
-        if (!currentHandlers) {
-            this._map.set("GET", handlers);
+    get(handler) {
+        const currenTRouteModel = this._map.get("GET");
+        if (!currenTRouteModel) {
+            this._map.set("GET", handler);
         }
         return this;
     }
@@ -121,10 +121,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    post(...handlers) {
-        const currentHandlers = this._map.get("POST");
-        if (!currentHandlers) {
-            this._map.set("POST", handlers);
+    post(handler) {
+        const currenTRouteModel = this._map.get("POST");
+        if (!currenTRouteModel) {
+            this._map.set("POST", handler);
         }
         return this;
     }
@@ -133,10 +133,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    put(...handlers) {
-        const currentHandlers = this._map.get("PUT");
-        if (!currentHandlers) {
-            this._map.set("PUT", handlers);
+    put(handler) {
+        const currenTRouteModel = this._map.get("PUT");
+        if (!currenTRouteModel) {
+            this._map.set("PUT", handler);
         }
         return this;
     }
@@ -145,10 +145,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    delete(...handlers) {
-        const currentHandlers = this._map.get("DELETE");
-        if (!currentHandlers) {
-            this._map.set("DELETE", handlers);
+    delete(handler) {
+        const currenTRouteModel = this._map.get("DELETE");
+        if (!currenTRouteModel) {
+            this._map.set("DELETE", handler);
         }
         return this;
     }
@@ -157,10 +157,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    connect(...handlers) {
-        const currentHandlers = this._map.get("CONNECT");
-        if (!currentHandlers) {
-            return this._map.set("CONNECT", handlers);
+    connect(handler) {
+        const currenTRouteModel = this._map.get("CONNECT");
+        if (!currenTRouteModel) {
+            return this._map.set("CONNECT", handler);
         }
         return this;
     }
@@ -169,10 +169,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    options(...handlers) {
-        const currentHandlers = this._map.get("OPTIONS");
-        if (!currentHandlers) {
-            return this._map.set("OPTIONS", handlers);
+    options(handler) {
+        const currenTRouteModel = this._map.get("OPTIONS");
+        if (!currenTRouteModel) {
+            return this._map.set("OPTIONS", handler);
         }
         return this;
     }
@@ -181,10 +181,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    trace(...handlers) {
-        const currentHandlers = this._map.get("TRACE");
-        if (!currentHandlers) {
-            return this._map.set("TRACE", handlers);
+    trace(handler) {
+        const currenTRouteModel = this._map.get("TRACE");
+        if (!currenTRouteModel) {
+            return this._map.set("TRACE", handler);
         }
         return this;
     }
@@ -193,10 +193,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    patch(...handlers) {
-        const currentHandlers = this._map.get("PATCH");
-        if (!currentHandlers) {
-            return this._map.set("PATCH", handlers);
+    patch(handler) {
+        const currenTRouteModel = this._map.get("PATCH");
+        if (!currenTRouteModel) {
+            return this._map.set("PATCH", handler);
         }
         return this;
     }

@@ -18,3 +18,4 @@ export declare const queryArgsKey: unique symbol;
 export declare const requestArgsKey: unique symbol;
 export declare const responseHeadersArgsKey: unique symbol;
 export declare const contextArgsKey: unique symbol;
+export declare const routeModelArgsKey: unique symbol;

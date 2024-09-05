@@ -1,5 +1,5 @@
 import * as Zod from "zod";
-import { argumentsKey, bodyArgsKey, contextArgsKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestHeaderArgsKey, requestHeadersArgsKey, responseHeadersArgsKey } from "../keys";
+import { argumentsKey, bodyArgsKey, contextArgsKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestHeaderArgsKey, requestHeadersArgsKey, responseHeadersArgsKey, routeModelArgsKey } from "../keys";
 export const RequestHeaders = (schema) => (target, methodName, parameterIndex) => {
     if (!methodName) {
         return;
@@ -107,6 +107,17 @@ export const Context = (key) => (target, methodName, parameterIndex) => {
         index: parameterIndex,
         type: contextArgsKey,
         key: key
+    };
+    Reflect.defineMetadata(argumentsKey, responseHeadersMetadata, target.constructor, methodName);
+};
+export const RouteModel = () => (target, methodName, parameterIndex) => {
+    if (!methodName) {
+        return;
+    }
+    const responseHeadersMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
+    responseHeadersMetadata[`argumentIndexes.${parameterIndex}`] = {
+        index: parameterIndex,
+        type: routeModelArgsKey
     };
     Reflect.defineMetadata(argumentsKey, responseHeadersMetadata, target.constructor, methodName);
 };

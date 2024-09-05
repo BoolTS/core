@@ -9,7 +9,8 @@ import {
     requestArgsKey,
     requestHeaderArgsKey,
     requestHeadersArgsKey,
-    responseHeadersArgsKey
+    responseHeadersArgsKey,
+    routeModelArgsKey
 } from "../keys";
 
 export type TArgumentsMetadata =
@@ -59,6 +60,10 @@ export type TArgumentsMetadata =
           index: number;
           type: typeof contextArgsKey;
           key?: symbol;
+      }
+    | {
+          index: number;
+          type: typeof routeModelArgsKey;
       };
 
 export const RequestHeaders =
@@ -254,6 +259,26 @@ export const Context = (key?: symbol) => (target: Object, methodName: string | s
         TArgumentsMetadata,
         {
             type: typeof contextArgsKey;
+        }
+    >;
+
+    Reflect.defineMetadata(argumentsKey, responseHeadersMetadata, target.constructor, methodName);
+};
+
+export const RouteModel = () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    if (!methodName) {
+        return;
+    }
+
+    const responseHeadersMetadata = Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
+
+    responseHeadersMetadata[`argumentIndexes.${parameterIndex}`] = {
+        index: parameterIndex,
+        type: routeModelArgsKey
+    } satisfies Extract<
+        TArgumentsMetadata,
+        {
+            type: typeof routeModelArgsKey;
         }
     >;
 

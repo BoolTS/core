@@ -2,18 +2,20 @@
 
 import type { THttpMethods } from "../http";
 
-type THandler<T = unknown> = Required<{
-    class: new (...args: Array<any>) => T;
-    funcName: string | symbol;
-    func: (...args: Array<any>) => unknown;
-}>;
+export type TRouteModel<T = unknown> = Readonly<
+    Required<{
+        class: new (...args: Array<any>) => T;
+        funcName: string | symbol;
+        func: (...args: Array<any>) => unknown;
+    }>
+>;
 
 export class Route {
     public static rootPattern = ":([a-z0-9A-Z_.-]{1,})";
 
     public readonly alias: string;
 
-    private _map = new Map<keyof THttpMethods, Array<THandler>>();
+    private _map = new Map<keyof THttpMethods, TRouteModel>();
 
     constructor(alias: string) {
         this.alias = this._thinAlias(alias);
@@ -22,13 +24,13 @@ export class Route {
     public test(
         pathname: string,
         method: keyof THttpMethods
-    ): Readonly<{ params: Record<string, string>; handlers: Array<THandler> }> | false | undefined {
+    ): Readonly<{ parameters: Record<string, string>; model: TRouteModel }> | false | undefined {
         try {
-            const handlers = this._map.get(method);
+            const model = this._map.get(method);
             const aliasSplitted = this.alias.split("/");
             const currentPathNameSplitted = this._thinAlias(pathname).split("/");
 
-            if (!handlers) {
+            if (!model) {
                 return undefined;
             }
 
@@ -68,8 +70,8 @@ export class Route {
             }
 
             return Object.freeze({
-                params: parameters,
-                handlers: handlers
+                parameters: parameters,
+                model: model
             });
         } catch (err) {
             console.error(err);
@@ -141,11 +143,11 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public get(...handlers: Array<THandler>) {
-        const currentHandlers = this._map.get("GET");
+    public get(handler: TRouteModel) {
+        const currenTRouteModel = this._map.get("GET");
 
-        if (!currentHandlers) {
-            this._map.set("GET", handlers);
+        if (!currenTRouteModel) {
+            this._map.set("GET", handler);
         }
 
         return this;
@@ -156,11 +158,11 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public post(...handlers: Array<THandler>) {
-        const currentHandlers = this._map.get("POST");
+    public post(handler: TRouteModel) {
+        const currenTRouteModel = this._map.get("POST");
 
-        if (!currentHandlers) {
-            this._map.set("POST", handlers);
+        if (!currenTRouteModel) {
+            this._map.set("POST", handler);
         }
 
         return this;
@@ -171,11 +173,11 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public put(...handlers: Array<THandler>) {
-        const currentHandlers = this._map.get("PUT");
+    public put(handler: TRouteModel) {
+        const currenTRouteModel = this._map.get("PUT");
 
-        if (!currentHandlers) {
-            this._map.set("PUT", handlers);
+        if (!currenTRouteModel) {
+            this._map.set("PUT", handler);
         }
 
         return this;
@@ -186,11 +188,11 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public delete(...handlers: Array<THandler>) {
-        const currentHandlers = this._map.get("DELETE");
+    public delete(handler: TRouteModel) {
+        const currenTRouteModel = this._map.get("DELETE");
 
-        if (!currentHandlers) {
-            this._map.set("DELETE", handlers);
+        if (!currenTRouteModel) {
+            this._map.set("DELETE", handler);
         }
 
         return this;
@@ -201,11 +203,11 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public connect(...handlers: Array<THandler>) {
-        const currentHandlers = this._map.get("CONNECT");
+    public connect(handler: TRouteModel) {
+        const currenTRouteModel = this._map.get("CONNECT");
 
-        if (!currentHandlers) {
-            return this._map.set("CONNECT", handlers);
+        if (!currenTRouteModel) {
+            return this._map.set("CONNECT", handler);
         }
 
         return this;
@@ -216,11 +218,11 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public options(...handlers: Array<THandler>) {
-        const currentHandlers = this._map.get("OPTIONS");
+    public options(handler: TRouteModel) {
+        const currenTRouteModel = this._map.get("OPTIONS");
 
-        if (!currentHandlers) {
-            return this._map.set("OPTIONS", handlers);
+        if (!currenTRouteModel) {
+            return this._map.set("OPTIONS", handler);
         }
 
         return this;
@@ -231,11 +233,11 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public trace(...handlers: Array<THandler>) {
-        const currentHandlers = this._map.get("TRACE");
+    public trace(handler: TRouteModel) {
+        const currenTRouteModel = this._map.get("TRACE");
 
-        if (!currentHandlers) {
-            return this._map.set("TRACE", handlers);
+        if (!currenTRouteModel) {
+            return this._map.set("TRACE", handler);
         }
 
         return this;
@@ -246,11 +248,11 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public patch(...handlers: Array<THandler>) {
-        const currentHandlers = this._map.get("PATCH");
+    public patch(handler: TRouteModel) {
+        const currenTRouteModel = this._map.get("PATCH");
 
-        if (!currentHandlers) {
-            return this._map.set("PATCH", handlers);
+        if (!currenTRouteModel) {
+            return this._map.set("PATCH", handler);
         }
 
         return this;

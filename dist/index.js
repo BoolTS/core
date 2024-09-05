@@ -1,6 +1,6 @@
 import "reflect-metadata";
-export * as Keys from "./keys";
-export * from "./interfaces";
-export * from "./hooks";
 export * from "./decorators";
+export * from "./hooks";
 export * from "./http";
+export * from "./interfaces";
+export * as Keys from "./keys";
