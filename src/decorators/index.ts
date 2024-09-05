@@ -1,4 +1,15 @@
-export { Body, Context, Param, Params, Query, Request, RequestHeader, RequestHeaders, ResponseHeaders } from "./arguments";
+export {
+    Body,
+    Context,
+    Param,
+    Params,
+    Query,
+    Request,
+    RequestHeader,
+    RequestHeaders,
+    ResponseHeaders,
+    RouteModel
+} from "./arguments";
 export { Controller } from "./controller";
 export { Dispatcher } from "./dispatcher";
 export { Guard } from "./guard";
