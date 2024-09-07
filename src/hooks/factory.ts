@@ -268,7 +268,7 @@ export const BoolFactory = async (target: new (...args: any[]) => unknown, optio
 
         Bun.serve({
             port: options.port,
-            fetch: async (request) => {
+            fetch: async (request, server) => {
                 const { headers } = request;
                 const start = performance.now();
                 const url = new URL(request.url);
@@ -785,7 +785,10 @@ export const BoolFactory = async (target: new (...args: any[]) => unknown, optio
                         const convertedPID = `${process.pid}`.yellow;
                         const convertedMethod = `${request.method.yellow}`.bgBlue;
                         const convertedReqIp = `${
-                            request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "<Unknown>"
+                            request.headers.get("x-forwarded-for") ||
+                            request.headers.get("x-real-ip") ||
+                            server.requestIP(request)?.address ||
+                            "<Unknown>"
                         }`.yellow;
                         const convertedTime = `${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
 

@@ -180,7 +180,7 @@ export const BoolFactory = async (target, options) => {
             });
         Bun.serve({
             port: options.port,
-            fetch: async (request) => {
+            fetch: async (request, server) => {
                 const { headers } = request;
                 const start = performance.now();
                 const url = new URL(request.url);
@@ -509,7 +509,10 @@ export const BoolFactory = async (target, options) => {
                         const end = performance.now();
                         const convertedPID = `${process.pid}`.yellow;
                         const convertedMethod = `${request.method.yellow}`.bgBlue;
-                        const convertedReqIp = `${request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "<Unknown>"}`.yellow;
+                        const convertedReqIp = `${request.headers.get("x-forwarded-for") ||
+                            request.headers.get("x-real-ip") ||
+                            server.requestIP(request)?.address ||
+                            "<Unknown>"}`.yellow;
                         const convertedTime = `${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
                         allowLogsMethods.includes(request.method.toUpperCase()) &&
                             console.info(`PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${url.pathname.blue} - Time: ${convertedTime}`);
