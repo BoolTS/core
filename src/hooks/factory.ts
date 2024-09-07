@@ -475,7 +475,7 @@ export const BoolFactory = async (target: new (...args: any[]) => unknown, optio
                     }
 
                     context[paramsArgsKey] = result.parameters;
-                    context[routeModelArgsKey] = result;
+                    context[routeModelArgsKey] = result.model;
 
                     let responseBody = undefined;
 

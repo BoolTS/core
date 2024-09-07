@@ -1,9 +1,9 @@
 import type { THttpMethods } from "../http";
-export type TRouteModel<T = unknown> = Readonly<Required<{
+export type TRouteModel<T = unknown> = Readonly<{
     class: new (...args: Array<any>) => T;
     funcName: string | symbol;
     func: (...args: Array<any>) => unknown;
-}>>;
+}>;
 export declare class Route {
     static rootPattern: string;
     readonly alias: string;
@@ -46,41 +46,41 @@ export declare class Route {
      * @param handlers
      * @returns
      */
-    connect(handler: TRouteModel): this | Map<keyof THttpMethods, Readonly<Required<{
+    connect(handler: TRouteModel): this | Map<keyof THttpMethods, Readonly<{
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
-    }>>>;
+    }>>;
     /**
      *
      * @param handlers
      * @returns
      */
-    options(handler: TRouteModel): this | Map<keyof THttpMethods, Readonly<Required<{
+    options(handler: TRouteModel): this | Map<keyof THttpMethods, Readonly<{
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
-    }>>>;
+    }>>;
     /**
      *
      * @param handlers
      * @returns
      */
-    trace(handler: TRouteModel): this | Map<keyof THttpMethods, Readonly<Required<{
+    trace(handler: TRouteModel): this | Map<keyof THttpMethods, Readonly<{
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
-    }>>>;
+    }>>;
     /**
      *
      * @param handlers
      * @returns
      */
-    patch(handler: TRouteModel): this | Map<keyof THttpMethods, Readonly<Required<{
+    patch(handler: TRouteModel): this | Map<keyof THttpMethods, Readonly<{
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
-    }>>>;
+    }>>;
     /**
      *
      * @param handlers

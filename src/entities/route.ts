@@ -2,13 +2,11 @@
 
 import type { THttpMethods } from "../http";
 
-export type TRouteModel<T = unknown> = Readonly<
-    Required<{
-        class: new (...args: Array<any>) => T;
-        funcName: string | symbol;
-        func: (...args: Array<any>) => unknown;
-    }>
->;
+export type TRouteModel<T = unknown> = Readonly<{
+    class: new (...args: Array<any>) => T;
+    funcName: string | symbol;
+    func: (...args: Array<any>) => unknown;
+}>;
 
 export class Route {
     public static rootPattern = ":([a-z0-9A-Z_.-]{1,})";

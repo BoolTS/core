@@ -320,7 +320,7 @@ export const BoolFactory = async (target, options) => {
                         });
                     }
                     context[paramsArgsKey] = result.parameters;
-                    context[routeModelArgsKey] = result;
+                    context[routeModelArgsKey] = result.model;
                     let responseBody = undefined;
                     // Execute before dispatcher(s)
                     for (let i = 0; i < beforeDispatcherGroup.length; i++) {
