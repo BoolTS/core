@@ -1,10 +1,25 @@
 import "colors";
-import "reflect-metadata";
 import Qs from "qs";
-import * as Zod from "zod";
+import "reflect-metadata";
 import { Router, RouterGroup } from "../entities";
 import { HttpClientError, HttpServerError, jsonErrorInfer } from "../http";
-import { argumentsKey, bodyArgsKey, configKey, contextArgsKey, controllerHttpKey, controllerKey, moduleKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestHeaderArgsKey, requestHeadersArgsKey, responseHeadersArgsKey, routeModelArgsKey } from "../keys";
+import {
+    argumentsKey,
+    bodyArgsKey,
+    configKey,
+    contextArgsKey,
+    controllerHttpKey,
+    controllerKey,
+    moduleKey,
+    paramArgsKey,
+    paramsArgsKey,
+    queryArgsKey,
+    requestArgsKey,
+    requestHeaderArgsKey,
+    requestHeadersArgsKey,
+    responseHeadersArgsKey,
+    routeModelArgsKey
+} from "../keys";
 import { Injector } from "./injector";
 export const controllerCreator = (controllerConstructor, group, prefix) => {
     if (!Reflect.getOwnMetadataKeys(controllerConstructor).includes(controllerKey)) {
@@ -18,7 +33,7 @@ export const controllerCreator = (controllerConstructor, group, prefix) => {
         prefix: "/",
         httpMetadata: []
     };
-    const routesMetadata = (Reflect.getOwnMetadata(controllerHttpKey, controllerConstructor) || []);
+    const routesMetadata = Reflect.getOwnMetadata(controllerHttpKey, controllerConstructor) || [];
     const router = new Router(`/${prefix || ""}/${controllerMetadata.prefix}`);
     routesMetadata.forEach((routeMetadata) => {
         if (typeof routeMetadata.descriptor.value !== "function") {
@@ -59,8 +74,7 @@ export const argumentsResolution = async (data, zodSchema, argumentIndex, funcNa
             });
         }
         return validation.data;
-    }
-    catch (error) {
+    } catch (error) {
         if (error instanceof HttpClientError) {
             throw error;
         }
@@ -70,12 +84,12 @@ export const argumentsResolution = async (data, zodSchema, argumentIndex, funcNa
             data: !(error instanceof Error)
                 ? error
                 : [
-                    {
-                        message: error.message,
-                        code: error.name,
-                        cause: error.cause
-                    }
-                ]
+                      {
+                          message: error.message,
+                          code: error.name,
+                          cause: error.cause
+                      }
+                  ]
         });
     }
 };
@@ -91,7 +105,17 @@ export const BoolFactory = async (target, options) => {
                 fetch: () => new Response()
             });
         }
-        const { loaders, middlewares, guards, beforeDispatchers, controllers, afterDispatchers, dependencies, prefix: modulePrefix, config: moduleConfig } = moduleMetadata;
+        const {
+            loaders,
+            middlewares,
+            guards,
+            beforeDispatchers,
+            controllers,
+            afterDispatchers,
+            dependencies,
+            prefix: modulePrefix,
+            config: moduleConfig
+        } = moduleMetadata;
         // Configuration(s)
         const { allowLogsMethods, config } = Object.freeze({
             allowLogsMethods: options?.log?.methods,
@@ -114,8 +138,7 @@ export const BoolFactory = async (target, options) => {
                         const result = await func({ config });
                         console.info(`INFO! Loader [${key}] initialized successfully.`);
                         return result;
-                    }
-                    catch (error) {
+                    } catch (error) {
                         console.error(`WARNING! Loader [${key}] initialization failed.`);
                         options.debug && console.error(error);
                         throw error;
@@ -134,50 +157,52 @@ export const BoolFactory = async (target, options) => {
         const middlewareGroup = !middlewares
             ? []
             : middlewares.map((middleware) => {
-                const middlewareInstance = Injector.get(middleware);
-                return Object.freeze({
-                    class: middleware,
-                    funcName: "enforce",
-                    func: middlewareInstance.enforce.bind(middlewareInstance)
-                });
-            });
+                  const middlewareInstance = Injector.get(middleware);
+                  return Object.freeze({
+                      class: middleware,
+                      funcName: "enforce",
+                      func: middlewareInstance.enforce.bind(middlewareInstance)
+                  });
+              });
         // Guard(s)
         const guardGroup = !guards
             ? []
             : guards.map((guard) => {
-                const guardInstance = Injector.get(guard);
-                return Object.freeze({
-                    class: guard,
-                    funcName: "enforce",
-                    func: guardInstance.enforce.bind(guardInstance)
-                });
-            });
+                  const guardInstance = Injector.get(guard);
+                  return Object.freeze({
+                      class: guard,
+                      funcName: "enforce",
+                      func: guardInstance.enforce.bind(guardInstance)
+                  });
+              });
         // Before dispatcher(s)
         const beforeDispatcherGroup = !beforeDispatchers
             ? []
             : beforeDispatchers.map((beforeDispatcher) => {
-                const beforeDispatcherInstance = Injector.get(beforeDispatcher);
-                return Object.freeze({
-                    class: beforeDispatcher,
-                    funcName: "execute",
-                    func: beforeDispatcherInstance.execute.bind(beforeDispatcherInstance)
-                });
-            });
+                  const beforeDispatcherInstance = Injector.get(beforeDispatcher);
+                  return Object.freeze({
+                      class: beforeDispatcher,
+                      funcName: "execute",
+                      func: beforeDispatcherInstance.execute.bind(beforeDispatcherInstance)
+                  });
+              });
         // Controller(s)
         const routerGroup = new RouterGroup();
         controllers &&
-            controllers.map((controllerConstructor) => controllerCreator(controllerConstructor, routerGroup, `${options.prefix || ""}/${modulePrefix || ""}`));
+            controllers.map((controllerConstructor) =>
+                controllerCreator(controllerConstructor, routerGroup, `${options.prefix || ""}/${modulePrefix || ""}`)
+            );
         // After dispatcher(s)
         const afterDispatcherGroup = !afterDispatchers
             ? []
             : afterDispatchers.map((afterDispatcher) => {
-                const afterDispatcherInstance = Injector.get(afterDispatcher);
-                return Object.freeze({
-                    class: afterDispatcher,
-                    funcName: "execute",
-                    func: afterDispatcherInstance.execute.bind(afterDispatcherInstance)
-                });
-            });
+                  const afterDispatcherInstance = Injector.get(afterDispatcher);
+                  return Object.freeze({
+                      class: afterDispatcher,
+                      funcName: "execute",
+                      func: afterDispatcherInstance.execute.bind(afterDispatcherInstance)
+                  });
+              });
         Bun.serve({
             port: options.port,
             fetch: async (request, server) => {
@@ -205,7 +230,8 @@ export const BoolFactory = async (target, options) => {
                     for (let i = 0; i < middlewareGroup.length; i++) {
                         const middlewareArguments = [];
                         const middlewareCollection = middlewareGroup[i];
-                        const middlewareMetadata = Reflect.getOwnMetadata(argumentsKey, middlewareCollection.class, middlewareCollection.funcName) ||
+                        const middlewareMetadata =
+                            Reflect.getOwnMetadata(argumentsKey, middlewareCollection.class, middlewareCollection.funcName) ||
                             {};
                         if (middlewareMetadata) {
                             for (const [_key, argsMetadata] of Object.entries(middlewareMetadata)) {
@@ -213,12 +239,22 @@ export const BoolFactory = async (target, options) => {
                                     case requestArgsKey:
                                         middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? request
-                                            : await argumentsResolution(request, argsMetadata.zodSchema, argsMetadata.index, middlewareCollection.funcName);
+                                            : await argumentsResolution(
+                                                  request,
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  middlewareCollection.funcName
+                                              );
                                         break;
                                     case bodyArgsKey:
                                         middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? await request[argsMetadata.parser || "json"]()
-                                            : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, middlewareCollection.funcName);
+                                            : await argumentsResolution(
+                                                  await request[argsMetadata.parser || "json"](),
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  middlewareCollection.funcName
+                                              );
                                         break;
                                     case contextArgsKey:
                                         middlewareArguments[argsMetadata.index] = !argsMetadata.key
@@ -228,7 +264,12 @@ export const BoolFactory = async (target, options) => {
                                     case requestHeadersArgsKey:
                                         middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers
-                                            : await argumentsResolution(headers.toJSON(), argsMetadata.zodSchema, argsMetadata.index, middlewareCollection.funcName);
+                                            : await argumentsResolution(
+                                                  headers.toJSON(),
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  middlewareCollection.funcName
+                                              );
                                         break;
                                     case responseHeadersArgsKey:
                                         middlewareArguments[argsMetadata.index] = context[argsMetadata.type];
@@ -236,7 +277,12 @@ export const BoolFactory = async (target, options) => {
                                     case requestHeaderArgsKey:
                                         middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers.get(argsMetadata.key) || undefined
-                                            : await argumentsResolution(headers.get(argsMetadata.key) || undefined, argsMetadata.zodSchema, argsMetadata.index, middlewareCollection.funcName);
+                                            : await argumentsResolution(
+                                                  headers.get(argsMetadata.key) || undefined,
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  middlewareCollection.funcName
+                                              );
                                         break;
                                     case routeModelArgsKey:
                                         break;
@@ -245,7 +291,12 @@ export const BoolFactory = async (target, options) => {
                                             ? !(argsMetadata.type in context)
                                                 ? undefined
                                                 : context[argsMetadata.type]
-                                            : await argumentsResolution(!(argsMetadata.type in context) ? undefined : context[argsMetadata.type], argsMetadata.zodSchema, argsMetadata.index, middlewareCollection.funcName);
+                                            : await argumentsResolution(
+                                                  !(argsMetadata.type in context) ? undefined : context[argsMetadata.type],
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  middlewareCollection.funcName
+                                              );
                                         break;
                                 }
                             }
@@ -260,19 +311,30 @@ export const BoolFactory = async (target, options) => {
                     for (let i = 0; i < guardGroup.length; i++) {
                         const guardArguments = [];
                         const guardCollection = guardGroup[i];
-                        const guardMetadata = Reflect.getOwnMetadata(argumentsKey, guardCollection.class, guardCollection.funcName) || {};
+                        const guardMetadata =
+                            Reflect.getOwnMetadata(argumentsKey, guardCollection.class, guardCollection.funcName) || {};
                         if (guardMetadata) {
                             for (const [_key, argsMetadata] of Object.entries(guardMetadata)) {
                                 switch (argsMetadata.type) {
                                     case requestArgsKey:
                                         guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? request
-                                            : await argumentsResolution(request, argsMetadata.zodSchema, argsMetadata.index, guardCollection.funcName);
+                                            : await argumentsResolution(
+                                                  request,
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  guardCollection.funcName
+                                              );
                                         break;
                                     case bodyArgsKey:
                                         guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? await request[argsMetadata.parser || "json"]()
-                                            : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, guardCollection.funcName);
+                                            : await argumentsResolution(
+                                                  await request[argsMetadata.parser || "json"](),
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  guardCollection.funcName
+                                              );
                                         break;
                                     case contextArgsKey:
                                         guardArguments[argsMetadata.index] = !argsMetadata.key
@@ -282,7 +344,12 @@ export const BoolFactory = async (target, options) => {
                                     case requestHeadersArgsKey:
                                         guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers
-                                            : await argumentsResolution(headers.toJSON(), argsMetadata.zodSchema, argsMetadata.index, guardCollection.funcName);
+                                            : await argumentsResolution(
+                                                  headers.toJSON(),
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  guardCollection.funcName
+                                              );
                                         break;
                                     case responseHeadersArgsKey:
                                         guardArguments[argsMetadata.index] = context[argsMetadata.type];
@@ -290,14 +357,24 @@ export const BoolFactory = async (target, options) => {
                                     case requestHeaderArgsKey:
                                         guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers.get(argsMetadata.key) || undefined
-                                            : await argumentsResolution(headers.get(argsMetadata.key) || undefined, argsMetadata.zodSchema, argsMetadata.index, guardCollection.funcName);
+                                            : await argumentsResolution(
+                                                  headers.get(argsMetadata.key) || undefined,
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  guardCollection.funcName
+                                              );
                                         break;
                                     case routeModelArgsKey:
                                         break;
                                     default:
                                         guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? context[argsMetadata.type]
-                                            : await argumentsResolution(context[argsMetadata.type], argsMetadata.zodSchema, argsMetadata.index, guardCollection.funcName);
+                                            : await argumentsResolution(
+                                                  context[argsMetadata.type],
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  guardCollection.funcName
+                                              );
                                         break;
                                 }
                             }
@@ -326,19 +403,34 @@ export const BoolFactory = async (target, options) => {
                     for (let i = 0; i < beforeDispatcherGroup.length; i++) {
                         const beforeDispatcherArguments = [];
                         const beforeDispatcherCollection = beforeDispatcherGroup[i];
-                        const beforeDispatcherMetadata = Reflect.getOwnMetadata(argumentsKey, beforeDispatcherCollection.class, beforeDispatcherCollection.funcName) || {};
+                        const beforeDispatcherMetadata =
+                            Reflect.getOwnMetadata(
+                                argumentsKey,
+                                beforeDispatcherCollection.class,
+                                beforeDispatcherCollection.funcName
+                            ) || {};
                         if (beforeDispatcherMetadata) {
                             for (const [_key, argsMetadata] of Object.entries(beforeDispatcherMetadata)) {
                                 switch (argsMetadata.type) {
                                     case requestArgsKey:
                                         beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? request
-                                            : await argumentsResolution(request, argsMetadata.zodSchema, argsMetadata.index, beforeDispatcherCollection.funcName);
+                                            : await argumentsResolution(
+                                                  request,
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  beforeDispatcherCollection.funcName
+                                              );
                                         break;
                                     case bodyArgsKey:
                                         beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? await request[argsMetadata.parser || "json"]()
-                                            : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, beforeDispatcherCollection.funcName);
+                                            : await argumentsResolution(
+                                                  await request[argsMetadata.parser || "json"](),
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  beforeDispatcherCollection.funcName
+                                              );
                                         break;
                                     case contextArgsKey:
                                         beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.key
@@ -348,7 +440,12 @@ export const BoolFactory = async (target, options) => {
                                     case requestHeadersArgsKey:
                                         beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers
-                                            : await argumentsResolution(headers.toJSON(), argsMetadata.zodSchema, argsMetadata.index, beforeDispatcherCollection.funcName);
+                                            : await argumentsResolution(
+                                                  headers.toJSON(),
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  beforeDispatcherCollection.funcName
+                                              );
                                         break;
                                     case responseHeadersArgsKey:
                                         beforeDispatcherArguments[argsMetadata.index] = context[argsMetadata.type];
@@ -356,12 +453,22 @@ export const BoolFactory = async (target, options) => {
                                     case requestHeaderArgsKey:
                                         beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers.get(argsMetadata.key) || undefined
-                                            : await argumentsResolution(headers.get(argsMetadata.key) || undefined, argsMetadata.zodSchema, argsMetadata.index, beforeDispatcherCollection.funcName);
+                                            : await argumentsResolution(
+                                                  headers.get(argsMetadata.key) || undefined,
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  beforeDispatcherCollection.funcName
+                                              );
                                         break;
                                     case paramArgsKey:
                                         beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? context[paramArgsKey][argsMetadata.key] || undefined
-                                            : await argumentsResolution(context[paramArgsKey][argsMetadata.key], argsMetadata.zodSchema, argsMetadata.index, beforeDispatcherCollection.funcName);
+                                            : await argumentsResolution(
+                                                  context[paramArgsKey][argsMetadata.key],
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  beforeDispatcherCollection.funcName
+                                              );
                                         break;
                                     case routeModelArgsKey:
                                         beforeDispatcherArguments[argsMetadata.index] = context[routeModelArgsKey];
@@ -369,7 +476,12 @@ export const BoolFactory = async (target, options) => {
                                     default:
                                         beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? context[argsMetadata.type]
-                                            : await argumentsResolution(context[argsMetadata.type], argsMetadata.zodSchema, argsMetadata.index, beforeDispatcherCollection.funcName);
+                                            : await argumentsResolution(
+                                                  context[argsMetadata.type],
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  beforeDispatcherCollection.funcName
+                                              );
                                         break;
                                 }
                             }
@@ -379,19 +491,34 @@ export const BoolFactory = async (target, options) => {
                     // Execute controller action
                     const controllerActionArguments = [];
                     const controllerActionCollection = result.model;
-                    const controllerActionMetadata = Reflect.getOwnMetadata(argumentsKey, controllerActionCollection.class, controllerActionCollection.funcName) || {};
+                    const controllerActionMetadata =
+                        Reflect.getOwnMetadata(
+                            argumentsKey,
+                            controllerActionCollection.class,
+                            controllerActionCollection.funcName
+                        ) || {};
                     if (controllerActionMetadata) {
                         for (const [_key, argsMetadata] of Object.entries(controllerActionMetadata)) {
                             switch (argsMetadata.type) {
                                 case requestArgsKey:
                                     controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                         ? request
-                                        : await argumentsResolution(request, argsMetadata.zodSchema, argsMetadata.index, controllerActionCollection.funcName);
+                                        : await argumentsResolution(
+                                              request,
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              controllerActionCollection.funcName
+                                          );
                                     break;
                                 case bodyArgsKey:
                                     controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                         ? await request[argsMetadata.parser || "json"]()
-                                        : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, controllerActionCollection.funcName);
+                                        : await argumentsResolution(
+                                              await request[argsMetadata.parser || "json"](),
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              controllerActionCollection.funcName
+                                          );
                                     break;
                                 case contextArgsKey:
                                     controllerActionArguments[argsMetadata.index] = !argsMetadata.key
@@ -401,7 +528,12 @@ export const BoolFactory = async (target, options) => {
                                 case requestHeadersArgsKey:
                                     controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                         ? headers
-                                        : await argumentsResolution(headers.toJSON(), argsMetadata.zodSchema, argsMetadata.index, controllerActionCollection.funcName);
+                                        : await argumentsResolution(
+                                              headers.toJSON(),
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              controllerActionCollection.funcName
+                                          );
                                     break;
                                 case responseHeadersArgsKey:
                                     controllerActionArguments[argsMetadata.index] = context[argsMetadata.type];
@@ -409,12 +541,22 @@ export const BoolFactory = async (target, options) => {
                                 case requestHeaderArgsKey:
                                     controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                         ? headers.get(argsMetadata.key) || undefined
-                                        : await argumentsResolution(headers.get(argsMetadata.key) || undefined, argsMetadata.zodSchema, argsMetadata.index, controllerActionCollection.funcName);
+                                        : await argumentsResolution(
+                                              headers.get(argsMetadata.key) || undefined,
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              controllerActionCollection.funcName
+                                          );
                                     break;
                                 case paramArgsKey:
                                     controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                         ? context[paramArgsKey][argsMetadata.key] || undefined
-                                        : await argumentsResolution(context[paramArgsKey][argsMetadata.key], argsMetadata.zodSchema, argsMetadata.index, controllerActionCollection.funcName);
+                                        : await argumentsResolution(
+                                              context[paramArgsKey][argsMetadata.key],
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              controllerActionCollection.funcName
+                                          );
                                     break;
                                 case routeModelArgsKey:
                                     controllerActionArguments[argsMetadata.index] = context[routeModelArgsKey];
@@ -422,7 +564,12 @@ export const BoolFactory = async (target, options) => {
                                 default:
                                     controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                         ? context[argsMetadata.type]
-                                        : await argumentsResolution(context[argsMetadata.type], argsMetadata.zodSchema, argsMetadata.index, controllerActionCollection.funcName);
+                                        : await argumentsResolution(
+                                              context[argsMetadata.type],
+                                              argsMetadata.zodSchema,
+                                              argsMetadata.index,
+                                              controllerActionCollection.funcName
+                                          );
                                     break;
                             }
                         }
@@ -432,19 +579,34 @@ export const BoolFactory = async (target, options) => {
                     for (let i = 0; i < afterDispatcherGroup.length; i++) {
                         const afterDispatcherArguments = [];
                         const afterDispatcherCollection = afterDispatcherGroup[i];
-                        const afterDispatcherMetadata = Reflect.getOwnMetadata(argumentsKey, afterDispatcherCollection.class, afterDispatcherCollection.funcName) || {};
+                        const afterDispatcherMetadata =
+                            Reflect.getOwnMetadata(
+                                argumentsKey,
+                                afterDispatcherCollection.class,
+                                afterDispatcherCollection.funcName
+                            ) || {};
                         if (afterDispatcherMetadata) {
                             for (const [_key, argsMetadata] of Object.entries(afterDispatcherMetadata)) {
                                 switch (argsMetadata.type) {
                                     case requestArgsKey:
                                         afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? request
-                                            : await argumentsResolution(request, argsMetadata.zodSchema, argsMetadata.index, afterDispatcherCollection.funcName);
+                                            : await argumentsResolution(
+                                                  request,
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  afterDispatcherCollection.funcName
+                                              );
                                         break;
                                     case bodyArgsKey:
                                         afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? await request[argsMetadata.parser || "json"]()
-                                            : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, afterDispatcherCollection.funcName);
+                                            : await argumentsResolution(
+                                                  await request[argsMetadata.parser || "json"](),
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  afterDispatcherCollection.funcName
+                                              );
                                         break;
                                     case contextArgsKey:
                                         afterDispatcherArguments[argsMetadata.index] = !argsMetadata.key
@@ -454,7 +616,12 @@ export const BoolFactory = async (target, options) => {
                                     case requestHeadersArgsKey:
                                         afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers
-                                            : await argumentsResolution(headers.toJSON(), argsMetadata.zodSchema, argsMetadata.index, afterDispatcherCollection.funcName);
+                                            : await argumentsResolution(
+                                                  headers.toJSON(),
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  afterDispatcherCollection.funcName
+                                              );
                                         break;
                                     case responseHeadersArgsKey:
                                         afterDispatcherArguments[argsMetadata.index] = context[argsMetadata.type];
@@ -462,12 +629,22 @@ export const BoolFactory = async (target, options) => {
                                     case requestHeaderArgsKey:
                                         afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? headers.get(argsMetadata.key) || undefined
-                                            : await argumentsResolution(headers.get(argsMetadata.key) || undefined, argsMetadata.zodSchema, argsMetadata.index, afterDispatcherCollection.funcName);
+                                            : await argumentsResolution(
+                                                  headers.get(argsMetadata.key) || undefined,
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  afterDispatcherCollection.funcName
+                                              );
                                         break;
                                     case paramArgsKey:
                                         afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? context[paramArgsKey][argsMetadata.key] || undefined
-                                            : await argumentsResolution(context[paramArgsKey][argsMetadata.key], argsMetadata.zodSchema, argsMetadata.index, afterDispatcherCollection.funcName);
+                                            : await argumentsResolution(
+                                                  context[paramArgsKey][argsMetadata.key],
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  afterDispatcherCollection.funcName
+                                              );
                                         break;
                                     case routeModelArgsKey:
                                         afterDispatcherArguments[argsMetadata.index] = context[routeModelArgsKey];
@@ -475,7 +652,12 @@ export const BoolFactory = async (target, options) => {
                                     default:
                                         afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
                                             ? context[argsMetadata.type]
-                                            : await argumentsResolution(context[argsMetadata.type], argsMetadata.zodSchema, argsMetadata.index, afterDispatcherCollection.funcName);
+                                            : await argumentsResolution(
+                                                  context[argsMetadata.type],
+                                                  argsMetadata.zodSchema,
+                                                  argsMetadata.index,
+                                                  afterDispatcherCollection.funcName
+                                              );
                                         break;
                                 }
                             }
@@ -486,42 +668,46 @@ export const BoolFactory = async (target, options) => {
                     context[responseHeadersArgsKey].set("X-Powered-By", "Bool Typescript");
                     return responseBody instanceof Response
                         ? responseBody
-                        : new Response(!responseBody
-                            ? undefined
-                            : JSON.stringify({
-                                httpCode: 200,
-                                message: "SUCCESS",
-                                data: responseBody
-                            }), {
-                            status: !responseBody ? 204 : 200,
-                            statusText: "SUCCESS",
-                            headers: context[responseHeadersArgsKey]
-                        });
-                }
-                catch (error) {
+                        : new Response(
+                              !responseBody
+                                  ? undefined
+                                  : JSON.stringify({
+                                        httpCode: 200,
+                                        message: "SUCCESS",
+                                        data: responseBody
+                                    }),
+                              {
+                                  status: !responseBody ? 204 : 200,
+                                  statusText: "SUCCESS",
+                                  headers: context[responseHeadersArgsKey]
+                              }
+                          );
+                } catch (error) {
                     options.debug && console.error(error);
                     // Set default header(s)
                     context[responseHeadersArgsKey].set("X-Powered-By", "Bool Typescript");
                     return jsonErrorInfer(error, context[responseHeadersArgsKey]);
-                }
-                finally {
+                } finally {
                     if (allowLogsMethods) {
                         const end = performance.now();
                         const convertedPID = `${process.pid}`.yellow;
                         const convertedMethod = `${request.method.yellow}`.bgBlue;
-                        const convertedReqIp = `${request.headers.get("x-forwarded-for") ||
+                        const convertedReqIp = `${
+                            request.headers.get("x-forwarded-for") ||
                             request.headers.get("x-real-ip") ||
                             server.requestIP(request)?.address ||
-                            "<Unknown>"}`.yellow;
+                            "<Unknown>"
+                        }`.yellow;
                         const convertedTime = `${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
                         allowLogsMethods.includes(request.method.toUpperCase()) &&
-                            console.info(`PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${url.pathname.blue} - Time: ${convertedTime}`);
+                            console.info(
+                                `PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${url.pathname.blue} - Time: ${convertedTime}`
+                            );
                     }
                 }
             }
         });
-    }
-    catch (error) {
+    } catch (error) {
         options.debug && console.error(error);
         throw error;
     }
