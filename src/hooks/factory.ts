@@ -52,6 +52,10 @@ export type TBoolFactoryOptions = Required<{
             methods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
         }>;
         queryParser: Parameters<typeof Qs.parse>[1];
+        static: Required<{
+            path: string;
+        }> &
+            Partial<{}>;
     }>;
 
 export const responseConverter = (response: Response) => {
@@ -916,8 +920,9 @@ export const BoolFactory = async (
 ) => {
     try {
         const modulesConverted = !Array.isArray(modules) ? [modules] : modules;
-        const { allowLogsMethods } = Object.freeze({
-            allowLogsMethods: options?.log?.methods
+        const { allowLogsMethods, staticOption } = Object.freeze({
+            allowLogsMethods: options?.log?.methods,
+            staticOption: options.static
         });
 
         const moduleResolutions = await Promise.all(
@@ -944,6 +949,21 @@ export const BoolFactory = async (
                 const query = Qs.parse(url.searchParams.toString(), options.queryParser);
 
                 try {
+                    if (staticOption) {
+                        const file = Bun.file(`${staticOption.path}/${url.pathname}`);
+                        const isFileExists = await file.exists();
+
+                        if (isFileExists) {
+                            return new Response(await file.arrayBuffer(), {
+                                status: 200,
+                                statusText: "SUCCESS",
+                                headers: {
+                                    "Content-Type": file.type
+                                }
+                            });
+                        }
+                    }
+
                     let collection:
                         | undefined
                         | Required<{
