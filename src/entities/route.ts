@@ -10,6 +10,7 @@ export type TRouteModel<T = unknown> = Readonly<{
 
 export class Route {
     public static rootPattern = ":([a-z0-9A-Z_-]{1,})";
+    public static innerRootPattern = "([a-z0-9A-Z_-]{1,})";
 
     public readonly alias: string;
 
@@ -38,6 +39,11 @@ export class Route {
             }
 
             const parameters: Record<string, string> = Object();
+            const matchingRegex = this.alias.replace(new RegExp(Route.rootPattern, "g"), Route.innerRootPattern);
+
+            if (!new RegExp(matchingRegex).test(this._thinAlias(pathname))) {
+                return undefined;
+            }
 
             for (let index = 0; index < aliasSplitted.length; index++) {
                 const aliasPart = aliasSplitted[index];
@@ -51,9 +57,18 @@ export class Route {
 
                     aliasPart.replace(new RegExp(Route.rootPattern, "g"), (match, key, offset) => {
                         if (offset === 0) {
-                            Object.assign(parameters, {
-                                [key]: pathnamePart
-                            });
+                            pathnamePart.replace(
+                                new RegExp(Route.innerRootPattern, "g"),
+                                (innerMatch, innerKey, innerOffset) => {
+                                    if (innerOffset === 0) {
+                                        Object.assign(parameters, {
+                                            [key]: innerMatch
+                                        });
+                                    }
+
+                                    return innerMatch;
+                                }
+                            );
                         }
 
                         return match;

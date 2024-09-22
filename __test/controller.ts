@@ -58,13 +58,13 @@ export class TestController {
         console.log("testInject", testInject);
     }
 
-    @Get("abc/:id")
+    @Get("abc/:id.xml")
     public get(@Param("id") id: string) {
         console.log("HEHE", id, typeof id);
         console.log("this.testService", this.testService.exec());
     }
 
-    @Post("abc/:id/provider/:providerId")
+    @Post("abc/:id/provider/:providerId.xml")
     public async post(
         @RequestHeaders(headersSchema)
         headers: Zod.infer<typeof headersSchema>,
@@ -75,7 +75,7 @@ export class TestController {
         @RequestBody(bodySchema)
         body: Zod.infer<typeof bodySchema>
     ) {
-        console.log("req.headers", headers);
+        console.log("req.headers", params);
         console.log("===========================");
     }
 

@@ -6,6 +6,7 @@ export type TRouteModel<T = unknown> = Readonly<{
 }>;
 export declare class Route {
     static rootPattern: string;
+    static innerRootPattern: string;
     readonly alias: string;
     private _map;
     constructor(alias: string);

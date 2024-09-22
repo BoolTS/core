@@ -1,6 +1,7 @@
 "use strict";
 export class Route {
     static rootPattern = ":([a-z0-9A-Z_-]{1,})";
+    static innerRootPattern = "([a-z0-9A-Z_-]{1,})";
     alias;
     _map = new Map();
     constructor(alias) {
@@ -19,6 +20,10 @@ export class Route {
                 return undefined;
             }
             const parameters = Object();
+            const matchingRegex = this.alias.replace(new RegExp(Route.rootPattern, "g"), Route.innerRootPattern);
+            if (!new RegExp(matchingRegex).test(this._thinAlias(pathname))) {
+                return undefined;
+            }
             for (let index = 0; index < aliasSplitted.length; index++) {
                 const aliasPart = aliasSplitted[index];
                 const pathnamePart = currentPathNameSplitted[index];
@@ -31,8 +36,13 @@ export class Route {
                     let isFailed = false;
                     aliasPart.replace(new RegExp(Route.rootPattern, "g"), (match, key, offset) => {
                         if (offset === 0) {
-                            Object.assign(parameters, {
-                                [key]: pathnamePart
+                            pathnamePart.replace(new RegExp(Route.innerRootPattern, "g"), (innerMatch, innerKey, innerOffset) => {
+                                if (innerOffset === 0) {
+                                    Object.assign(parameters, {
+                                        [key]: innerMatch
+                                    });
+                                }
+                                return innerMatch;
                             });
                         }
                         return match;
