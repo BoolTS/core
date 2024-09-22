@@ -21,6 +21,9 @@ export type TBoolFactoryOptions = Required<{
         methods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
     }>;
     queryParser: Parameters<typeof Qs.parse>[1];
+    static: Required<{
+        path: string;
+    }> & Partial<{}>;
 }>;
 export declare const responseConverter: (response: Response) => Response;
 export declare const controllerCreator: (controllerConstructor: new (...args: any[]) => unknown, group: RouterGroup, injector: Injector, prefix?: string) => RouterGroup;

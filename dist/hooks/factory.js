@@ -568,8 +568,9 @@ const fetcher = async (bun, bool) => {
 export const BoolFactory = async (modules, options) => {
     try {
         const modulesConverted = !Array.isArray(modules) ? [modules] : modules;
-        const { allowLogsMethods } = Object.freeze({
-            allowLogsMethods: options?.log?.methods
+        const { allowLogsMethods, staticOption } = Object.freeze({
+            allowLogsMethods: options?.log?.methods,
+            staticOption: options.static
         });
         const moduleResolutions = await Promise.all(modulesConverted.map((moduleConverted) => moduleResolution(moduleConverted, options)));
         const availableModuleResolutions = moduleResolutions.filter((moduleResolution) => typeof moduleResolution !== "undefined");
@@ -586,6 +587,19 @@ export const BoolFactory = async (modules, options) => {
                 const url = new URL(request.url);
                 const query = Qs.parse(url.searchParams.toString(), options.queryParser);
                 try {
+                    if (staticOption) {
+                        const file = Bun.file(`${staticOption.path}/${url.pathname}`);
+                        const isFileExists = await file.exists();
+                        if (isFileExists) {
+                            return new Response(await file.arrayBuffer(), {
+                                status: 200,
+                                statusText: "SUCCESS",
+                                headers: {
+                                    "Content-Type": file.type
+                                }
+                            });
+                        }
+                    }
                     let collection;
                     for (let i = 0; i < availableModuleResolutions.length; i++) {
                         const routeResult = availableModuleResolutions[i].routerGroup.find(url.pathname, request.method);
