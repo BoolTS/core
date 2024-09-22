@@ -408,7 +408,18 @@ const fetcher = async (
                                   collection.funcName
                               );
                         break;
+                    case paramArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? context[paramsArgsKey][argsMetadata.key] || undefined
+                            : await argumentsResolution(
+                                  context[paramsArgsKey][argsMetadata.key],
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
                     case routeModelArgsKey:
+                        args[argsMetadata.index] = context[routeModelArgsKey];
                         break;
                     default:
                         args[argsMetadata.index] = !argsMetadata.zodSchema
@@ -489,7 +500,18 @@ const fetcher = async (
                                   collection.funcName
                               );
                         break;
+                    case paramArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? context[paramsArgsKey][argsMetadata.key] || undefined
+                            : await argumentsResolution(
+                                  context[paramsArgsKey][argsMetadata.key],
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
                     case routeModelArgsKey:
+                        args[argsMetadata.index] = context[routeModelArgsKey];
                         break;
                     default:
                         args[argsMetadata.index] = !argsMetadata.zodSchema
@@ -774,6 +796,10 @@ const fetcher = async (
         await collection.func(...args);
     }
 
+    if (context[responseBodyArgsKey] instanceof Response) {
+        return responseConverter(context[responseBodyArgsKey]);
+    }
+
     // Execute end middleware(s)
     for (let i = 0; i < endMiddlewareGroup.length; i++) {
         const args = [];
@@ -830,7 +856,18 @@ const fetcher = async (
                                   collection.funcName
                               );
                         break;
+                    case paramArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? context[paramsArgsKey][argsMetadata.key] || undefined
+                            : await argumentsResolution(
+                                  context[paramsArgsKey][argsMetadata.key],
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
                     case routeModelArgsKey:
+                        args[argsMetadata.index] = context[routeModelArgsKey];
                         break;
                     default:
                         args[argsMetadata.index] = !argsMetadata.zodSchema
@@ -853,10 +890,6 @@ const fetcher = async (
         if (context[responseBodyArgsKey] instanceof Response) {
             return responseConverter(context[responseBodyArgsKey]);
         }
-    }
-
-    if (context[responseBodyArgsKey] instanceof Response) {
-        return responseConverter(context[responseBodyArgsKey]);
     }
 
     return responseConverter(
