@@ -528,6 +528,9 @@ const fetcher = async (bun, bool) => {
             }
         }
         context[responseBodyArgsKey] = await collection.func(...args);
+        if (context[responseBodyArgsKey] instanceof Response) {
+            return responseConverter(context[responseBodyArgsKey]);
+        }
     }
     if (context[responseBodyArgsKey] instanceof Response) {
         return responseConverter(context[responseBodyArgsKey]);
