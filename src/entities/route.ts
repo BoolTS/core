@@ -9,7 +9,7 @@ export type TRouteModel<T = unknown> = Readonly<{
 }>;
 
 export class Route {
-    public static rootPattern = ":([a-z0-9A-Z_.-]{1,})";
+    public static rootPattern = ":([a-z0-9A-Z_-]{1,})";
 
     public readonly alias: string;
 

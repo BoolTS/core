@@ -1,6 +1,6 @@
 "use strict";
 export class Route {
-    static rootPattern = ":([a-z0-9A-Z_.-]{1,})";
+    static rootPattern = ":([a-z0-9A-Z_-]{1,})";
     alias;
     _map = new Map();
     constructor(alias) {
