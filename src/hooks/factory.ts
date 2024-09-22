@@ -322,8 +322,7 @@ const fetcher = async (
         query: Record<string, unknown>;
         route: NonNullable<ReturnType<RouterGroup["find"]>>;
         moduleResolution: NonNullable<Awaited<ReturnType<typeof moduleResolution>>>;
-    }>,
-    options: TBoolFactoryOptions
+    }>
 ) => {
     const {
         query,
@@ -951,8 +950,7 @@ export const BoolFactory = async (
                             query: query,
                             route: collection.route,
                             moduleResolution: collection.resolution
-                        },
-                        options
+                        }
                     );
                 } catch (error) {
                     options.debug && console.error(error);

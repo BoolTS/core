@@ -200,7 +200,7 @@ export const moduleResolution = async (module, options) => {
         routerGroup
     });
 };
-const fetcher = async (bun, bool, options) => {
+const fetcher = async (bun, bool) => {
     const { query, route: { parameters, model }, moduleResolution: { startMiddlewareGroup, endMiddlewareGroup, guardGroup, openDispatcherGroup, closeDispatcherGroup } } = bool;
     const { request, server: _server } = bun;
     const context = {
@@ -590,7 +590,7 @@ export const BoolFactory = async (modules, options) => {
                         query: query,
                         route: collection.route,
                         moduleResolution: collection.resolution
-                    }, options);
+                    });
                 }
                 catch (error) {
                     options.debug && console.error(error);
