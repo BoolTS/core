@@ -1,12 +1,12 @@
 import * as Zod from "zod";
 import {
     argumentsKey,
-    bodyArgsKey,
     contextArgsKey,
     paramArgsKey,
     paramsArgsKey,
     queryArgsKey,
     requestArgsKey,
+    requestBodyArgsKey,
     requestHeaderArgsKey,
     requestHeadersArgsKey,
     responseHeadersArgsKey,
@@ -27,7 +27,7 @@ export type TArgumentsMetadata =
       }
     | {
           index: number;
-          type: typeof bodyArgsKey;
+          type: typeof requestBodyArgsKey;
           zodSchema?: Zod.Schema;
           parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text";
       }
@@ -111,7 +111,7 @@ export const RequestHeader =
         Reflect.defineMetadata(argumentsKey, requestHeaderMetadata, target.constructor, methodName);
     };
 
-export const Body =
+export const RequestBody =
     (schema?: Zod.Schema, parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text") =>
     (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
@@ -122,13 +122,13 @@ export const Body =
 
         bodyMetadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
-            type: bodyArgsKey,
+            type: requestBodyArgsKey,
             zodSchema: schema,
             parser: parser
         } satisfies Extract<
             TArgumentsMetadata,
             {
-                type: typeof bodyArgsKey;
+                type: typeof requestBodyArgsKey;
             }
         >;
 

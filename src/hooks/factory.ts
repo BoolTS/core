@@ -8,11 +8,11 @@ import "reflect-metadata";
 import Qs from "qs";
 import * as Zod from "zod";
 
+import type { Server } from "bun";
 import { Router, RouterGroup } from "../entities";
 import { HttpClientError, HttpServerError, jsonErrorInfer, type THttpMethods } from "../http";
 import {
     argumentsKey,
-    bodyArgsKey,
     configKey,
     contextArgsKey,
     controllerHttpKey,
@@ -22,12 +22,24 @@ import {
     paramsArgsKey,
     queryArgsKey,
     requestArgsKey,
+    requestBodyArgsKey,
     requestHeaderArgsKey,
     requestHeadersArgsKey,
+    responseBodyArgsKey,
     responseHeadersArgsKey,
     routeModelArgsKey
 } from "../keys";
 import { Injector } from "./injector";
+
+export type TGroupElementModel<
+    TFuncName extends keyof TClass,
+    TClass extends Object = Object,
+    TFunc = TClass[TFuncName]
+> = Readonly<{
+    class: TClass;
+    func: TFunc;
+    funcName: TFuncName;
+}>;
 
 export type TBoolFactoryOptions = Required<{
     port: number;
@@ -42,16 +54,23 @@ export type TBoolFactoryOptions = Required<{
         queryParser: Parameters<typeof Qs.parse>[1];
     }>;
 
+export const responseConverter = (response: Response) => {
+    response.headers.set("X-Powered-By", "Bool Typescript");
+
+    return response;
+};
+
 export const controllerCreator = (
     controllerConstructor: new (...args: any[]) => unknown,
     group: RouterGroup,
+    injector: Injector,
     prefix?: string
 ) => {
     if (!Reflect.getOwnMetadataKeys(controllerConstructor).includes(controllerKey)) {
         throw Error(`${controllerConstructor.name} is not a controller.`);
     }
 
-    const controller = Injector.get(controllerConstructor);
+    const controller = injector.get(controllerConstructor);
 
     if (!controller) {
         throw Error("Can not initialize controller.");
@@ -135,650 +154,810 @@ export const argumentsResolution = async (
     }
 };
 
-export const BoolFactory = async (target: new (...args: any[]) => unknown, options: TBoolFactoryOptions) => {
-    try {
-        if (!Reflect.getOwnMetadataKeys(target).includes(moduleKey)) {
-            throw Error(`${target.name} is not a module.`);
+export const moduleResolution = async (module: new (...args: any[]) => unknown, options: TBoolFactoryOptions) => {
+    if (!Reflect.getOwnMetadataKeys(module).includes(moduleKey)) {
+        throw Error(`${module.name} is not a module.`);
+    }
+
+    const injector = new Injector();
+    const moduleMetadata = Reflect.getOwnMetadata(moduleKey, module) as TModuleMetadata;
+
+    if (!moduleMetadata) {
+        return;
+    }
+
+    const {
+        loaders,
+        middlewares,
+        guards,
+        dispatchers,
+        controllers,
+        dependencies,
+        prefix: modulePrefix,
+        config: moduleConfig
+    } = moduleMetadata;
+
+    // Configuration(s)
+    const { config } = Object.freeze({
+        config: {
+            ...(typeof options.config !== "function" ? options.config : await options.config()),
+            ...(typeof moduleConfig !== "function"
+                ? typeof moduleConfig !== "object"
+                    ? undefined
+                    : moduleConfig
+                : await moduleConfig())
         }
+    });
 
-        const moduleMetadata = Reflect.getOwnMetadata(moduleKey, target) as TModuleMetadata;
+    // Register config like an injection
+    injector.set(configKey, config);
 
-        if (!moduleMetadata) {
-            return Bun.serve({
-                port: options.port,
-                fetch: () => new Response()
+    if (loaders) {
+        const loaderFunctions = [];
+
+        for (const [key, func] of Object.entries(loaders)) {
+            loaderFunctions.push(async () => {
+                try {
+                    const result = await func({ config });
+                    console.info(`INFO! Loader [${key}] initialized successfully.`);
+                    return result;
+                } catch (error) {
+                    console.error(`WARNING! Loader [${key}] initialization failed.`);
+                    options.debug && console.error(error);
+                    throw error;
+                }
             });
         }
 
-        const {
-            loaders,
-            middlewares,
-            guards,
-            beforeDispatchers,
-            controllers,
-            afterDispatchers,
-            dependencies,
-            prefix: modulePrefix,
-            config: moduleConfig
-        } = moduleMetadata;
+        const results = await Promise.all(loaderFunctions.map((func) => func()));
 
-        // Configuration(s)
-        const { allowLogsMethods, config } = Object.freeze({
-            allowLogsMethods: options?.log?.methods,
-            config: {
-                ...(typeof options.config !== "function" ? options.config : await options.config()),
-                ...(typeof moduleConfig !== "function"
-                    ? typeof moduleConfig !== "object"
-                        ? undefined
-                        : moduleConfig
-                    : await moduleConfig())
-            }
-        });
+        for (let i = 0; i < results.length; i++) {
+            const [key, value] = results[i];
+            injector.set(key, value);
+        }
+    }
 
-        // Register config like an injection
-        Injector.set(configKey, config);
+    // Dependencies
+    !dependencies || dependencies.map((dependency) => injector.get(dependency));
 
-        if (loaders) {
-            const loaderFunctions = [];
+    // Middleware(s)
+    const startMiddlewareGroup: Array<TGroupElementModel<"start", IMiddleware, NonNullable<IMiddleware["start"]>>> = [];
+    const endMiddlewareGroup: Array<TGroupElementModel<"end", IMiddleware, NonNullable<IMiddleware["end"]>>> = [];
 
-            for (const [key, func] of Object.entries(loaders)) {
-                loaderFunctions.push(async () => {
-                    try {
-                        const result = await func({ config });
-                        console.info(`INFO! Loader [${key}] initialized successfully.`);
-                        return result;
-                    } catch (error) {
-                        console.error(`WARNING! Loader [${key}] initialization failed.`);
-                        options.debug && console.error(error);
-                        throw error;
-                    }
-                });
+    if (middlewares) {
+        for (let i = 0; i < middlewares.length; i++) {
+            const instance = injector.get<IMiddleware>(middlewares[i]);
+
+            if (instance.start && typeof instance.start === "function") {
+                startMiddlewareGroup.push(
+                    Object.freeze({
+                        class: middlewares[i] as IMiddleware,
+                        funcName: "start",
+                        func: instance.start.bind(instance)
+                    })
+                );
             }
 
-            const results = await Promise.all(loaderFunctions.map((func) => func()));
+            if (instance.end && typeof instance.end === "function") {
+                endMiddlewareGroup.push(
+                    Object.freeze({
+                        class: middlewares[i] as IMiddleware,
+                        funcName: "end",
+                        func: instance.end.bind(instance)
+                    })
+                );
+            }
+        }
+    }
 
-            for (let i = 0; i < results.length; i++) {
-                const [key, value] = results[i];
-                Injector.set(key, value);
+    // Guard(s)
+    const guardGroup = !guards
+        ? []
+        : guards.map((guard) => {
+              const guardInstance = injector.get<IGuard>(guard);
+
+              return Object.freeze({
+                  class: guard,
+                  funcName: "enforce",
+                  func: guardInstance.enforce.bind(guardInstance)
+              });
+          });
+
+    // Before dispatcher(s)
+    const openDispatcherGroup: Array<TGroupElementModel<"open", IDispatcher, NonNullable<IDispatcher["open"]>>> = [];
+    const closeDispatcherGroup: Array<TGroupElementModel<"close", IDispatcher, NonNullable<IDispatcher["close"]>>> = [];
+
+    if (dispatchers) {
+        for (let i = 0; i < dispatchers.length; i++) {
+            const instance = injector.get<IDispatcher>(dispatchers[i]);
+
+            if (instance.open && typeof instance.open === "function") {
+                openDispatcherGroup.push(
+                    Object.freeze({
+                        class: dispatchers[i] as IDispatcher,
+                        funcName: "open",
+                        func: instance.open.bind(instance)
+                    })
+                );
+            }
+
+            if (instance.close && typeof instance.close === "function") {
+                closeDispatcherGroup.push(
+                    Object.freeze({
+                        class: dispatchers[i] as IDispatcher,
+                        funcName: "close",
+                        func: instance.close.bind(instance)
+                    })
+                );
+            }
+        }
+    }
+
+    // Controller(s)
+    const routerGroup = new RouterGroup();
+
+    controllers &&
+        controllers.map((controllerConstructor) =>
+            controllerCreator(controllerConstructor, routerGroup, injector, `${options.prefix || ""}/${modulePrefix || ""}`)
+        );
+
+    return Object.freeze({
+        prefix: moduleMetadata.prefix,
+        injector: injector,
+        startMiddlewareGroup,
+        endMiddlewareGroup,
+        guardGroup,
+        openDispatcherGroup,
+        closeDispatcherGroup,
+        routerGroup
+    });
+};
+
+const fetcher = async (
+    bun: Required<{
+        request: Request;
+        server: Server;
+    }>,
+    bool: Required<{
+        query: Record<string, unknown>;
+        route: NonNullable<ReturnType<RouterGroup["find"]>>;
+        moduleResolution: NonNullable<Awaited<ReturnType<typeof moduleResolution>>>;
+    }>,
+    options: TBoolFactoryOptions
+) => {
+    const {
+        query,
+        route: { parameters, model },
+        moduleResolution: { startMiddlewareGroup, endMiddlewareGroup, guardGroup, openDispatcherGroup, closeDispatcherGroup }
+    } = bool;
+    const { request, server: _server } = bun;
+
+    const context: Record<symbol, any> = {
+        [requestHeadersArgsKey]: request.headers,
+        [responseHeadersArgsKey]: new Headers(),
+        [queryArgsKey]: query,
+        [paramsArgsKey]: parameters,
+        [routeModelArgsKey]: model
+    };
+
+    const contextHook = {
+        get(key) {
+            return context[key];
+        },
+        set(key, value) {
+            if (key in context) {
+                throw Error(`${String(key)} already exists in context.`);
+            }
+
+            context[key] = value;
+        }
+    } satisfies IContext;
+
+    // Execute start middleware(s)
+    for (let i = 0; i < startMiddlewareGroup.length; i++) {
+        const args = [];
+        const collection = startMiddlewareGroup[i];
+        const metadata: Record<string, TArgumentsMetadata> =
+            Reflect.getOwnMetadata(argumentsKey, collection.class, collection.funcName) || {};
+
+        if (metadata) {
+            for (const [_key, argsMetadata] of Object.entries(metadata)) {
+                switch (argsMetadata.type) {
+                    case requestArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request
+                            : await argumentsResolution(
+                                  request,
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case requestBodyArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? await request[argsMetadata.parser || "json"]()
+                            : await argumentsResolution(
+                                  await request[argsMetadata.parser || "json"](),
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case contextArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        break;
+                    case requestHeadersArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request.headers
+                            : await argumentsResolution(
+                                  request.headers.toJSON(),
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case responseHeadersArgsKey:
+                        args[argsMetadata.index] = context[argsMetadata.type];
+                        break;
+                    case requestHeaderArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request.headers.get(argsMetadata.key) || undefined
+                            : await argumentsResolution(
+                                  request.headers.get(argsMetadata.key) || undefined,
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case routeModelArgsKey:
+                        break;
+                    default:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? !(argsMetadata.type in context)
+                                ? undefined
+                                : context[argsMetadata.type]
+                            : await argumentsResolution(
+                                  !(argsMetadata.type in context) ? undefined : context[argsMetadata.type],
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                }
             }
         }
 
-        // Dependencies
-        !dependencies || dependencies.map((dependency) => Injector.get(dependency));
+        context[responseBodyArgsKey] = await collection.func(...args);
 
-        // Middleware(s)
-        const middlewareGroup = !middlewares
-            ? []
-            : middlewares.map((middleware) => {
-                  const middlewareInstance = Injector.get<IMiddleware>(middleware);
+        if (context[responseBodyArgsKey] instanceof Response) {
+            return responseConverter(context[responseBodyArgsKey]);
+        }
+    }
 
-                  return Object.freeze({
-                      class: middleware,
-                      funcName: "enforce",
-                      func: middlewareInstance.enforce.bind(middlewareInstance)
-                  });
-              });
+    // Execute guard(s)
+    for (let i = 0; i < guardGroup.length; i++) {
+        const args = [];
+        const collection = guardGroup[i];
+        const metadata: Record<string, TArgumentsMetadata> =
+            Reflect.getOwnMetadata(argumentsKey, collection.class, collection.funcName) || {};
 
-        // Guard(s)
-        const guardGroup = !guards
-            ? []
-            : guards.map((guard) => {
-                  const guardInstance = Injector.get<IGuard>(guard);
+        if (metadata) {
+            for (const [_key, argsMetadata] of Object.entries(metadata)) {
+                switch (argsMetadata.type) {
+                    case requestArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request
+                            : await argumentsResolution(
+                                  request,
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case requestBodyArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? await request[argsMetadata.parser || "json"]()
+                            : await argumentsResolution(
+                                  await request[argsMetadata.parser || "json"](),
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case contextArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        break;
+                    case requestHeadersArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request.headers
+                            : await argumentsResolution(
+                                  request.headers.toJSON(),
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case responseHeadersArgsKey:
+                        args[argsMetadata.index] = context[argsMetadata.type];
+                        break;
+                    case requestHeaderArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request.headers.get(argsMetadata.key) || undefined
+                            : await argumentsResolution(
+                                  request.headers.get(argsMetadata.key) || undefined,
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case routeModelArgsKey:
+                        break;
+                    default:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? context[argsMetadata.type]
+                            : await argumentsResolution(
+                                  context[argsMetadata.type],
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                }
+            }
+        }
 
-                  return Object.freeze({
-                      class: guard,
-                      funcName: "enforce",
-                      func: guardInstance.enforce.bind(guardInstance)
-                  });
-              });
+        const guardResult = await collection.func(...args);
 
-        // Before dispatcher(s)
-        const beforeDispatcherGroup = !beforeDispatchers
-            ? []
-            : beforeDispatchers.map((beforeDispatcher) => {
-                  const beforeDispatcherInstance = Injector.get<IDispatcher>(beforeDispatcher);
+        if (typeof guardResult !== "boolean" || !guardResult) {
+            throw new HttpClientError({
+                httpCode: 401,
+                message: "Unauthorization.",
+                data: undefined
+            });
+        }
+    }
 
-                  return Object.freeze({
-                      class: beforeDispatcher,
-                      funcName: "execute",
-                      func: beforeDispatcherInstance.execute.bind(beforeDispatcherInstance)
-                  });
-              });
+    // Execute open dispatcher(s)
+    for (let i = 0; i < openDispatcherGroup.length; i++) {
+        const args = [];
+        const collection = openDispatcherGroup[i];
+        const metadata: Record<string, TArgumentsMetadata> =
+            Reflect.getOwnMetadata(argumentsKey, collection.class, collection.funcName) || {};
 
-        // Controller(s)
-        const routerGroup = new RouterGroup();
+        if (metadata) {
+            for (const [_key, argsMetadata] of Object.entries(metadata)) {
+                switch (argsMetadata.type) {
+                    case requestArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request
+                            : await argumentsResolution(
+                                  request,
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case requestBodyArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? await request[argsMetadata.parser || "json"]()
+                            : await argumentsResolution(
+                                  await request[argsMetadata.parser || "json"](),
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case contextArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        break;
+                    case requestHeadersArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request.headers
+                            : await argumentsResolution(
+                                  request.headers.toJSON(),
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case responseHeadersArgsKey:
+                        args[argsMetadata.index] = context[argsMetadata.type];
+                        break;
+                    case requestHeaderArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request.headers.get(argsMetadata.key) || undefined
+                            : await argumentsResolution(
+                                  request.headers.get(argsMetadata.key) || undefined,
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case paramArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? context[paramsArgsKey][argsMetadata.key] || undefined
+                            : await argumentsResolution(
+                                  context[paramsArgsKey][argsMetadata.key],
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case routeModelArgsKey:
+                        args[argsMetadata.index] = context[routeModelArgsKey];
+                        break;
+                    default:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? context[argsMetadata.type]
+                            : await argumentsResolution(
+                                  context[argsMetadata.type],
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                }
+            }
+        }
 
-        controllers &&
-            controllers.map((controllerConstructor) =>
-                controllerCreator(controllerConstructor, routerGroup, `${options.prefix || ""}/${modulePrefix || ""}`)
-            );
+        context[responseBodyArgsKey] = await collection.func(...args);
+    }
 
-        // After dispatcher(s)
-        const afterDispatcherGroup = !afterDispatchers
-            ? []
-            : afterDispatchers.map((afterDispatcher) => {
-                  const afterDispatcherInstance = Injector.get<IDispatcher>(afterDispatcher);
+    // Execute controller action
+    const controllerActionArguments: any[] = [];
+    const controllerActionCollection = model;
+    const controllerActionMetadata: Record<string, TArgumentsMetadata> =
+        Reflect.getOwnMetadata(argumentsKey, controllerActionCollection.class, controllerActionCollection.funcName) || {};
 
-                  return Object.freeze({
-                      class: afterDispatcher,
-                      funcName: "execute",
-                      func: afterDispatcherInstance.execute.bind(afterDispatcherInstance)
-                  });
-              });
+    if (controllerActionMetadata) {
+        for (const [_key, argsMetadata] of Object.entries(controllerActionMetadata)) {
+            switch (argsMetadata.type) {
+                case requestArgsKey:
+                    controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                        ? request
+                        : await argumentsResolution(
+                              request,
+                              argsMetadata.zodSchema,
+                              argsMetadata.index,
+                              controllerActionCollection.funcName
+                          );
+                    break;
+                case requestBodyArgsKey:
+                    controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                        ? await request[argsMetadata.parser || "json"]()
+                        : await argumentsResolution(
+                              await request[argsMetadata.parser || "json"](),
+                              argsMetadata.zodSchema,
+                              argsMetadata.index,
+                              controllerActionCollection.funcName
+                          );
+                    break;
+                case contextArgsKey:
+                    controllerActionArguments[argsMetadata.index] = !argsMetadata.key
+                        ? contextHook
+                        : contextHook.get(argsMetadata.key);
+                    break;
+                case requestHeadersArgsKey:
+                    controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                        ? request.headers
+                        : await argumentsResolution(
+                              request.headers.toJSON(),
+                              argsMetadata.zodSchema,
+                              argsMetadata.index,
+                              controllerActionCollection.funcName
+                          );
+                    break;
+                case responseHeadersArgsKey:
+                    controllerActionArguments[argsMetadata.index] = context[argsMetadata.type];
+                    break;
+                case requestHeaderArgsKey:
+                    controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                        ? request.headers.get(argsMetadata.key) || undefined
+                        : await argumentsResolution(
+                              request.headers.get(argsMetadata.key) || undefined,
+                              argsMetadata.zodSchema,
+                              argsMetadata.index,
+                              controllerActionCollection.funcName
+                          );
+                    break;
+                case paramArgsKey:
+                    controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                        ? context[paramsArgsKey][argsMetadata.key] || undefined
+                        : await argumentsResolution(
+                              context[paramsArgsKey][argsMetadata.key],
+                              argsMetadata.zodSchema,
+                              argsMetadata.index,
+                              controllerActionCollection.funcName
+                          );
+                    break;
+                case routeModelArgsKey:
+                    controllerActionArguments[argsMetadata.index] = context[routeModelArgsKey];
+                    break;
+                default:
+                    controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
+                        ? context[argsMetadata.type]
+                        : await argumentsResolution(
+                              context[argsMetadata.type],
+                              argsMetadata.zodSchema,
+                              argsMetadata.index,
+                              controllerActionCollection.funcName
+                          );
+                    break;
+            }
+        }
+    }
+
+    context[responseBodyArgsKey] = await controllerActionCollection.func(...controllerActionArguments);
+
+    // Execute close dispatcher(s)
+    for (let i = 0; i < closeDispatcherGroup.length; i++) {
+        const args = [];
+        const collection = closeDispatcherGroup[i];
+        const metadata: Record<string, TArgumentsMetadata> =
+            Reflect.getOwnMetadata(argumentsKey, collection.class, collection.funcName) || {};
+
+        if (metadata) {
+            for (const [_key, argsMetadata] of Object.entries(metadata)) {
+                switch (argsMetadata.type) {
+                    case requestArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request
+                            : await argumentsResolution(
+                                  request,
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case requestBodyArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? await request[argsMetadata.parser || "json"]()
+                            : await argumentsResolution(
+                                  await request[argsMetadata.parser || "json"](),
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case contextArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        break;
+                    case requestHeadersArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request.headers
+                            : await argumentsResolution(
+                                  request.headers.toJSON(),
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case responseHeadersArgsKey:
+                        args[argsMetadata.index] = context[argsMetadata.type];
+                        break;
+                    case requestHeaderArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request.headers.get(argsMetadata.key) || undefined
+                            : await argumentsResolution(
+                                  request.headers.get(argsMetadata.key) || undefined,
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case paramArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? context[paramsArgsKey][argsMetadata.key] || undefined
+                            : await argumentsResolution(
+                                  context[paramsArgsKey][argsMetadata.key],
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case routeModelArgsKey:
+                        args[argsMetadata.index] = context[routeModelArgsKey];
+                        break;
+                    default:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? context[argsMetadata.type]
+                            : await argumentsResolution(
+                                  context[argsMetadata.type],
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                }
+            }
+        }
+
+        await collection.func(...args);
+    }
+
+    // Execute end middleware(s)
+    for (let i = 0; i < endMiddlewareGroup.length; i++) {
+        const args = [];
+        const collection = endMiddlewareGroup[i];
+        const metadata: Record<string, TArgumentsMetadata> =
+            Reflect.getOwnMetadata(argumentsKey, collection.class, collection.funcName) || {};
+
+        if (metadata) {
+            for (const [_key, argsMetadata] of Object.entries(metadata)) {
+                switch (argsMetadata.type) {
+                    case requestArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request
+                            : await argumentsResolution(
+                                  request,
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case requestBodyArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? await request[argsMetadata.parser || "json"]()
+                            : await argumentsResolution(
+                                  await request[argsMetadata.parser || "json"](),
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case contextArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        break;
+                    case requestHeadersArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request.headers
+                            : await argumentsResolution(
+                                  request.headers.toJSON(),
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case responseHeadersArgsKey:
+                        args[argsMetadata.index] = context[argsMetadata.type];
+                        break;
+                    case requestHeaderArgsKey:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? request.headers.get(argsMetadata.key) || undefined
+                            : await argumentsResolution(
+                                  request.headers.get(argsMetadata.key) || undefined,
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                    case routeModelArgsKey:
+                        break;
+                    default:
+                        args[argsMetadata.index] = !argsMetadata.zodSchema
+                            ? !(argsMetadata.type in context)
+                                ? undefined
+                                : context[argsMetadata.type]
+                            : await argumentsResolution(
+                                  !(argsMetadata.type in context) ? undefined : context[argsMetadata.type],
+                                  argsMetadata.zodSchema,
+                                  argsMetadata.index,
+                                  collection.funcName
+                              );
+                        break;
+                }
+            }
+        }
+
+        context[responseBodyArgsKey] = await collection.func(...args);
+    }
+
+    if (context[responseBodyArgsKey] instanceof Response) {
+        return responseConverter(context[responseBodyArgsKey]);
+    }
+
+    return responseConverter(
+        new Response(
+            !context[responseBodyArgsKey]
+                ? undefined
+                : JSON.stringify({
+                      httpCode: 200,
+                      message: "SUCCESS",
+                      data: context[responseBodyArgsKey]
+                  }),
+            {
+                status: !context[responseBodyArgsKey] ? 204 : 200,
+                statusText: "SUCCESS",
+                headers: context[responseHeadersArgsKey]
+            }
+        )
+    );
+};
+
+export const BoolFactory = async (
+    modules: new (...args: any[]) => unknown | Array<new (...args: any[]) => unknown>,
+    options: TBoolFactoryOptions
+) => {
+    try {
+        const modulesConverted = !Array.isArray(modules) ? [modules] : modules;
+        const { allowLogsMethods } = Object.freeze({
+            allowLogsMethods: options?.log?.methods
+        });
+
+        const moduleResolutions = await Promise.all(
+            modulesConverted.map((moduleConverted) => moduleResolution(moduleConverted, options))
+        );
+
+        const availableModuleResolutions = moduleResolutions.filter(
+            (moduleResolution) => typeof moduleResolution !== "undefined"
+        );
+
+        const prefixs = [
+            ...new Set(availableModuleResolutions.map((availableModuleResolution) => availableModuleResolution.prefix))
+        ];
+
+        if (prefixs.length !== availableModuleResolutions.length) {
+            throw Error(`Module prefix should be unique.`);
+        }
 
         Bun.serve({
             port: options.port,
             fetch: async (request, server) => {
-                const { headers } = request;
                 const start = performance.now();
                 const url = new URL(request.url);
-
-                const context: Record<symbol, any> = {
-                    [requestHeadersArgsKey]: headers,
-                    [responseHeadersArgsKey]: new Headers(),
-                    [queryArgsKey]: Qs.parse(url.searchParams.toString(), options.queryParser)
-                };
-
-                const contextHook = {
-                    get(key) {
-                        return context[key];
-                    },
-                    set(key, value) {
-                        if (key in context) {
-                            throw Error(`${String(key)} already exists in context.`);
-                        }
-
-                        context[key] = value;
-                    }
-                } satisfies IContext;
+                const query = Qs.parse(url.searchParams.toString(), options.queryParser);
 
                 try {
-                    // Execute middleware(s)
-                    for (let i = 0; i < middlewareGroup.length; i++) {
-                        const middlewareArguments = [];
-                        const middlewareCollection = middlewareGroup[i];
-                        const middlewareMetadata: Record<string, TArgumentsMetadata> =
-                            Reflect.getOwnMetadata(argumentsKey, middlewareCollection.class, middlewareCollection.funcName) ||
-                            {};
+                    let collection:
+                        | undefined
+                        | Required<{
+                              route: NonNullable<ReturnType<RouterGroup["find"]>>;
+                              resolution: NonNullable<Awaited<ReturnType<typeof moduleResolution>>>;
+                          }>;
 
-                        if (middlewareMetadata) {
-                            for (const [_key, argsMetadata] of Object.entries(middlewareMetadata)) {
-                                switch (argsMetadata.type) {
-                                    case requestArgsKey:
-                                        middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? request
-                                            : await argumentsResolution(
-                                                  request,
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  middlewareCollection.funcName
-                                              );
-                                        break;
-                                    case bodyArgsKey:
-                                        middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? await request[argsMetadata.parser || "json"]()
-                                            : await argumentsResolution(
-                                                  await request[argsMetadata.parser || "json"](),
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  middlewareCollection.funcName
-                                              );
-                                        break;
-                                    case contextArgsKey:
-                                        middlewareArguments[argsMetadata.index] = !argsMetadata.key
-                                            ? contextHook
-                                            : contextHook.get(argsMetadata.key);
-                                        break;
-                                    case requestHeadersArgsKey:
-                                        middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? headers
-                                            : await argumentsResolution(
-                                                  headers.toJSON(),
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  middlewareCollection.funcName
-                                              );
-                                        break;
-                                    case responseHeadersArgsKey:
-                                        middlewareArguments[argsMetadata.index] = context[argsMetadata.type];
-                                        break;
-                                    case requestHeaderArgsKey:
-                                        middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? headers.get(argsMetadata.key) || undefined
-                                            : await argumentsResolution(
-                                                  headers.get(argsMetadata.key) || undefined,
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  middlewareCollection.funcName
-                                              );
-                                        break;
-                                    case routeModelArgsKey:
-                                        break;
-                                    default:
-                                        middlewareArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? !(argsMetadata.type in context)
-                                                ? undefined
-                                                : context[argsMetadata.type]
-                                            : await argumentsResolution(
-                                                  !(argsMetadata.type in context) ? undefined : context[argsMetadata.type],
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  middlewareCollection.funcName
-                                              );
-                                        break;
-                                }
-                            }
-                        }
+                    for (let i = 0; i < availableModuleResolutions.length; i++) {
+                        const routeResult = availableModuleResolutions[i].routerGroup.find(
+                            url.pathname,
+                            request.method as keyof THttpMethods
+                        );
 
-                        const middlewareResult = await middlewareCollection.func(...middlewareArguments);
-
-                        if (!(middlewareResult instanceof Response)) {
-                            continue;
-                        }
-
-                        return middlewareResult;
-                    }
-
-                    // Execute guard(s)
-                    for (let i = 0; i < guardGroup.length; i++) {
-                        const guardArguments = [];
-                        const guardCollection = guardGroup[i];
-                        const guardMetadata: Record<string, TArgumentsMetadata> =
-                            Reflect.getOwnMetadata(argumentsKey, guardCollection.class, guardCollection.funcName) || {};
-
-                        if (guardMetadata) {
-                            for (const [_key, argsMetadata] of Object.entries(guardMetadata)) {
-                                switch (argsMetadata.type) {
-                                    case requestArgsKey:
-                                        guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? request
-                                            : await argumentsResolution(
-                                                  request,
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  guardCollection.funcName
-                                              );
-                                        break;
-                                    case bodyArgsKey:
-                                        guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? await request[argsMetadata.parser || "json"]()
-                                            : await argumentsResolution(
-                                                  await request[argsMetadata.parser || "json"](),
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  guardCollection.funcName
-                                              );
-                                        break;
-                                    case contextArgsKey:
-                                        guardArguments[argsMetadata.index] = !argsMetadata.key
-                                            ? contextHook
-                                            : contextHook.get(argsMetadata.key);
-                                        break;
-                                    case requestHeadersArgsKey:
-                                        guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? headers
-                                            : await argumentsResolution(
-                                                  headers.toJSON(),
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  guardCollection.funcName
-                                              );
-                                        break;
-                                    case responseHeadersArgsKey:
-                                        guardArguments[argsMetadata.index] = context[argsMetadata.type];
-                                        break;
-                                    case requestHeaderArgsKey:
-                                        guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? headers.get(argsMetadata.key) || undefined
-                                            : await argumentsResolution(
-                                                  headers.get(argsMetadata.key) || undefined,
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  guardCollection.funcName
-                                              );
-                                        break;
-                                    case routeModelArgsKey:
-                                        break;
-                                    default:
-                                        guardArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? context[argsMetadata.type]
-                                            : await argumentsResolution(
-                                                  context[argsMetadata.type],
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  guardCollection.funcName
-                                              );
-                                        break;
-                                }
-                            }
-                        }
-
-                        const guardResult = await guardCollection.func(...guardArguments);
-
-                        if (typeof guardResult !== "boolean" || !guardResult) {
-                            throw new HttpClientError({
-                                httpCode: 401,
-                                message: "Unauthorization.",
-                                data: undefined
+                        if (routeResult) {
+                            collection = Object.freeze({
+                                route: routeResult,
+                                resolution: availableModuleResolutions[i]
                             });
+                            break;
                         }
                     }
 
-                    const result = routerGroup.find(url.pathname, request.method as keyof THttpMethods);
-
-                    if (!result) {
-                        throw new HttpClientError({
-                            httpCode: 404,
-                            message: "Route not found.",
-                            data: undefined
-                        });
+                    if (!collection) {
+                        return responseConverter(
+                            new Response(
+                                JSON.stringify({
+                                    httpCode: 404,
+                                    message: "Route not found",
+                                    data: undefined
+                                })
+                            )
+                        );
                     }
 
-                    context[paramsArgsKey] = result.parameters;
-                    context[routeModelArgsKey] = result.model;
-
-                    let responseBody = undefined;
-
-                    // Execute before dispatcher(s)
-                    for (let i = 0; i < beforeDispatcherGroup.length; i++) {
-                        const beforeDispatcherArguments = [];
-                        const beforeDispatcherCollection = beforeDispatcherGroup[i];
-                        const beforeDispatcherMetadata: Record<string, TArgumentsMetadata> =
-                            Reflect.getOwnMetadata(
-                                argumentsKey,
-                                beforeDispatcherCollection.class,
-                                beforeDispatcherCollection.funcName
-                            ) || {};
-
-                        if (beforeDispatcherMetadata) {
-                            for (const [_key, argsMetadata] of Object.entries(beforeDispatcherMetadata)) {
-                                switch (argsMetadata.type) {
-                                    case requestArgsKey:
-                                        beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? request
-                                            : await argumentsResolution(
-                                                  request,
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  beforeDispatcherCollection.funcName
-                                              );
-                                        break;
-                                    case bodyArgsKey:
-                                        beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? await request[argsMetadata.parser || "json"]()
-                                            : await argumentsResolution(
-                                                  await request[argsMetadata.parser || "json"](),
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  beforeDispatcherCollection.funcName
-                                              );
-                                        break;
-                                    case contextArgsKey:
-                                        beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.key
-                                            ? contextHook
-                                            : contextHook.get(argsMetadata.key);
-                                        break;
-                                    case requestHeadersArgsKey:
-                                        beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? headers
-                                            : await argumentsResolution(
-                                                  headers.toJSON(),
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  beforeDispatcherCollection.funcName
-                                              );
-                                        break;
-                                    case responseHeadersArgsKey:
-                                        beforeDispatcherArguments[argsMetadata.index] = context[argsMetadata.type];
-                                        break;
-                                    case requestHeaderArgsKey:
-                                        beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? headers.get(argsMetadata.key) || undefined
-                                            : await argumentsResolution(
-                                                  headers.get(argsMetadata.key) || undefined,
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  beforeDispatcherCollection.funcName
-                                              );
-                                        break;
-                                    case paramArgsKey:
-                                        beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? context[paramArgsKey][argsMetadata.key] || undefined
-                                            : await argumentsResolution(
-                                                  context[paramArgsKey][argsMetadata.key],
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  beforeDispatcherCollection.funcName
-                                              );
-                                        break;
-                                    case routeModelArgsKey:
-                                        beforeDispatcherArguments[argsMetadata.index] = context[routeModelArgsKey];
-                                        break;
-                                    default:
-                                        beforeDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? context[argsMetadata.type]
-                                            : await argumentsResolution(
-                                                  context[argsMetadata.type],
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  beforeDispatcherCollection.funcName
-                                              );
-                                        break;
-                                }
-                            }
-                        }
-
-                        await beforeDispatcherCollection.func(...beforeDispatcherArguments);
-                    }
-
-                    // Execute controller action
-                    const controllerActionArguments: any[] = [];
-                    const controllerActionCollection = result.model;
-                    const controllerActionMetadata: Record<string, TArgumentsMetadata> =
-                        Reflect.getOwnMetadata(
-                            argumentsKey,
-                            controllerActionCollection.class,
-                            controllerActionCollection.funcName
-                        ) || {};
-
-                    if (controllerActionMetadata) {
-                        for (const [_key, argsMetadata] of Object.entries(controllerActionMetadata)) {
-                            switch (argsMetadata.type) {
-                                case requestArgsKey:
-                                    controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                        ? request
-                                        : await argumentsResolution(
-                                              request,
-                                              argsMetadata.zodSchema,
-                                              argsMetadata.index,
-                                              controllerActionCollection.funcName
-                                          );
-                                    break;
-                                case bodyArgsKey:
-                                    controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                        ? await request[argsMetadata.parser || "json"]()
-                                        : await argumentsResolution(
-                                              await request[argsMetadata.parser || "json"](),
-                                              argsMetadata.zodSchema,
-                                              argsMetadata.index,
-                                              controllerActionCollection.funcName
-                                          );
-                                    break;
-                                case contextArgsKey:
-                                    controllerActionArguments[argsMetadata.index] = !argsMetadata.key
-                                        ? contextHook
-                                        : contextHook.get(argsMetadata.key);
-                                    break;
-                                case requestHeadersArgsKey:
-                                    controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                        ? headers
-                                        : await argumentsResolution(
-                                              headers.toJSON(),
-                                              argsMetadata.zodSchema,
-                                              argsMetadata.index,
-                                              controllerActionCollection.funcName
-                                          );
-                                    break;
-                                case responseHeadersArgsKey:
-                                    controllerActionArguments[argsMetadata.index] = context[argsMetadata.type];
-                                    break;
-                                case requestHeaderArgsKey:
-                                    controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                        ? headers.get(argsMetadata.key) || undefined
-                                        : await argumentsResolution(
-                                              headers.get(argsMetadata.key) || undefined,
-                                              argsMetadata.zodSchema,
-                                              argsMetadata.index,
-                                              controllerActionCollection.funcName
-                                          );
-                                    break;
-                                case paramArgsKey:
-                                    controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                        ? context[paramArgsKey][argsMetadata.key] || undefined
-                                        : await argumentsResolution(
-                                              context[paramArgsKey][argsMetadata.key],
-                                              argsMetadata.zodSchema,
-                                              argsMetadata.index,
-                                              controllerActionCollection.funcName
-                                          );
-                                    break;
-                                case routeModelArgsKey:
-                                    controllerActionArguments[argsMetadata.index] = context[routeModelArgsKey];
-                                    break;
-                                default:
-                                    controllerActionArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                        ? context[argsMetadata.type]
-                                        : await argumentsResolution(
-                                              context[argsMetadata.type],
-                                              argsMetadata.zodSchema,
-                                              argsMetadata.index,
-                                              controllerActionCollection.funcName
-                                          );
-                                    break;
-                            }
-                        }
-                    }
-
-                    responseBody = await controllerActionCollection.func(...controllerActionArguments);
-
-                    // Execute after dispatcher(s)
-                    for (let i = 0; i < afterDispatcherGroup.length; i++) {
-                        const afterDispatcherArguments = [];
-                        const afterDispatcherCollection = afterDispatcherGroup[i];
-                        const afterDispatcherMetadata: Record<string, TArgumentsMetadata> =
-                            Reflect.getOwnMetadata(
-                                argumentsKey,
-                                afterDispatcherCollection.class,
-                                afterDispatcherCollection.funcName
-                            ) || {};
-
-                        if (afterDispatcherMetadata) {
-                            for (const [_key, argsMetadata] of Object.entries(afterDispatcherMetadata)) {
-                                switch (argsMetadata.type) {
-                                    case requestArgsKey:
-                                        afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? request
-                                            : await argumentsResolution(
-                                                  request,
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  afterDispatcherCollection.funcName
-                                              );
-                                        break;
-                                    case bodyArgsKey:
-                                        afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? await request[argsMetadata.parser || "json"]()
-                                            : await argumentsResolution(
-                                                  await request[argsMetadata.parser || "json"](),
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  afterDispatcherCollection.funcName
-                                              );
-                                        break;
-                                    case contextArgsKey:
-                                        afterDispatcherArguments[argsMetadata.index] = !argsMetadata.key
-                                            ? contextHook
-                                            : contextHook.get(argsMetadata.key);
-                                        break;
-                                    case requestHeadersArgsKey:
-                                        afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? headers
-                                            : await argumentsResolution(
-                                                  headers.toJSON(),
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  afterDispatcherCollection.funcName
-                                              );
-                                        break;
-                                    case responseHeadersArgsKey:
-                                        afterDispatcherArguments[argsMetadata.index] = context[argsMetadata.type];
-                                        break;
-                                    case requestHeaderArgsKey:
-                                        afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? headers.get(argsMetadata.key) || undefined
-                                            : await argumentsResolution(
-                                                  headers.get(argsMetadata.key) || undefined,
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  afterDispatcherCollection.funcName
-                                              );
-                                        break;
-                                    case paramArgsKey:
-                                        afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? context[paramArgsKey][argsMetadata.key] || undefined
-                                            : await argumentsResolution(
-                                                  context[paramArgsKey][argsMetadata.key],
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  afterDispatcherCollection.funcName
-                                              );
-                                        break;
-                                    case routeModelArgsKey:
-                                        afterDispatcherArguments[argsMetadata.index] = context[routeModelArgsKey];
-                                        break;
-                                    default:
-                                        afterDispatcherArguments[argsMetadata.index] = !argsMetadata.zodSchema
-                                            ? context[argsMetadata.type]
-                                            : await argumentsResolution(
-                                                  context[argsMetadata.type],
-                                                  argsMetadata.zodSchema,
-                                                  argsMetadata.index,
-                                                  afterDispatcherCollection.funcName
-                                              );
-                                        break;
-                                }
-                            }
-                        }
-
-                        await afterDispatcherCollection.func(...afterDispatcherArguments);
-                    }
-
-                    // Set default header(s)
-                    context[responseHeadersArgsKey].set("X-Powered-By", "Bool Typescript");
-
-                    return responseBody instanceof Response
-                        ? responseBody
-                        : new Response(
-                              !responseBody
-                                  ? undefined
-                                  : JSON.stringify({
-                                        httpCode: 200,
-                                        message: "SUCCESS",
-                                        data: responseBody
-                                    }),
-                              {
-                                  status: !responseBody ? 204 : 200,
-                                  statusText: "SUCCESS",
-                                  headers: context[responseHeadersArgsKey]
-                              }
-                          );
+                    return await fetcher(
+                        {
+                            request,
+                            server
+                        },
+                        {
+                            query: query,
+                            route: collection.route,
+                            moduleResolution: collection.resolution
+                        },
+                        options
+                    );
                 } catch (error) {
                     options.debug && console.error(error);
 
-                    // Set default header(s)
-                    context[responseHeadersArgsKey].set("X-Powered-By", "Bool Typescript");
-
-                    return jsonErrorInfer(error, context[responseHeadersArgsKey]);
+                    return responseConverter(jsonErrorInfer(error));
                 } finally {
                     if (allowLogsMethods) {
                         const end = performance.now();
@@ -794,7 +973,9 @@ export const BoolFactory = async (target: new (...args: any[]) => unknown, optio
 
                         allowLogsMethods.includes(request.method.toUpperCase() as (typeof allowLogsMethods)[number]) &&
                             console.info(
-                                `PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${url.pathname.blue} - Time: ${convertedTime}`
+                                `PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${
+                                    new URL(request.url).pathname.blue
+                                } - Time: ${convertedTime}`
                             );
                     }
                 }

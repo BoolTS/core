@@ -1,5 +1,5 @@
 import * as Zod from "zod";
-import { bodyArgsKey, contextArgsKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestHeaderArgsKey, requestHeadersArgsKey, responseHeadersArgsKey, routeModelArgsKey } from "../keys";
+import { contextArgsKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestBodyArgsKey, requestHeaderArgsKey, requestHeadersArgsKey, responseHeadersArgsKey, routeModelArgsKey } from "../keys";
 export type TArgumentsMetadata = {
     index: number;
     type: typeof requestHeadersArgsKey;
@@ -11,7 +11,7 @@ export type TArgumentsMetadata = {
     zodSchema?: Zod.Schema;
 } | {
     index: number;
-    type: typeof bodyArgsKey;
+    type: typeof requestBodyArgsKey;
     zodSchema?: Zod.Schema;
     parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text";
 } | {
@@ -44,7 +44,7 @@ export type TArgumentsMetadata = {
 };
 export declare const RequestHeaders: (schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
 export declare const RequestHeader: (key: string, schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const Body: (schema?: Zod.Schema, parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text") => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const RequestBody: (schema?: Zod.Schema, parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text") => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
 export declare const Params: (schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
 export declare const Param: (key: string, schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
 export declare const Query: (schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;

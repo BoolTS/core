@@ -1,10 +1,10 @@
 export {
-    Body,
     Context,
     Param,
     Params,
     Query,
     Request,
+    RequestBody,
     RequestHeader,
     RequestHeaders,
     ResponseHeaders,

@@ -1,8 +1,16 @@
+import type { IMiddleware } from "../interfaces";
+import type { IDispatcher } from "../interfaces/dispatcher";
 import "colors";
 import "reflect-metadata";
 import Qs from "qs";
 import * as Zod from "zod";
 import { RouterGroup } from "../entities";
+import { Injector } from "./injector";
+export type TGroupElementModel<TFuncName extends keyof TClass, TClass extends Object = Object, TFunc = TClass[TFuncName]> = Readonly<{
+    class: TClass;
+    func: TFunc;
+    funcName: TFuncName;
+}>;
 export type TBoolFactoryOptions = Required<{
     port: number;
 }> & Partial<{
@@ -14,7 +22,38 @@ export type TBoolFactoryOptions = Required<{
     }>;
     queryParser: Parameters<typeof Qs.parse>[1];
 }>;
-export declare const controllerCreator: (controllerConstructor: new (...args: any[]) => unknown, group: RouterGroup, prefix?: string) => RouterGroup;
+export declare const responseConverter: (response: Response) => Response;
+export declare const controllerCreator: (controllerConstructor: new (...args: any[]) => unknown, group: RouterGroup, injector: Injector, prefix?: string) => RouterGroup;
 export declare const argumentsResolution: (data: unknown, zodSchema: Zod.Schema, argumentIndex: number, funcName: string | symbol) => Promise<any>;
-export declare const BoolFactory: (target: new (...args: any[]) => unknown, options: TBoolFactoryOptions) => Promise<import("bun").Server | undefined>;
+export declare const moduleResolution: (module: new (...args: any[]) => unknown, options: TBoolFactoryOptions) => Promise<Readonly<{
+    prefix: string | undefined;
+    injector: Injector;
+    startMiddlewareGroup: Readonly<{
+        class: IMiddleware<any, any>;
+        func: (...args: any[]) => any;
+        funcName: "start";
+    }>[];
+    endMiddlewareGroup: Readonly<{
+        class: IMiddleware<any, any>;
+        func: (...args: any[]) => any;
+        funcName: "end";
+    }>[];
+    guardGroup: Readonly<{
+        class: new (...args: any[]) => any;
+        funcName: "enforce";
+        func: any;
+    }>[];
+    openDispatcherGroup: Readonly<{
+        class: IDispatcher<any, any>;
+        func: (...args: any[]) => any;
+        funcName: "open";
+    }>[];
+    closeDispatcherGroup: Readonly<{
+        class: IDispatcher<any, any>;
+        func: (...args: any[]) => any;
+        funcName: "close";
+    }>[];
+    routerGroup: RouterGroup;
+}> | undefined>;
+export declare const BoolFactory: (modules: new (...args: any[]) => unknown | Array<new (...args: any[]) => unknown>, options: TBoolFactoryOptions) => Promise<void>;
 export default BoolFactory;

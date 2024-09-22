@@ -15,9 +15,8 @@ export type TModuleOptions<TConfig extends {} = {}> =
           loaders: TLoaders<TConfig>;
           middlewares: TInstances;
           guards: TInstances;
-          beforeDispatchers: TInstances;
           controllers: TInstances;
-          afterDispatchers: TInstances;
+          dispatchers: TInstances;
       }>
     | undefined;
 
@@ -29,16 +28,15 @@ export type TModuleMetadata<TConfig extends {} = {}> =
           loaders: TLoaders<TConfig>;
           middlewares: TInstances;
           guards: TInstances;
-          beforeDispatchers: TInstances;
           controllers: TInstances;
-          afterDispatchers: TInstances;
+          dispatchers: TInstances;
       }>
     | undefined;
 
 export const Module =
     <TConfig extends {} = {}>(args?: TModuleOptions<TConfig>) =>
     <T extends { new (...args: any[]): IModule }>(target: T) => {
-        const { middlewares, guards, beforeDispatchers, controllers, afterDispatchers, dependencies } = args || {};
+        const { middlewares, guards, dispatchers, controllers, dependencies } = args || {};
 
         if (middlewares) {
             for (let i = 0; i < middlewares.length; i++) {
@@ -56,10 +54,10 @@ export const Module =
             }
         }
 
-        if (beforeDispatchers) {
-            for (let i = 0; i < beforeDispatchers.length; i++) {
-                if (!Reflect.getOwnMetadataKeys(beforeDispatchers[i]).includes(dispatcherKey)) {
-                    throw Error(`${beforeDispatchers[i].name} is not a dispatcher.`);
+        if (dispatchers) {
+            for (let i = 0; i < dispatchers.length; i++) {
+                if (!Reflect.getOwnMetadataKeys(dispatchers[i]).includes(dispatcherKey)) {
+                    throw Error(`${dispatchers[i].name} is not a dispatcher.`);
                 }
             }
         }
@@ -68,14 +66,6 @@ export const Module =
             for (let i = 0; i < controllers.length; i++) {
                 if (!Reflect.getOwnMetadataKeys(controllers[i]).includes(controllerKey)) {
                     throw Error(`${controllers[i].name} is not a controller.`);
-                }
-            }
-        }
-
-        if (afterDispatchers) {
-            for (let i = 0; i < afterDispatchers.length; i++) {
-                if (!Reflect.getOwnMetadataKeys(afterDispatchers[i]).includes(dispatcherKey)) {
-                    throw Error(`${afterDispatchers[i].name} is not a dispatcher.`);
                 }
             }
         }

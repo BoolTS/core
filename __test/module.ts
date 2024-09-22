@@ -1,13 +1,12 @@
 import { Module } from "../src";
-import { AfterDispatcher } from "./afterDispatcher";
-import { BeforeDispatcher } from "./beforeDispatcher";
 import { TestController } from "./controller";
+import { CustomDispatcher } from "./dispatcher";
 import { FirstGuard } from "./firstGuard";
 import { FirstMiddleware } from "./firstMiddleware";
-import { SecondMiddleware } from "./secondMiddleware";
 import { TestRepository } from "./repository";
-import { TestService } from "./service";
 import { SecondGuard } from "./secondGuard";
+import { SecondMiddleware } from "./secondMiddleware";
+import { TestService } from "./service";
 
 @Module<{
     mongodb: string;
@@ -22,8 +21,7 @@ import { SecondGuard } from "./secondGuard";
     },
     middlewares: [FirstMiddleware, SecondMiddleware],
     guards: [FirstGuard, SecondGuard],
-    beforeDispatchers: [BeforeDispatcher],
-    afterDispatchers: [AfterDispatcher],
+    dispatchers: [CustomDispatcher],
     controllers: [TestController],
     dependencies: [TestService, TestRepository]
 })

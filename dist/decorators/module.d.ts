@@ -10,9 +10,8 @@ export type TModuleOptions<TConfig extends {} = {}> = Partial<{
     loaders: TLoaders<TConfig>;
     middlewares: TInstances;
     guards: TInstances;
-    beforeDispatchers: TInstances;
     controllers: TInstances;
-    afterDispatchers: TInstances;
+    dispatchers: TInstances;
 }> | undefined;
 export type TModuleMetadata<TConfig extends {} = {}> = Partial<{
     config: TConfig | ((...args: any[]) => TConfig | Promise<TConfig>);
@@ -21,9 +20,8 @@ export type TModuleMetadata<TConfig extends {} = {}> = Partial<{
     loaders: TLoaders<TConfig>;
     middlewares: TInstances;
     guards: TInstances;
-    beforeDispatchers: TInstances;
     controllers: TInstances;
-    afterDispatchers: TInstances;
+    dispatchers: TInstances;
 }> | undefined;
 export declare const Module: <TConfig extends {} = {}>(args?: TModuleOptions<TConfig>) => <T extends {
     new (...args: any[]): IModule;

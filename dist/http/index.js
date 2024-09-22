@@ -1,6 +1,7 @@
 import { HttpClientError } from "./clientError";
 import { HttpServerError } from "./serverError";
-export const jsonErrorInfer = (data, headers = new Headers()) => {
+export const jsonErrorInfer = (data) => {
+    const headers = new Headers();
     headers.set("Content-Type", "application/json");
     if (data instanceof HttpClientError || data instanceof HttpServerError) {
         return new Response(JSON.stringify(data), {

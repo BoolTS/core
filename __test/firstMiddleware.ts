@@ -1,9 +1,15 @@
-import { Middleware, IMiddleware } from "../src";
+import type { IMiddleware } from "../src";
+import { Middleware } from "../src";
 
 @Middleware()
 export class FirstMiddleware implements IMiddleware {
-    enforce() {
-        console.log("Middleware 01");
+    start() {
+        console.log("Middleware 01 - Start");
+        console.log("===========================");
+    }
+
+    end() {
+        console.log("Middleware 01 - End");
         console.log("===========================");
     }
 }

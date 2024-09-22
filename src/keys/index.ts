@@ -12,7 +12,7 @@ export const controllerRouteZodSchemaKey = Symbol("__bool:controller.route.zodSc
 
 export const requestHeadersArgsKey = Symbol("__bool:arguments:requestHeaders__");
 export const requestHeaderArgsKey = Symbol("__bool:arguments:requestHeader__");
-export const bodyArgsKey = Symbol("__bool:arguments:body__");
+export const requestBodyArgsKey = Symbol("__bool:arguments:requestBody__");
 export const paramsArgsKey = Symbol("__bool:arguments:params__");
 export const paramArgsKey = Symbol("__bool:arguments:param__");
 export const queryArgsKey = Symbol("__bool:arguments:query__");
@@ -20,3 +20,4 @@ export const requestArgsKey = Symbol("__bool:arguments:request__");
 export const responseHeadersArgsKey = Symbol("__bool:arguments:responseHeaders__");
 export const contextArgsKey = Symbol("__bool:arguments:context__");
 export const routeModelArgsKey = Symbol("__bool:arguments:routeModel__");
+export const responseBodyArgsKey = Symbol("__bool:arguments:responseBody__");

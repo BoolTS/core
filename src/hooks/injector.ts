@@ -8,7 +8,7 @@ interface IInjector {
     get<T>(definition: TDefinition): T;
 }
 
-export const Injector: IInjector = new (class {
+export class Injector implements IInjector {
     private readonly _mapper: Map<Function | string | symbol, any> = new Map();
 
     /**
@@ -36,7 +36,7 @@ export const Injector: IInjector = new (class {
 
         // Initialize dependencies injection
         const dependencies: any[] = Reflect.getOwnMetadata(injectKey, definition) || [];
-        const injections: any[] = dependencies.map((dependency) => Injector.get(dependency));
+        const injections: any[] = dependencies.map((dependency) => this.get(dependency));
         const instance = new definition(...injections);
 
         this._mapper.set(definition, instance);
@@ -52,6 +52,6 @@ export const Injector: IInjector = new (class {
     set(key: TDefinition, value: any) {
         this._mapper.set(key, value);
     }
-})();
+}
 
 export default Injector;

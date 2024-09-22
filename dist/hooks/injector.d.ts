@@ -6,5 +6,18 @@ interface IInjector {
     set(key: TDefinition, value: any): void;
     get<T>(definition: TDefinition): T;
 }
-export declare const Injector: IInjector;
+export declare class Injector implements IInjector {
+    private readonly _mapper;
+    /**
+     *
+     * @param constructor
+     */
+    get<T>(definition: TDefinition): any;
+    /**
+     *
+     * @param key
+     * @param value
+     */
+    set(key: TDefinition, value: any): void;
+}
 export default Injector;
