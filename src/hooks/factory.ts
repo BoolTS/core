@@ -973,7 +973,7 @@ export const BoolFactory = async (
                                       statusText: "Origin Disallowed."
                                   });
                         } else {
-                            return allowOrigins && allowOrigins.includes(origin)
+                            return allowOrigins && !allowOrigins.includes(origin)
                                 ? new Response(undefined, {
                                       status: 417,
                                       statusText: "Origin Disallowed."
