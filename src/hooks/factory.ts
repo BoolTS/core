@@ -56,6 +56,8 @@ export type TBoolFactoryOptions = Required<{
             path: string;
         }> &
             Partial<{}>;
+        allowOrigins: Array<string>;
+        allowMethods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
     }>;
 
 export const responseConverter = (response: Response) => {
@@ -920,9 +922,11 @@ export const BoolFactory = async (
 ) => {
     try {
         const modulesConverted = !Array.isArray(modules) ? [modules] : modules;
-        const { allowLogsMethods, staticOption } = Object.freeze({
+        const { allowLogsMethods, staticOption, allowOrigins, allowMethods } = Object.freeze({
             allowLogsMethods: options?.log?.methods,
-            staticOption: options.static
+            staticOption: options.static,
+            allowOrigins: options.allowOrigins,
+            allowMethods: options.allowMethods || ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
         });
 
         const moduleResolutions = await Promise.all(
@@ -947,8 +951,47 @@ export const BoolFactory = async (
                 const start = performance.now();
                 const url = new URL(request.url);
                 const query = Qs.parse(url.searchParams.toString(), options.queryParser);
+                const origin = request.headers.get("origin");
 
                 try {
+                    if (request.method.toUpperCase() === "OPTIONS") {
+                        if (!origin) {
+                            return !allowOrigins
+                                ? new Response(undefined, {
+                                      status: 204,
+                                      statusText: "No Content.",
+                                      headers: {
+                                          "Content-Type": "text/plain",
+                                          "Access-Control-Allow-Origin": "*",
+                                          "Access-Control-Allow-Credentials": "true",
+                                          "Access-Control-Allow-Headers": "*",
+                                          "Access-Control-Allow-Methods": allowMethods.join(", ")
+                                      }
+                                  })
+                                : new Response(undefined, {
+                                      status: 417,
+                                      statusText: "Origin Disallowed."
+                                  });
+                        } else {
+                            return allowOrigins && allowOrigins.includes(origin)
+                                ? new Response(undefined, {
+                                      status: 417,
+                                      statusText: "Origin Disallowed."
+                                  })
+                                : new Response(undefined, {
+                                      status: 204,
+                                      statusText: "No Content.",
+                                      headers: {
+                                          "Content-Type": "text/plain",
+                                          "Access-Control-Allow-Origin": origin,
+                                          "Access-Control-Allow-Credentials": "true",
+                                          "Access-Control-Allow-Headers": "*",
+                                          "Access-Control-Allow-Methods": allowMethods.join(", ")
+                                      }
+                                  });
+                        }
+                    }
+
                     if (staticOption) {
                         const file = Bun.file(`${staticOption.path}/${url.pathname}`);
                         const isFileExists = await file.exists();

@@ -24,6 +24,8 @@ export type TBoolFactoryOptions = Required<{
     static: Required<{
         path: string;
     }> & Partial<{}>;
+    allowOrigins: Array<string>;
+    allowMethods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
 }>;
 export declare const responseConverter: (response: Response) => Response;
 export declare const controllerCreator: (controllerConstructor: new (...args: any[]) => unknown, group: RouterGroup, injector: Injector, prefix?: string) => RouterGroup;
