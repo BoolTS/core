@@ -616,6 +616,11 @@ export const BoolFactory = async (modules, options) => {
                         const file = Bun.file(`${staticOption.path}/${url.pathname}`);
                         const isFileExists = await file.exists();
                         if (isFileExists) {
+                            if (staticOption.headers) {
+                                for (const [key, value] of Object.entries(staticOption.headers)) {
+                                    responseHeaders.set(key, value);
+                                }
+                            }
                             responseHeaders.set("Content-Type", file.type);
                             return responseConverter(new Response(await file.arrayBuffer(), {
                                 status: 200,

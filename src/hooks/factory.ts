@@ -988,6 +988,12 @@ export const BoolFactory = async (
                         const isFileExists = await file.exists();
 
                         if (isFileExists) {
+                            if (staticOption.headers) {
+                                for (const [key, value] of Object.entries(staticOption.headers)) {
+                                    responseHeaders.set(key, value);
+                                }
+                            }
+
                             responseHeaders.set("Content-Type", file.type);
 
                             return responseConverter(
