@@ -968,6 +968,7 @@ export const BoolFactory = async (
                 const url = new URL(request.url);
                 const query = Qs.parse(url.searchParams.toString(), options.queryParser);
                 const origin = request.headers.get("origin") || "*";
+                const method = request.method.toUpperCase();
                 const responseHeaders = new Headers();
 
                 try {
@@ -980,6 +981,16 @@ export const BoolFactory = async (
                         allowOrigins.includes("*") ? "*" : !allowOrigins.includes(origin) ? allowOrigins[0] : origin
                     );
 
+                    if (!allowMethods.includes(method)) {
+                        return responseConverter(
+                            new Response(undefined, {
+                                status: 405,
+                                statusText: "Method Not Allowed.",
+                                headers: responseHeaders
+                            })
+                        );
+                    }
+
                     if (request.method.toUpperCase() === "OPTIONS") {
                         return responseConverter(
                             allowOrigins.includes("*") || allowOrigins.includes(origin)
@@ -990,7 +1001,7 @@ export const BoolFactory = async (
                                   })
                                 : new Response(undefined, {
                                       status: 417,
-                                      statusText: "Origin Disallowed.",
+                                      statusText: "Expectation Failed.",
                                       headers: responseHeaders
                                   })
                         );
