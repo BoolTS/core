@@ -602,17 +602,17 @@ export const BoolFactory = async (modules, options) => {
                     allowCredentials && responseHeaders.set("Access-Control-Allow-Credentials", "true");
                     responseHeaders.set("Access-Control-Allow-Methods", allowMethods.join(", "));
                     responseHeaders.set("Access-Control-Allow-Headers", allowHeaders.join(", "));
-                    responseHeaders.set("Access-Control-Allow-Origin", !allowOrigins.includes(origin) ? allowOrigins[0] : origin);
+                    responseHeaders.set("Access-Control-Allow-Origin", allowOrigins.includes("*") ? "*" : !allowOrigins.includes(origin) ? allowOrigins[0] : origin);
                     if (request.method.toUpperCase() === "OPTIONS") {
-                        return responseConverter(!allowOrigins.includes(origin)
+                        return responseConverter(allowOrigins.includes("*") || allowOrigins.includes(origin)
                             ? new Response(undefined, {
-                                status: 417,
-                                statusText: "Origin Disallowed.",
+                                status: 204,
+                                statusText: "No Content.",
                                 headers: responseHeaders
                             })
                             : new Response(undefined, {
-                                status: 204,
-                                statusText: "No Content.",
+                                status: 417,
+                                statusText: "Origin Disallowed.",
                                 headers: responseHeaders
                             }));
                     }
