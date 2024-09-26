@@ -58,8 +58,12 @@ export type TBoolFactoryOptions = Required<{
             Partial<{
                 headers: Record<string, string>;
             }>;
-        allowOrigins: string | Array<string>;
-        allowMethods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
+        cors: Partial<{
+            credentials: boolean;
+            origins: string | Array<string>;
+            methods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
+            headers: Array<string>;
+        }>;
     }>;
 
 export const responseConverter = (response: Response) => {
@@ -926,17 +930,19 @@ export const BoolFactory = async (
 ) => {
     try {
         const modulesConverted = !Array.isArray(modules) ? [modules] : modules;
-        const { allowLogsMethods, staticOption, allowOrigins, allowMethods } = Object.freeze({
+        const { allowLogsMethods, staticOption, allowOrigins, allowMethods, allowCredentials, allowHeaders } = Object.freeze({
             allowLogsMethods: options?.log?.methods,
             staticOption: options.static,
-            allowOrigins: !options.allowOrigins
+            allowOrigins: !options.cors?.origins
                 ? ["*"]
-                : typeof options.allowOrigins !== "string"
-                ? options.allowOrigins.includes("*") || options.allowOrigins.length < 1
+                : typeof options.cors.origins !== "string"
+                ? options.cors.origins.includes("*") || options.cors.origins.length < 1
                     ? ["*"]
-                    : options.allowOrigins
-                : [options.allowOrigins !== "*" ? options.allowOrigins : "*"],
-            allowMethods: options.allowMethods || ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+                    : options.cors.origins
+                : [options.cors.origins !== "*" ? options.cors.origins : "*"],
+            allowMethods: options.cors?.methods || ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            allowCredentials: !options.cors?.credentials ? false : true,
+            allowHeaders: !options.cors?.headers || options.cors.headers.includes("*") ? ["*"] : options.cors.headers
         });
 
         const moduleResolutions = await Promise.all(
@@ -965,20 +971,27 @@ export const BoolFactory = async (
                 const responseHeaders = new Headers();
 
                 try {
+                    allowCredentials && responseHeaders.set("Access-Control-Allow-Credentials", "true");
+
+                    responseHeaders.set("Access-Control-Allow-Methods", allowMethods.join(", "));
+                    responseHeaders.set("Access-Control-Allow-Headers", allowHeaders.join(", "));
+                    responseHeaders.set(
+                        "Access-Control-Allow-Origin",
+                        !allowOrigins.includes(origin) ? allowOrigins[0] : origin
+                    );
+
                     if (request.method.toUpperCase() === "OPTIONS") {
                         return responseConverter(
                             !allowOrigins.includes(origin)
                                 ? new Response(undefined, {
                                       status: 417,
-                                      statusText: "Origin Disallowed."
+                                      statusText: "Origin Disallowed.",
+                                      headers: responseHeaders
                                   })
                                 : new Response(undefined, {
                                       status: 204,
                                       statusText: "No Content.",
-                                      headers: {
-                                          "Access-Control-Allow-Origin": "*",
-                                          "Access-Control-Allow-Methods": allowMethods.join(", ")
-                                      }
+                                      headers: responseHeaders
                                   })
                         );
                     }

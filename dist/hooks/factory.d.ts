@@ -26,8 +26,12 @@ export type TBoolFactoryOptions = Required<{
     }> & Partial<{
         headers: Record<string, string>;
     }>;
-    allowOrigins: string | Array<string>;
-    allowMethods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
+    cors: Partial<{
+        credentials: boolean;
+        origins: string | Array<string>;
+        methods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
+        headers: Array<string>;
+    }>;
 }>;
 export declare const responseConverter: (response: Response) => Response;
 export declare const controllerCreator: (controllerConstructor: new (...args: any[]) => unknown, group: RouterGroup, injector: Injector, prefix?: string) => RouterGroup;
