@@ -924,10 +924,7 @@ const fetcher = async (
     );
 };
 
-export const BoolFactory = async (
-    modules: new (...args: any[]) => unknown | Array<new (...args: any[]) => unknown>,
-    options: TBoolFactoryOptions
-) => {
+export const BoolFactory = async (modules: Object | Array<Object>, options: TBoolFactoryOptions) => {
     try {
         const modulesConverted = !Array.isArray(modules) ? [modules] : modules;
         const { allowLogsMethods, staticOption, allowOrigins, allowMethods, allowCredentials, allowHeaders } = Object.freeze({

@@ -66,5 +66,5 @@ export declare const moduleResolution: (module: new (...args: any[]) => unknown,
     }>[];
     routerGroup: RouterGroup;
 }> | undefined>;
-export declare const BoolFactory: (modules: new (...args: any[]) => unknown | Array<new (...args: any[]) => unknown>, options: TBoolFactoryOptions) => Promise<void>;
+export declare const BoolFactory: (modules: Object | Array<Object>, options: TBoolFactoryOptions) => Promise<void>;
 export default BoolFactory;
