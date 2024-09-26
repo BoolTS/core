@@ -201,11 +201,11 @@ export const moduleResolution = async (module, options) => {
     });
 };
 const fetcher = async (bun, bool) => {
-    const { query, route: { parameters, model }, moduleResolution: { startMiddlewareGroup, endMiddlewareGroup, guardGroup, openDispatcherGroup, closeDispatcherGroup } } = bool;
+    const { query, responseHeaders, route: { parameters, model }, moduleResolution: { startMiddlewareGroup, endMiddlewareGroup, guardGroup, openDispatcherGroup, closeDispatcherGroup } } = bool;
     const { request, server: _server } = bun;
     const context = {
         [requestHeadersArgsKey]: request.headers,
-        [responseHeadersArgsKey]: new Headers(),
+        [responseHeadersArgsKey]: responseHeaders,
         [queryArgsKey]: query,
         [paramsArgsKey]: parameters,
         [routeModelArgsKey]: model
@@ -571,7 +571,13 @@ export const BoolFactory = async (modules, options) => {
         const { allowLogsMethods, staticOption, allowOrigins, allowMethods } = Object.freeze({
             allowLogsMethods: options?.log?.methods,
             staticOption: options.static,
-            allowOrigins: options.allowOrigins,
+            allowOrigins: !options.allowOrigins
+                ? ["*"]
+                : typeof options.allowOrigins !== "string"
+                    ? options.allowOrigins.includes("*") || options.allowOrigins.length < 1
+                        ? ["*"]
+                        : options.allowOrigins
+                    : [options.allowOrigins !== "*" ? options.allowOrigins : "*"],
             allowMethods: options.allowMethods || ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
         });
         const moduleResolutions = await Promise.all(modulesConverted.map((moduleConverted) => moduleResolution(moduleConverted, options)));
@@ -588,57 +594,34 @@ export const BoolFactory = async (modules, options) => {
                 const start = performance.now();
                 const url = new URL(request.url);
                 const query = Qs.parse(url.searchParams.toString(), options.queryParser);
-                const origin = request.headers.get("origin");
+                const origin = request.headers.get("origin") || "*";
+                const responseHeaders = new Headers();
                 try {
                     if (request.method.toUpperCase() === "OPTIONS") {
-                        if (!origin) {
-                            return !allowOrigins
-                                ? new Response(undefined, {
-                                    status: 204,
-                                    statusText: "No Content.",
-                                    headers: {
-                                        "Content-Type": "text/plain",
-                                        "Access-Control-Allow-Origin": "*",
-                                        "Access-Control-Allow-Credentials": "true",
-                                        "Access-Control-Allow-Headers": "*",
-                                        "Access-Control-Allow-Methods": allowMethods.join(", ")
-                                    }
-                                })
-                                : new Response(undefined, {
-                                    status: 417,
-                                    statusText: "Origin Disallowed."
-                                });
-                        }
-                        else {
-                            return allowOrigins && !allowOrigins.includes(origin)
-                                ? new Response(undefined, {
-                                    status: 417,
-                                    statusText: "Origin Disallowed."
-                                })
-                                : new Response(undefined, {
-                                    status: 204,
-                                    statusText: "No Content.",
-                                    headers: {
-                                        "Content-Type": "text/plain",
-                                        "Access-Control-Allow-Origin": origin,
-                                        "Access-Control-Allow-Credentials": "true",
-                                        "Access-Control-Allow-Headers": "*",
-                                        "Access-Control-Allow-Methods": allowMethods.join(", ")
-                                    }
-                                });
-                        }
+                        return responseConverter(!allowOrigins.includes(origin)
+                            ? new Response(undefined, {
+                                status: 417,
+                                statusText: "Origin Disallowed."
+                            })
+                            : new Response(undefined, {
+                                status: 204,
+                                statusText: "No Content.",
+                                headers: {
+                                    "Access-Control-Allow-Origin": "*",
+                                    "Access-Control-Allow-Methods": allowMethods.join(", ")
+                                }
+                            }));
                     }
                     if (staticOption) {
                         const file = Bun.file(`${staticOption.path}/${url.pathname}`);
                         const isFileExists = await file.exists();
                         if (isFileExists) {
-                            return new Response(await file.arrayBuffer(), {
+                            responseHeaders.set("Content-Type", file.type);
+                            return responseConverter(new Response(await file.arrayBuffer(), {
                                 status: 200,
                                 statusText: "SUCCESS",
-                                headers: {
-                                    "Content-Type": file.type
-                                }
-                            });
+                                headers: responseHeaders
+                            }));
                         }
                     }
                     let collection;
@@ -664,13 +647,14 @@ export const BoolFactory = async (modules, options) => {
                         server
                     }, {
                         query: query,
+                        responseHeaders: responseHeaders,
                         route: collection.route,
                         moduleResolution: collection.resolution
                     });
                 }
                 catch (error) {
                     options.debug && console.error(error);
-                    return responseConverter(jsonErrorInfer(error));
+                    return responseConverter(jsonErrorInfer(error, responseHeaders));
                 }
                 finally {
                     if (allowLogsMethods) {

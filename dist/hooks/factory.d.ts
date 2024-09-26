@@ -23,8 +23,10 @@ export type TBoolFactoryOptions = Required<{
     queryParser: Parameters<typeof Qs.parse>[1];
     static: Required<{
         path: string;
-    }> & Partial<{}>;
-    allowOrigins: Array<string>;
+    }> & Partial<{
+        headers: Record<string, string>;
+    }>;
+    allowOrigins: string | Array<string>;
     allowMethods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
 }>;
 export declare const responseConverter: (response: Response) => Response;

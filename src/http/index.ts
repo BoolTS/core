@@ -13,8 +13,7 @@ export type THttpMethods = {
     PATCH: "PATCH";
 };
 
-export const jsonErrorInfer = (data: any) => {
-    const headers = new Headers();
+export const jsonErrorInfer = (data: any, headers: Headers = new Headers()) => {
     headers.set("Content-Type", "application/json");
 
     if (data instanceof HttpClientError || data instanceof HttpServerError) {
