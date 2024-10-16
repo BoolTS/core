@@ -8,7 +8,8 @@ import "reflect-metadata";
 import Qs from "qs";
 import * as Zod from "zod";
 
-import type { Server } from "bun";
+import { ETimeUnit, add as TimeAdd } from "@bool-ts/date-time";
+import type { BunFile, Server } from "bun";
 import { Router, RouterGroup } from "../entities";
 import { HttpClientError, HttpServerError, jsonErrorInfer, type THttpMethods } from "../http";
 import {
@@ -57,6 +58,7 @@ export type TBoolFactoryOptions = Required<{
         }> &
             Partial<{
                 headers: Record<string, string>;
+                cacheTimeInSeconds: number;
             }>;
         cors: Partial<{
             credentials: boolean;
@@ -65,6 +67,8 @@ export type TBoolFactoryOptions = Required<{
             headers: Array<string>;
         }>;
     }>;
+
+const DEFAULT_STATIC_CACHE_TIME_IN_SECONDS = 900;
 
 export const responseConverter = (response: Response) => {
     response.headers.set("X-Powered-By", "Bool Typescript");
@@ -926,7 +930,16 @@ const fetcher = async (
 
 export const BoolFactory = async (modules: Object | Array<Object>, options: TBoolFactoryOptions) => {
     try {
+        const staticMap: Map<
+            string,
+            Readonly<{
+                expiredAt: Date;
+                file: BunFile;
+            }>
+        > = new Map();
+
         const modulesConverted = !Array.isArray(modules) ? [modules] : modules;
+
         const { allowLogsMethods, staticOption, allowOrigins, allowMethods, allowCredentials, allowHeaders } = Object.freeze({
             allowLogsMethods: options?.log?.methods,
             staticOption: options.static,
@@ -1005,25 +1018,72 @@ export const BoolFactory = async (modules: Object | Array<Object>, options: TBoo
                     }
 
                     if (staticOption) {
-                        const file = Bun.file(`${staticOption.path}/${url.pathname}`);
-                        const isFileExists = await file.exists();
+                        const { path, headers, cacheTimeInSeconds } = staticOption;
+                        const pathname = `${path}/${url.pathname}`;
+                        const cachedFile = staticMap.get(pathname);
 
-                        if (isFileExists) {
-                            if (staticOption.headers) {
-                                for (const [key, value] of Object.entries(staticOption.headers)) {
-                                    responseHeaders.set(key, value);
+                        if (!cachedFile) {
+                            const file = Bun.file(pathname);
+                            const isFileExists = await file.exists();
+
+                            if (isFileExists) {
+                                if (headers) {
+                                    for (const [key, value] of Object.entries(headers)) {
+                                        responseHeaders.set(key, value);
+                                    }
                                 }
+
+                                responseHeaders.set("Content-Type", file.type);
+
+                                return responseConverter(
+                                    new Response(await file.arrayBuffer(), {
+                                        status: 200,
+                                        statusText: "SUCCESS",
+                                        headers: responseHeaders
+                                    })
+                                );
+                            }
+                        } else {
+                            const isExpired = new Date() > cachedFile.expiredAt;
+
+                            if (isExpired) {
+                                staticMap.delete(pathname);
                             }
 
-                            responseHeaders.set("Content-Type", file.type);
+                            const file = !isExpired ? cachedFile.file : Bun.file(pathname);
+                            const isFileExists = await file.exists();
 
-                            return responseConverter(
-                                new Response(await file.arrayBuffer(), {
-                                    status: 200,
-                                    statusText: "SUCCESS",
-                                    headers: responseHeaders
-                                })
-                            );
+                            if (isFileExists) {
+                                staticMap.set(
+                                    pathname,
+                                    Object.freeze({
+                                        expiredAt: TimeAdd(
+                                            new Date(),
+                                            typeof cacheTimeInSeconds !== "number"
+                                                ? DEFAULT_STATIC_CACHE_TIME_IN_SECONDS
+                                                : cacheTimeInSeconds,
+                                            ETimeUnit.seconds
+                                        ),
+                                        file: file
+                                    })
+                                );
+
+                                if (headers) {
+                                    for (const [key, value] of Object.entries(headers)) {
+                                        responseHeaders.set(key, value);
+                                    }
+                                }
+
+                                responseHeaders.set("Content-Type", file.type);
+
+                                return responseConverter(
+                                    new Response(await file.arrayBuffer(), {
+                                        status: 200,
+                                        statusText: "SUCCESS",
+                                        headers: responseHeaders
+                                    })
+                                );
+                            }
                         }
                     }
 
@@ -1056,7 +1116,12 @@ export const BoolFactory = async (modules: Object | Array<Object>, options: TBoo
                                     httpCode: 404,
                                     message: "Route not found",
                                     data: undefined
-                                })
+                                }),
+                                {
+                                    status: 404,
+                                    statusText: "Not found.",
+                                    headers: responseHeaders
+                                }
                             )
                         );
                     }

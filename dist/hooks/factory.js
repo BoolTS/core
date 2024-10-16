@@ -2,10 +2,12 @@ import "colors";
 import "reflect-metadata";
 import Qs from "qs";
 import * as Zod from "zod";
+import { ETimeUnit, add as TimeAdd } from "@bool-ts/date-time";
 import { Router, RouterGroup } from "../entities";
 import { HttpClientError, HttpServerError, jsonErrorInfer } from "../http";
 import { argumentsKey, configKey, contextArgsKey, controllerHttpKey, controllerKey, moduleKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestBodyArgsKey, requestHeaderArgsKey, requestHeadersArgsKey, responseBodyArgsKey, responseHeadersArgsKey, routeModelArgsKey } from "../keys";
 import { Injector } from "./injector";
+const DEFAULT_STATIC_CACHE_TIME_IN_SECONDS = 900;
 export const responseConverter = (response) => {
     response.headers.set("X-Powered-By", "Bool Typescript");
     return response;
@@ -567,6 +569,7 @@ const fetcher = async (bun, bool) => {
 };
 export const BoolFactory = async (modules, options) => {
     try {
+        const staticMap = new Map();
         const modulesConverted = !Array.isArray(modules) ? [modules] : modules;
         const { allowLogsMethods, staticOption, allowOrigins, allowMethods, allowCredentials, allowHeaders } = Object.freeze({
             allowLogsMethods: options?.log?.methods,
@@ -625,20 +628,52 @@ export const BoolFactory = async (modules, options) => {
                             }));
                     }
                     if (staticOption) {
-                        const file = Bun.file(`${staticOption.path}/${url.pathname}`);
-                        const isFileExists = await file.exists();
-                        if (isFileExists) {
-                            if (staticOption.headers) {
-                                for (const [key, value] of Object.entries(staticOption.headers)) {
-                                    responseHeaders.set(key, value);
+                        const { path, headers, cacheTimeInSeconds } = staticOption;
+                        const pathname = `${path}/${url.pathname}`;
+                        const cachedFile = staticMap.get(pathname);
+                        if (!cachedFile) {
+                            const file = Bun.file(pathname);
+                            const isFileExists = await file.exists();
+                            if (isFileExists) {
+                                if (headers) {
+                                    for (const [key, value] of Object.entries(headers)) {
+                                        responseHeaders.set(key, value);
+                                    }
                                 }
+                                responseHeaders.set("Content-Type", file.type);
+                                return responseConverter(new Response(await file.arrayBuffer(), {
+                                    status: 200,
+                                    statusText: "SUCCESS",
+                                    headers: responseHeaders
+                                }));
                             }
-                            responseHeaders.set("Content-Type", file.type);
-                            return responseConverter(new Response(await file.arrayBuffer(), {
-                                status: 200,
-                                statusText: "SUCCESS",
-                                headers: responseHeaders
-                            }));
+                        }
+                        else {
+                            const isExpired = new Date() > cachedFile.expiredAt;
+                            if (isExpired) {
+                                staticMap.delete(pathname);
+                            }
+                            const file = !isExpired ? cachedFile.file : Bun.file(pathname);
+                            const isFileExists = await file.exists();
+                            if (isFileExists) {
+                                staticMap.set(pathname, Object.freeze({
+                                    expiredAt: TimeAdd(new Date(), typeof cacheTimeInSeconds !== "number"
+                                        ? DEFAULT_STATIC_CACHE_TIME_IN_SECONDS
+                                        : cacheTimeInSeconds, ETimeUnit.seconds),
+                                    file: file
+                                }));
+                                if (headers) {
+                                    for (const [key, value] of Object.entries(headers)) {
+                                        responseHeaders.set(key, value);
+                                    }
+                                }
+                                responseHeaders.set("Content-Type", file.type);
+                                return responseConverter(new Response(await file.arrayBuffer(), {
+                                    status: 200,
+                                    statusText: "SUCCESS",
+                                    headers: responseHeaders
+                                }));
+                            }
                         }
                     }
                     let collection;
@@ -657,7 +692,11 @@ export const BoolFactory = async (modules, options) => {
                             httpCode: 404,
                             message: "Route not found",
                             data: undefined
-                        })));
+                        }), {
+                            status: 404,
+                            statusText: "Not found.",
+                            headers: responseHeaders
+                        }));
                     }
                     return await fetcher({
                         request,

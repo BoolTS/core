@@ -25,6 +25,7 @@ export type TBoolFactoryOptions = Required<{
         path: string;
     }> & Partial<{
         headers: Record<string, string>;
+        cacheTimeInSeconds: number;
     }>;
     cors: Partial<{
         credentials: boolean;
