@@ -1,18 +1,18 @@
-import "colors";
 import "reflect-metadata";
 import Qs from "qs";
 import * as Zod from "zod";
 import { ETimeUnit, add as TimeAdd } from "@bool-ts/date-time";
-import { Router, RouterGroup } from "../entities";
+import { HttpRouter, HttpRouterGroup, WebSocketRoute, WebSocketRouter, WebSocketRouterGroup } from "../entities";
 import { HttpClientError, HttpServerError, jsonErrorInfer } from "../http";
-import { argumentsKey, configKey, contextArgsKey, controllerHttpKey, controllerKey, moduleKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestBodyArgsKey, requestHeaderArgsKey, requestHeadersArgsKey, responseBodyArgsKey, responseHeadersArgsKey, routeModelArgsKey } from "../keys";
+import { argumentsKey, configKey, contextArgsKey, controllerHttpKey, controllerKey, moduleKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestBodyArgsKey, requestHeaderArgsKey, requestHeadersArgsKey, responseBodyArgsKey, responseHeadersArgsKey, routeModelArgsKey, webSocketCloseCodeArgsKey, webSocketCloseReasonArgsKey, webSocketConnectionArgsKey, webSocketKey, webSocketMessageArgsKey, webSocketServerArgsKey } from "../keys";
+import { ansiText, isWebSocketUpgrade } from "../ultils";
 import { Injector } from "./injector";
 const DEFAULT_STATIC_CACHE_TIME_IN_SECONDS = 900;
-export const responseConverter = (response) => {
+const responseConverter = (response) => {
     response.headers.set("X-Powered-By", "Bool Typescript");
     return response;
 };
-export const controllerCreator = (controllerConstructor, group, injector, prefix) => {
+const controllerCreator = ({ controllerConstructor, httpRouterGroup, injector, prefix }) => {
     if (!Reflect.getOwnMetadataKeys(controllerConstructor).includes(controllerKey)) {
         throw Error(`${controllerConstructor.name} is not a controller.`);
     }
@@ -24,8 +24,9 @@ export const controllerCreator = (controllerConstructor, group, injector, prefix
         prefix: "/",
         httpMetadata: []
     };
-    const routesMetadata = (Reflect.getOwnMetadata(controllerHttpKey, controllerConstructor) || []);
-    const router = new Router(`/${prefix || ""}/${controllerMetadata.prefix}`);
+    const routesMetadata = (Reflect.getOwnMetadata(controllerHttpKey, controllerConstructor) ||
+        []);
+    const router = new HttpRouter(`/${prefix || ""}/${controllerMetadata.prefix}`);
     routesMetadata.forEach((routeMetadata) => {
         if (typeof routeMetadata.descriptor.value !== "function") {
             return;
@@ -52,9 +53,64 @@ export const controllerCreator = (controllerConstructor, group, injector, prefix
                 return route.options(routeArgument);
         }
     });
-    return group.add(router);
+    return httpRouterGroup.add(router);
 };
-export const argumentsResolution = async (data, zodSchema, argumentIndex, funcName) => {
+const webSocketCreator = ({ injector, httpRouterGroup, prefix, webSocketRouterGroup, webSocketConstructor }) => {
+    if (!Reflect.getOwnMetadataKeys(webSocketConstructor).includes(webSocketKey)) {
+        throw Error(`${webSocketConstructor.name} is not a controller.`);
+    }
+    const webSocket = injector.get(webSocketConstructor);
+    if (!webSocket) {
+        throw Error("Can not initialize webSocket.");
+    }
+    const webSocketMetadata = Reflect.getOwnMetadata(webSocketKey, webSocketConstructor) || {
+        prefix: "/",
+        events: [],
+        http: []
+    };
+    const fullPrefix = `/${prefix || ""}/${webSocketMetadata.prefix}`;
+    //#region [HTTP ROUTER]
+    const router = new HttpRouter(fullPrefix);
+    for (const [_key, httpMetadata] of Object.entries(webSocketMetadata.http)) {
+        if (typeof httpMetadata.descriptor?.value !== "function") {
+            continue;
+        }
+        const route = router.route(httpMetadata.path);
+        const handler = httpMetadata.descriptor.value.bind(webSocket);
+        const routeArgument = Object.freeze({
+            class: webSocketConstructor,
+            funcName: httpMetadata.methodName,
+            func: handler
+        });
+        switch (httpMetadata.httpMethod) {
+            case "GET":
+                route.get(routeArgument);
+                break;
+            case "POST":
+                route.post(routeArgument);
+                break;
+        }
+    }
+    httpRouterGroup.add(router);
+    //#endregion
+    //#region [WEBSOCKET ROUTER]
+    const webSocketRouter = new WebSocketRouter(fullPrefix);
+    for (const [key, event] of Object.entries(webSocketMetadata.events)) {
+        const webSocketRoute = new WebSocketRoute({
+            eventName: key,
+            metadata: event
+        });
+        webSocketRouter.addRoutes(webSocketRoute);
+    }
+    webSocketRouter.bind(webSocket);
+    webSocketRouterGroup.addRouters(webSocketRouter);
+    //#endregion
+    return Object.freeze({
+        httpRouterGroup: httpRouterGroup,
+        webSocketRouterGroup: webSocketRouterGroup
+    });
+};
+const argumentsResolution = async (data, zodSchema, argumentIndex, funcName) => {
     try {
         const validation = await zodSchema.safeParseAsync(data);
         if (!validation.success) {
@@ -85,7 +141,7 @@ export const argumentsResolution = async (data, zodSchema, argumentIndex, funcNa
         });
     }
 };
-export const moduleResolution = async (module, options) => {
+const moduleResolution = async (module, options) => {
     if (!Reflect.getOwnMetadataKeys(module).includes(moduleKey)) {
         throw Error(`${module.name} is not a module.`);
     }
@@ -94,8 +150,9 @@ export const moduleResolution = async (module, options) => {
     if (!moduleMetadata) {
         return;
     }
-    const { loaders, middlewares, guards, dispatchers, controllers, dependencies, prefix: modulePrefix, config: moduleConfig } = moduleMetadata;
-    // Configuration(s)
+    const { loaders, middlewares, guards, dispatchers, controllers, dependencies, webSockets, prefix: modulePrefix, config: moduleConfig } = moduleMetadata;
+    const fullPrefix = `${options.prefix || ""}/${modulePrefix || ""}`;
+    //#region [Configuration(s)]
     const { config } = Object.freeze({
         config: {
             ...(typeof options.config !== "function" ? options.config : await options.config()),
@@ -106,19 +163,30 @@ export const moduleResolution = async (module, options) => {
                 : await moduleConfig())
         }
     });
-    // Register config like an injection
+    //#endregion
+    //#region [Register config like an injection]
     injector.set(configKey, config);
+    //#endregion
+    //#region [Run loader(s)]
     if (loaders) {
         const loaderFunctions = [];
         for (const [key, func] of Object.entries(loaders)) {
             loaderFunctions.push(async () => {
                 try {
                     const result = await func({ config });
-                    console.info(`INFO! Loader [${key}] initialized successfully.`);
+                    console.info(`${ansiText(" INFO ", {
+                        color: "white",
+                        backgroundColor: "blue",
+                        bold: true
+                    })} Loader [${key}] initialized successfully.`);
                     return result;
                 }
                 catch (error) {
-                    console.error(`WARNING! Loader [${key}] initialization failed.`);
+                    console.error(`${ansiText(" WARN ", {
+                        color: "yellow",
+                        backgroundColor: "red",
+                        bold: true
+                    })} Loader [${key}] initialization failed.`);
                     options.debug && console.error(error);
                     throw error;
                 }
@@ -130,31 +198,33 @@ export const moduleResolution = async (module, options) => {
             injector.set(key, value);
         }
     }
-    // Dependencies
+    //#endregion
+    //#region [Dependencies]
     !dependencies || dependencies.map((dependency) => injector.get(dependency));
-    // Middleware(s)
+    //#endregion
+    //#region [Middleware(s)]
     const startMiddlewareGroup = [];
     const endMiddlewareGroup = [];
-    if (middlewares) {
-        for (let i = 0; i < middlewares.length; i++) {
-            const instance = injector.get(middlewares[i]);
+    middlewares &&
+        middlewares.forEach((middleware) => {
+            const instance = injector.get(middleware);
             if (instance.start && typeof instance.start === "function") {
                 startMiddlewareGroup.push(Object.freeze({
-                    class: middlewares[i],
+                    class: middleware,
                     funcName: "start",
                     func: instance.start.bind(instance)
                 }));
             }
             if (instance.end && typeof instance.end === "function") {
                 endMiddlewareGroup.push(Object.freeze({
-                    class: middlewares[i],
+                    class: middleware,
                     funcName: "end",
                     func: instance.end.bind(instance)
                 }));
             }
-        }
-    }
-    // Guard(s)
+        });
+    //#endregion
+    //#region [Guard(s)]
     const guardGroup = !guards
         ? []
         : guards.map((guard) => {
@@ -165,32 +235,51 @@ export const moduleResolution = async (module, options) => {
                 func: guardInstance.enforce.bind(guardInstance)
             });
         });
-    // Before dispatcher(s)
+    //#endregion
+    //#region [Before dispatcher(s)]
     const openDispatcherGroup = [];
     const closeDispatcherGroup = [];
-    if (dispatchers) {
-        for (let i = 0; i < dispatchers.length; i++) {
-            const instance = injector.get(dispatchers[i]);
+    dispatchers &&
+        dispatchers.forEach((dispatcher) => {
+            const instance = injector.get(dispatcher);
             if (instance.open && typeof instance.open === "function") {
                 openDispatcherGroup.push(Object.freeze({
-                    class: dispatchers[i],
+                    class: dispatcher,
                     funcName: "open",
                     func: instance.open.bind(instance)
                 }));
             }
             if (instance.close && typeof instance.close === "function") {
                 closeDispatcherGroup.push(Object.freeze({
-                    class: dispatchers[i],
+                    class: dispatcher,
                     funcName: "close",
                     func: instance.close.bind(instance)
                 }));
             }
-        }
-    }
-    // Controller(s)
-    const routerGroup = new RouterGroup();
+        });
+    //#endregion
+    //#region [Controller(s)]
+    const controllerRouterGroup = new HttpRouterGroup();
     controllers &&
-        controllers.map((controllerConstructor) => controllerCreator(controllerConstructor, routerGroup, injector, `${options.prefix || ""}/${modulePrefix || ""}`));
+        controllers.forEach((controllerConstructor) => controllerCreator({
+            controllerConstructor,
+            httpRouterGroup: controllerRouterGroup,
+            injector: injector,
+            prefix: fullPrefix
+        }));
+    //#endregion
+    //#region [WebSocket(s)]
+    const webSocketHttpRouterGroup = new HttpRouterGroup();
+    const webSocketRouterGroup = new WebSocketRouterGroup();
+    webSockets &&
+        webSockets.forEach((webSocket) => webSocketCreator({
+            webSocketConstructor: webSocket,
+            httpRouterGroup: webSocketHttpRouterGroup,
+            webSocketRouterGroup: webSocketRouterGroup,
+            injector,
+            prefix: fullPrefix
+        }));
+    //#endregion
     return Object.freeze({
         prefix: moduleMetadata.prefix,
         injector: injector,
@@ -199,12 +288,43 @@ export const moduleResolution = async (module, options) => {
         guardGroup,
         openDispatcherGroup,
         closeDispatcherGroup,
-        routerGroup
+        controllerRouterGroup,
+        webSocketHttpRouterGroup,
+        webSocketRouterGroup
     });
 };
-const fetcher = async (bun, bool) => {
-    const { query, responseHeaders, route: { parameters, model }, moduleResolution: { startMiddlewareGroup, endMiddlewareGroup, guardGroup, openDispatcherGroup, closeDispatcherGroup } } = bool;
+const webSocketFetcher = async (bun, bool) => {
+    const { request, server } = bun;
+    const { query, responseHeaders, route: { model } } = bool;
+    // Execute controller action
+    const isUpgrade = await model.func(...[server, request, query]);
+    if (typeof isUpgrade !== "boolean") {
+        return responseConverter(new Response(JSON.stringify({
+            httpCode: 500,
+            message: "Can not detect webSocket upgrade result.",
+            data: undefined
+        }), {
+            status: 500,
+            statusText: "Internal server error.",
+            headers: responseHeaders
+        }));
+    }
+    if (!isUpgrade) {
+        return responseConverter(new Response(JSON.stringify({
+            httpCode: 500,
+            message: "Can not upgrade.",
+            data: undefined
+        }), {
+            status: 500,
+            statusText: "Internal server error.",
+            headers: responseHeaders
+        }));
+    }
+    return isUpgrade;
+};
+const httpFetcher = async (bun, bool) => {
     const { request, server: _server } = bun;
+    const { query, responseHeaders, route: { parameters, model }, moduleResolution: { startMiddlewareGroup, endMiddlewareGroup, guardGroup, openDispatcherGroup, closeDispatcherGroup } } = bool;
     const context = {
         [requestHeadersArgsKey]: request.headers,
         [responseHeadersArgsKey]: responseHeaders,
@@ -242,7 +362,9 @@ const fetcher = async (bun, bool) => {
                             : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, collection.funcName);
                         break;
                     case contextArgsKey:
-                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        args[argsMetadata.index] = !argsMetadata.key
+                            ? contextHook
+                            : contextHook.get(argsMetadata.key);
                         break;
                     case requestHeadersArgsKey:
                         args[argsMetadata.index] = !argsMetadata.zodSchema
@@ -270,7 +392,9 @@ const fetcher = async (bun, bool) => {
                             ? !(argsMetadata.type in context)
                                 ? undefined
                                 : context[argsMetadata.type]
-                            : await argumentsResolution(!(argsMetadata.type in context) ? undefined : context[argsMetadata.type], argsMetadata.zodSchema, argsMetadata.index, collection.funcName);
+                            : await argumentsResolution(!(argsMetadata.type in context)
+                                ? undefined
+                                : context[argsMetadata.type], argsMetadata.zodSchema, argsMetadata.index, collection.funcName);
                         break;
                 }
             }
@@ -299,7 +423,9 @@ const fetcher = async (bun, bool) => {
                             : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, collection.funcName);
                         break;
                     case contextArgsKey:
-                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        args[argsMetadata.index] = !argsMetadata.key
+                            ? contextHook
+                            : contextHook.get(argsMetadata.key);
                         break;
                     case requestHeadersArgsKey:
                         args[argsMetadata.index] = !argsMetadata.zodSchema
@@ -358,7 +484,9 @@ const fetcher = async (bun, bool) => {
                             : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, collection.funcName);
                         break;
                     case contextArgsKey:
-                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        args[argsMetadata.index] = !argsMetadata.key
+                            ? contextHook
+                            : contextHook.get(argsMetadata.key);
                         break;
                     case requestHeadersArgsKey:
                         args[argsMetadata.index] = !argsMetadata.zodSchema
@@ -462,7 +590,9 @@ const fetcher = async (bun, bool) => {
                             : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, collection.funcName);
                         break;
                     case contextArgsKey:
-                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        args[argsMetadata.index] = !argsMetadata.key
+                            ? contextHook
+                            : contextHook.get(argsMetadata.key);
                         break;
                     case requestHeadersArgsKey:
                         args[argsMetadata.index] = !argsMetadata.zodSchema
@@ -517,7 +647,9 @@ const fetcher = async (bun, bool) => {
                             : await argumentsResolution(await request[argsMetadata.parser || "json"](), argsMetadata.zodSchema, argsMetadata.index, collection.funcName);
                         break;
                     case contextArgsKey:
-                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        args[argsMetadata.index] = !argsMetadata.key
+                            ? contextHook
+                            : contextHook.get(argsMetadata.key);
                         break;
                     case requestHeadersArgsKey:
                         args[argsMetadata.index] = !argsMetadata.zodSchema
@@ -545,7 +677,9 @@ const fetcher = async (bun, bool) => {
                             ? !(argsMetadata.type in context)
                                 ? undefined
                                 : context[argsMetadata.type]
-                            : await argumentsResolution(!(argsMetadata.type in context) ? undefined : context[argsMetadata.type], argsMetadata.zodSchema, argsMetadata.index, collection.funcName);
+                            : await argumentsResolution(!(argsMetadata.type in context)
+                                ? undefined
+                                : context[argsMetadata.type], argsMetadata.zodSchema, argsMetadata.index, collection.funcName);
                         break;
                 }
             }
@@ -581,9 +715,18 @@ export const BoolFactory = async (modules, options) => {
                         ? ["*"]
                         : options.cors.origins
                     : [options.cors.origins !== "*" ? options.cors.origins : "*"],
-            allowMethods: options.cors?.methods || ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            allowMethods: options.cors?.methods || [
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
+            ],
             allowCredentials: !options.cors?.credentials ? false : true,
-            allowHeaders: !options.cors?.headers || options.cors.headers.includes("*") ? ["*"] : options.cors.headers
+            allowHeaders: !options.cors?.headers || options.cors.headers.includes("*")
+                ? ["*"]
+                : options.cors.headers
         });
         const moduleResolutions = await Promise.all(modulesConverted.map((moduleConverted) => moduleResolution(moduleConverted, options)));
         const availableModuleResolutions = moduleResolutions.filter((moduleResolution) => typeof moduleResolution !== "undefined");
@@ -591,9 +734,16 @@ export const BoolFactory = async (modules, options) => {
             ...new Set(availableModuleResolutions.map((availableModuleResolution) => availableModuleResolution.prefix))
         ];
         if (prefixs.length !== availableModuleResolutions.length) {
-            throw Error(`Module prefix should be unique.`);
+            throw Error("Module prefix should be unique.");
         }
-        Bun.serve({
+        const webSocketsMap = new Map();
+        for (const availableModuleResolution of availableModuleResolutions) {
+            const webSocketMap = availableModuleResolution.webSocketRouterGroup.execute();
+            for (const [key, metadata] of webSocketMap.entries()) {
+                webSocketsMap.set(key, metadata);
+            }
+        }
+        const server = Bun.serve({
             port: options.port,
             fetch: async (request, server) => {
                 const start = performance.now();
@@ -603,10 +753,50 @@ export const BoolFactory = async (modules, options) => {
                 const method = request.method.toUpperCase();
                 const responseHeaders = new Headers();
                 try {
-                    allowCredentials && responseHeaders.set("Access-Control-Allow-Credentials", "true");
+                    const isUpgradable = isWebSocketUpgrade(request);
+                    let collection;
+                    if (isUpgradable) {
+                        for (const availableModuleResolution of availableModuleResolutions) {
+                            const routeResult = availableModuleResolution.webSocketHttpRouterGroup.find(url.pathname, request.method);
+                            if (routeResult) {
+                                collection = Object.freeze({
+                                    route: routeResult,
+                                    resolution: availableModuleResolution
+                                });
+                                break;
+                            }
+                        }
+                        if (!collection) {
+                            return responseConverter(new Response(JSON.stringify({
+                                httpCode: 404,
+                                message: "Route not found",
+                                data: undefined
+                            }), {
+                                status: 404,
+                                statusText: "Not found.",
+                                headers: responseHeaders
+                            }));
+                        }
+                        const upgradeResult = await webSocketFetcher({
+                            request,
+                            server
+                        }, {
+                            query: query,
+                            responseHeaders: responseHeaders,
+                            route: collection.route,
+                            moduleResolution: collection.resolution
+                        });
+                        return upgradeResult instanceof Response ? upgradeResult : undefined;
+                    }
+                    allowCredentials &&
+                        responseHeaders.set("Access-Control-Allow-Credentials", "true");
                     responseHeaders.set("Access-Control-Allow-Methods", allowMethods.join(", "));
                     responseHeaders.set("Access-Control-Allow-Headers", allowHeaders.join(", "));
-                    responseHeaders.set("Access-Control-Allow-Origin", allowOrigins.includes("*") ? "*" : !allowOrigins.includes(origin) ? allowOrigins[0] : origin);
+                    responseHeaders.set("Access-Control-Allow-Origin", allowOrigins.includes("*")
+                        ? "*"
+                        : !allowOrigins.includes(origin)
+                            ? allowOrigins[0]
+                            : origin);
                     if (!allowMethods.includes(method)) {
                         return responseConverter(new Response(undefined, {
                             status: 405,
@@ -676,13 +866,12 @@ export const BoolFactory = async (modules, options) => {
                             }
                         }
                     }
-                    let collection;
-                    for (let i = 0; i < availableModuleResolutions.length; i++) {
-                        const routeResult = availableModuleResolutions[i].routerGroup.find(url.pathname, request.method);
+                    for (const availableModuleResolution of availableModuleResolutions) {
+                        const routeResult = availableModuleResolution.controllerRouterGroup.find(url.pathname, request.method);
                         if (routeResult) {
                             collection = Object.freeze({
                                 route: routeResult,
-                                resolution: availableModuleResolutions[i]
+                                resolution: availableModuleResolution
                             });
                             break;
                         }
@@ -698,7 +887,7 @@ export const BoolFactory = async (modules, options) => {
                             headers: responseHeaders
                         }));
                     }
-                    return await fetcher({
+                    return await httpFetcher({
                         request,
                         server
                     }, {
@@ -715,16 +904,162 @@ export const BoolFactory = async (modules, options) => {
                 finally {
                     if (allowLogsMethods) {
                         const end = performance.now();
-                        const convertedPID = `${process.pid}`.yellow;
-                        const convertedMethod = `${request.method.yellow}`.bgBlue;
-                        const convertedReqIp = `${request.headers.get("x-forwarded-for") ||
+                        const pathname = ansiText(url.pathname, { color: "blue" });
+                        const convertedPID = `${Bun.color("yellow", "ansi")}${process.pid}`;
+                        const convertedMethod = ansiText(request.method, {
+                            color: "yellow",
+                            backgroundColor: "blue"
+                        });
+                        const convertedReqIp = ansiText(`${request.headers.get("x-forwarded-for") ||
                             request.headers.get("x-real-ip") ||
                             server.requestIP(request)?.address ||
-                            "<Unknown>"}`.yellow;
-                        const convertedTime = `${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
+                            "<Unknown>"}`, {
+                            color: "yellow"
+                        });
+                        const convertedTime = ansiText(`${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`, {
+                            color: "yellow",
+                            backgroundColor: "blue"
+                        });
                         allowLogsMethods.includes(request.method.toUpperCase()) &&
-                            console.info(`PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${new URL(request.url).pathname.blue} - Time: ${convertedTime}`);
+                            console.info(`PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${pathname} - Time: ${convertedTime}`);
                     }
+                }
+            },
+            websocket: {
+                open: (connection) => {
+                    const pathnameKey = `${connection.data.pathname}:::open`;
+                    const handlerMetadata = webSocketsMap.get(pathnameKey);
+                    if (!handlerMetadata) {
+                        return;
+                    }
+                    const argumentsMetadata = handlerMetadata.arguments || {};
+                    const args = [];
+                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                        switch (argumentMetadata.type) {
+                            case webSocketConnectionArgsKey:
+                                args[argumentMetadata.index] = connection;
+                                break;
+                            case webSocketServerArgsKey:
+                                args[argumentMetadata.index] = server;
+                                break;
+                        }
+                    }
+                    handlerMetadata.descriptor.value(...args);
+                },
+                close: (connection, code, reason) => {
+                    const pathnameKey = `${connection.data.pathname}:::close`;
+                    const handlerMetadata = webSocketsMap.get(pathnameKey);
+                    if (!handlerMetadata) {
+                        return;
+                    }
+                    const argumentsMetadata = handlerMetadata.arguments || {};
+                    const args = [];
+                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                        switch (argumentMetadata.type) {
+                            case webSocketConnectionArgsKey:
+                                args[argumentMetadata.index] = connection;
+                                break;
+                            case webSocketServerArgsKey:
+                                args[argumentMetadata.index] = server;
+                                break;
+                            case webSocketCloseCodeArgsKey:
+                                args[argumentMetadata.index] = code;
+                                break;
+                            case webSocketCloseReasonArgsKey:
+                                args[argumentMetadata.index] = reason;
+                                break;
+                        }
+                    }
+                    handlerMetadata.descriptor.value(...args);
+                },
+                message: (connection, message) => {
+                    const pathnameKey = `${connection.data.pathname}:::message`;
+                    const handlerMetadata = webSocketsMap.get(pathnameKey);
+                    if (!handlerMetadata) {
+                        return;
+                    }
+                    const argumentsMetadata = handlerMetadata.arguments || {};
+                    const args = [];
+                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                        switch (argumentMetadata.type) {
+                            case webSocketConnectionArgsKey:
+                                args[argumentMetadata.index] = connection;
+                                break;
+                            case webSocketMessageArgsKey:
+                                args[argumentMetadata.index] = message;
+                                break;
+                            case webSocketServerArgsKey:
+                                args[argumentMetadata.index] = server;
+                                break;
+                        }
+                    }
+                    handlerMetadata.descriptor.value(...args);
+                },
+                drain: (connection) => {
+                    const pathnameKey = `${connection.data.pathname}:::drain`;
+                    const handlerMetadata = webSocketsMap.get(pathnameKey);
+                    if (!handlerMetadata) {
+                        return;
+                    }
+                    const argumentsMetadata = handlerMetadata.arguments || {};
+                    const args = [];
+                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                        switch (argumentMetadata.type) {
+                            case webSocketConnectionArgsKey:
+                                args[argumentMetadata.index] = connection;
+                                break;
+                            case webSocketServerArgsKey:
+                                args[argumentMetadata.index] = server;
+                                break;
+                        }
+                    }
+                    handlerMetadata.descriptor.value(...args);
+                },
+                ping: (connection, data) => {
+                    const pathnameKey = `${connection.data.pathname}:::ping`;
+                    const handlerMetadata = webSocketsMap.get(pathnameKey);
+                    if (!handlerMetadata) {
+                        return;
+                    }
+                    const argumentsMetadata = handlerMetadata.arguments || {};
+                    const args = [];
+                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                        switch (argumentMetadata.type) {
+                            case webSocketConnectionArgsKey:
+                                args[argumentMetadata.index] = connection;
+                                break;
+                            case webSocketServerArgsKey:
+                                args[argumentMetadata.index] = server;
+                                break;
+                            case webSocketMessageArgsKey:
+                                args[argumentMetadata.index] = data;
+                                break;
+                        }
+                    }
+                    handlerMetadata.descriptor.value(...args);
+                },
+                pong: (connection, data) => {
+                    const pathnameKey = `${connection.data.pathname}:::pong`;
+                    const handlerMetadata = webSocketsMap.get(pathnameKey);
+                    if (!handlerMetadata) {
+                        return;
+                    }
+                    const argumentsMetadata = handlerMetadata.arguments || {};
+                    const args = [];
+                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                        switch (argumentMetadata.type) {
+                            case webSocketConnectionArgsKey:
+                                args[argumentMetadata.index] = connection;
+                                break;
+                            case webSocketServerArgsKey:
+                                args[argumentMetadata.index] = server;
+                                break;
+                            case webSocketMessageArgsKey:
+                                args[argumentMetadata.index] = data;
+                                break;
+                        }
+                    }
+                    handlerMetadata.descriptor.value(...args);
                 }
             }
         });

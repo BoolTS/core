@@ -16,7 +16,7 @@ import {
     Query,
     RequestBody,
     RequestHeaders
-} from "../src";
+} from "@src";
 import { TestService } from "./service";
 
 const postParamsSchema = Zod.object({

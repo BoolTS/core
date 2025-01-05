@@ -4,15 +4,15 @@ export type TRoute = {
     path: string;
     httpMethod: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
     methodName: string;
-    descriptor: PropertyDescriptor;
+    descriptor: TypedPropertyDescriptor<any>;
 };
 
 export type THttpMetadata = Array<TRoute>;
 
 const defaultDecorator =
     (path: string, method: "Get" | "Post" | "Put" | "Patch" | "Delete" | "Options") =>
-    (target: Object, methodName: string, descriptor: PropertyDescriptor) => {
-        if (!(descriptor.value instanceof Function)) {
+    (target: Object, methodName: string | symbol, descriptor: TypedPropertyDescriptor<any>) => {
+        if (!(descriptor?.value instanceof Function)) {
             throw Error(`${method} decorator only use for class method.`);
         }
 

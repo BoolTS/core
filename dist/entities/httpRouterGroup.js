@@ -1,4 +1,4 @@
-export class RouterGroup {
+export class HttpRouterGroup {
     _routers = new Map();
     add(...routers) {
         for (let i = 0; i < routers.length; i++) {

@@ -1,6 +1,6 @@
-import { controllerKey, dispatcherKey, guardKey, injectableKey, middlewareKey, moduleKey } from "../keys";
+import { controllerKey, dispatcherKey, guardKey, injectableKey, middlewareKey, moduleKey, webSocketKey } from "../keys";
 export const Module = (args) => (target) => {
-    const { middlewares, guards, dispatchers, controllers, dependencies } = args || {};
+    const { middlewares, guards, dispatchers, controllers, dependencies, webSockets } = args || {};
     if (middlewares) {
         for (let i = 0; i < middlewares.length; i++) {
             if (!Reflect.getOwnMetadataKeys(middlewares[i]).includes(middlewareKey)) {
@@ -33,6 +33,13 @@ export const Module = (args) => (target) => {
         for (let i = 0; i < dependencies.length; i++) {
             if (!Reflect.getOwnMetadataKeys(dependencies[i]).includes(injectableKey)) {
                 throw Error(`${dependencies[i].name} is not an injectable.`);
+            }
+        }
+    }
+    if (webSockets) {
+        for (let i = 0; i < webSockets.length; i++) {
+            if (!Reflect.getOwnMetadataKeys(webSockets[i]).includes(webSocketKey)) {
+                throw Error(`${webSockets[i].name} is not a websocket gateway.`);
             }
         }
     }

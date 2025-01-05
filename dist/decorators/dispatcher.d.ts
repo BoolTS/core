@@ -1,4 +1,4 @@
-import type { IDispatcher } from "../interfaces/dispatcher";
+import type { IDispatcher } from "../interfaces";
 export type TDispatcherMetadata = undefined;
 export declare const Dispatcher: () => <T extends {
     new (...args: any[]): IDispatcher;

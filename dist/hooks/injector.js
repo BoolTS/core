@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { controllerKey, dispatcherKey, guardKey, injectableKey, injectKey, middlewareKey } from "../keys";
+import { controllerKey, dispatcherKey, guardKey, injectableKey, injectKey, middlewareKey, webSocketKey } from "../keys";
 export class Injector {
     _mapper = new Map();
     /**
@@ -14,7 +14,7 @@ export class Injector {
             return undefined;
         }
         const ownMetadataKeys = Reflect.getMetadataKeys(definition);
-        if (![injectableKey, controllerKey, middlewareKey, guardKey, dispatcherKey].some((value) => ownMetadataKeys.includes(value))) {
+        if (![injectableKey, controllerKey, middlewareKey, guardKey, dispatcherKey, webSocketKey].some((value) => ownMetadataKeys.includes(value))) {
             throw Error("Missing dependency declaration, please check @Injectable() used on dependency(ies).");
         }
         // Initialize dependencies injection

@@ -2,19 +2,19 @@
 
 import type { THttpMethods } from "../http";
 
-export type TRouteModel<T = unknown> = Readonly<{
+export type THttpRouteModel<T = unknown> = Readonly<{
     class: new (...args: Array<any>) => T;
     funcName: string | symbol;
     func: (...args: Array<any>) => unknown;
 }>;
 
-export class Route {
+export class HttpRoute {
     public static rootPattern = ":([a-z0-9A-Z_-]{1,})";
     public static innerRootPattern = "([a-z0-9A-Z_-]{1,})";
 
     public readonly alias: string;
 
-    private _map = new Map<keyof THttpMethods, TRouteModel>();
+    private _map = new Map<keyof THttpMethods, THttpRouteModel>();
 
     constructor(alias: string) {
         this.alias = this._thinAlias(alias);
@@ -23,7 +23,10 @@ export class Route {
     public test(
         pathname: string,
         method: keyof THttpMethods
-    ): Readonly<{ parameters: Record<string, string>; model: TRouteModel }> | false | undefined {
+    ):
+        | Readonly<{ parameters: Record<string, string>; model: THttpRouteModel }>
+        | false
+        | undefined {
         try {
             const model = this._map.get(method);
             const aliasSplitted = this.alias.split("/");
@@ -39,7 +42,10 @@ export class Route {
             }
 
             const parameters: Record<string, string> = Object();
-            const matchingRegex = this.alias.replace(new RegExp(Route.rootPattern, "g"), Route.innerRootPattern);
+            const matchingRegex = this.alias.replace(
+                new RegExp(HttpRoute.rootPattern, "g"),
+                HttpRoute.innerRootPattern
+            );
 
             if (!new RegExp(matchingRegex).test(this._thinAlias(pathname))) {
                 return undefined;
@@ -50,29 +56,32 @@ export class Route {
                 const pathnamePart = currentPathNameSplitted[index];
 
                 // Check pathmane path match a dynamic syntax, if no match => start compare equal or not
-                if (!new RegExp(Route.rootPattern, "g").test(aliasPart)) {
+                if (!new RegExp(HttpRoute.rootPattern, "g").test(aliasPart)) {
                     if (aliasPart !== pathnamePart) return undefined;
                 } else {
                     let isFailed = false;
 
-                    aliasPart.replace(new RegExp(Route.rootPattern, "g"), (match, key, offset) => {
-                        if (offset === 0) {
-                            pathnamePart.replace(
-                                new RegExp(Route.innerRootPattern, "g"),
-                                (innerMatch, innerKey, innerOffset) => {
-                                    if (innerOffset === 0) {
-                                        Object.assign(parameters, {
-                                            [key]: innerMatch
-                                        });
+                    aliasPart.replace(
+                        new RegExp(HttpRoute.rootPattern, "g"),
+                        (match, key, offset) => {
+                            if (offset === 0) {
+                                pathnamePart.replace(
+                                    new RegExp(HttpRoute.innerRootPattern, "g"),
+                                    (innerMatch, innerKey, innerOffset) => {
+                                        if (innerOffset === 0) {
+                                            Object.assign(parameters, {
+                                                [key]: innerMatch
+                                            });
+                                        }
+
+                                        return innerMatch;
                                     }
+                                );
+                            }
 
-                                    return innerMatch;
-                                }
-                            );
+                            return match;
                         }
-
-                        return match;
-                    });
+                    );
 
                     if (isFailed) {
                         return undefined;
@@ -118,23 +127,26 @@ export class Route {
                 const pathnamePart = currentPathNameSplitted[index];
 
                 // Check pathmane path match a dynamic syntax, if no match => start compare equal or not
-                if (!new RegExp(Route.rootPattern, "g").test(aliasPart)) {
+                if (!new RegExp(HttpRoute.rootPattern, "g").test(aliasPart)) {
                     if (aliasPart !== pathnamePart) {
                         return false;
                     }
                 } else {
                     let isFailed = false;
 
-                    aliasPart.replace(new RegExp(Route.rootPattern, "g"), (subString, key, value) => {
-                        if (!new RegExp(value, "g").test(pathnamePart)) {
-                            isFailed = true;
-                        } else {
-                            Object.assign(parameters, {
-                                [key]: pathnamePart
-                            });
+                    aliasPart.replace(
+                        new RegExp(HttpRoute.rootPattern, "g"),
+                        (subString, key, value) => {
+                            if (!new RegExp(value, "g").test(pathnamePart)) {
+                                isFailed = true;
+                            } else {
+                                Object.assign(parameters, {
+                                    [key]: pathnamePart
+                                });
+                            }
+                            return "";
                         }
-                        return "";
-                    });
+                    );
 
                     if (isFailed) {
                         return false;
@@ -156,10 +168,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public get(handler: TRouteModel) {
-        const currenTRouteModel = this._map.get("GET");
+    public get(handler: THttpRouteModel) {
+        const currenTHttpRouteModel = this._map.get("GET");
 
-        if (!currenTRouteModel) {
+        if (!currenTHttpRouteModel) {
             this._map.set("GET", handler);
         }
 
@@ -171,10 +183,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public post(handler: TRouteModel) {
-        const currenTRouteModel = this._map.get("POST");
+    public post(handler: THttpRouteModel) {
+        const currenTHttpRouteModel = this._map.get("POST");
 
-        if (!currenTRouteModel) {
+        if (!currenTHttpRouteModel) {
             this._map.set("POST", handler);
         }
 
@@ -186,10 +198,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public put(handler: TRouteModel) {
-        const currenTRouteModel = this._map.get("PUT");
+    public put(handler: THttpRouteModel) {
+        const currenTHttpRouteModel = this._map.get("PUT");
 
-        if (!currenTRouteModel) {
+        if (!currenTHttpRouteModel) {
             this._map.set("PUT", handler);
         }
 
@@ -201,10 +213,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public delete(handler: TRouteModel) {
-        const currenTRouteModel = this._map.get("DELETE");
+    public delete(handler: THttpRouteModel) {
+        const currenTHttpRouteModel = this._map.get("DELETE");
 
-        if (!currenTRouteModel) {
+        if (!currenTHttpRouteModel) {
             this._map.set("DELETE", handler);
         }
 
@@ -216,10 +228,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public connect(handler: TRouteModel) {
-        const currenTRouteModel = this._map.get("CONNECT");
+    public connect(handler: THttpRouteModel) {
+        const currenTHttpRouteModel = this._map.get("CONNECT");
 
-        if (!currenTRouteModel) {
+        if (!currenTHttpRouteModel) {
             return this._map.set("CONNECT", handler);
         }
 
@@ -231,10 +243,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public options(handler: TRouteModel) {
-        const currenTRouteModel = this._map.get("OPTIONS");
+    public options(handler: THttpRouteModel) {
+        const currenTHttpRouteModel = this._map.get("OPTIONS");
 
-        if (!currenTRouteModel) {
+        if (!currenTHttpRouteModel) {
             return this._map.set("OPTIONS", handler);
         }
 
@@ -246,10 +258,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public trace(handler: TRouteModel) {
-        const currenTRouteModel = this._map.get("TRACE");
+    public trace(handler: THttpRouteModel) {
+        const currenTHttpRouteModel = this._map.get("TRACE");
 
-        if (!currenTRouteModel) {
+        if (!currenTHttpRouteModel) {
             return this._map.set("TRACE", handler);
         }
 
@@ -261,10 +273,10 @@ export class Route {
      * @param handlers
      * @returns
      */
-    public patch(handler: TRouteModel) {
-        const currenTRouteModel = this._map.get("PATCH");
+    public patch(handler: THttpRouteModel) {
+        const currenTHttpRouteModel = this._map.get("PATCH");
 
-        if (!currenTRouteModel) {
+        if (!currenTHttpRouteModel) {
             return this._map.set("PATCH", handler);
         }
 
@@ -277,7 +289,9 @@ export class Route {
      * @returns
      */
     private _thinAlias(alias: string) {
-        return alias.replace(new RegExp("[/]{2,}", "g"), "/").replace(new RegExp("^[/]|[/]$", "g"), "");
+        return alias
+            .replace(new RegExp("[/]{2,}", "g"), "/")
+            .replace(new RegExp("^[/]|[/]$", "g"), "");
     }
 
     /**
@@ -339,4 +353,4 @@ export class Route {
     }
 }
 
-export default Route;
+export default HttpRoute;

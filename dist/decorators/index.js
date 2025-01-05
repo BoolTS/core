@@ -7,4 +7,7 @@ export { Inject } from "./inject";
 export { Injectable } from "./injectable";
 export { Middleware } from "./middleware";
 export { Module } from "./module";
+export { WebSocket } from "./webSocket";
+export { WebSocketCloseCode, WebSocketCloseReason, WebSocketConnection, WebSocketServer } from "./webSocketArguments";
+export { WebSocketEvent } from "./webSocketEvent";
 export { ZodSchema } from "./zodSchema";

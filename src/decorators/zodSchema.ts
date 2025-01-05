@@ -1,5 +1,6 @@
 import * as Zod from "zod";
-import { controllerRouteZodSchemaKey } from "../keys";
+
+import { zodSchemaKey } from "../keys";
 
 export const ZodSchema = (schema: Zod.Schema) => {
     return (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
@@ -7,13 +8,14 @@ export const ZodSchema = (schema: Zod.Schema) => {
             return;
         }
 
-        const zodSchemasMetadata = Reflect.getOwnMetadata(controllerRouteZodSchemaKey, target.constructor, methodName) || {};
+        const zodSchemasMetadata =
+            Reflect.getOwnMetadata(zodSchemaKey, target.constructor, methodName) || {};
 
         zodSchemasMetadata[`paramterIndexes.${parameterIndex}`] = {
             index: parameterIndex,
             schema: schema
         };
 
-        Reflect.defineMetadata(controllerRouteZodSchemaKey, zodSchemasMetadata, target.constructor, methodName);
+        Reflect.defineMetadata(zodSchemaKey, zodSchemasMetadata, target.constructor, methodName);
     };
 };

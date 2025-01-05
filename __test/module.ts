@@ -7,6 +7,7 @@ import { TestRepository } from "./repository";
 import { SecondGuard } from "./secondGuard";
 import { SecondMiddleware } from "./secondMiddleware";
 import { TestService } from "./service";
+import { TestWebSocket } from "./webSocket";
 
 @Module<{
     mongodb: string;
@@ -23,6 +24,7 @@ import { TestService } from "./service";
     guards: [FirstGuard, SecondGuard],
     dispatchers: [CustomDispatcher],
     controllers: [TestController],
-    dependencies: [TestService, TestRepository]
+    dependencies: [TestService, TestRepository],
+    webSockets: [TestWebSocket]
 })
 export class TestModule {}

@@ -1,8 +1,15 @@
-import type { TArgumentsMetadata, TControllerMetadata, THttpMetadata, TModuleMetadata } from "../decorators";
+import type {
+    TArgumentsMetadata,
+    TControllerMetadata,
+    THttpMetadata,
+    TModuleMetadata,
+    TWebSocketEventHandlerMetadata,
+    TWebSocketMetadata
+} from "../decorators";
+import type { TWebSocketUpgradeData } from "../decorators/webSocket";
 import type { IContext, IGuard, IMiddleware } from "../interfaces";
 import type { IDispatcher } from "../interfaces/dispatcher";
 
-import "colors";
 import "reflect-metadata";
 
 import Qs from "qs";
@@ -10,7 +17,13 @@ import * as Zod from "zod";
 
 import { ETimeUnit, add as TimeAdd } from "@bool-ts/date-time";
 import type { BunFile, Server } from "bun";
-import { Router, RouterGroup } from "../entities";
+import {
+    HttpRouter,
+    HttpRouterGroup,
+    WebSocketRoute,
+    WebSocketRouter,
+    WebSocketRouterGroup
+} from "../entities";
 import { HttpClientError, HttpServerError, jsonErrorInfer, type THttpMethods } from "../http";
 import {
     argumentsKey,
@@ -28,8 +41,15 @@ import {
     requestHeadersArgsKey,
     responseBodyArgsKey,
     responseHeadersArgsKey,
-    routeModelArgsKey
+    routeModelArgsKey,
+    webSocketCloseCodeArgsKey,
+    webSocketCloseReasonArgsKey,
+    webSocketConnectionArgsKey,
+    webSocketKey,
+    webSocketMessageArgsKey,
+    webSocketServerArgsKey
 } from "../keys";
+import { ansiText, isWebSocketUpgrade } from "../ultils";
 import { Injector } from "./injector";
 
 export type TGroupElementModel<
@@ -70,18 +90,23 @@ export type TBoolFactoryOptions = Required<{
 
 const DEFAULT_STATIC_CACHE_TIME_IN_SECONDS = 900;
 
-export const responseConverter = (response: Response) => {
+const responseConverter = (response: Response) => {
     response.headers.set("X-Powered-By", "Bool Typescript");
 
     return response;
 };
 
-export const controllerCreator = (
-    controllerConstructor: new (...args: any[]) => unknown,
-    group: RouterGroup,
-    injector: Injector,
-    prefix?: string
-) => {
+const controllerCreator = ({
+    controllerConstructor,
+    httpRouterGroup,
+    injector,
+    prefix
+}: Readonly<{
+    controllerConstructor: new (...args: any[]) => unknown;
+    httpRouterGroup: HttpRouterGroup;
+    injector: Injector;
+    prefix?: string;
+}>) => {
     if (!Reflect.getOwnMetadataKeys(controllerConstructor).includes(controllerKey)) {
         throw Error(`${controllerConstructor.name} is not a controller.`);
     }
@@ -92,12 +117,16 @@ export const controllerCreator = (
         throw Error("Can not initialize controller.");
     }
 
-    const controllerMetadata: TControllerMetadata = Reflect.getOwnMetadata(controllerKey, controllerConstructor) || {
+    const controllerMetadata: TControllerMetadata = Reflect.getOwnMetadata(
+        controllerKey,
+        controllerConstructor
+    ) || {
         prefix: "/",
         httpMetadata: []
     };
-    const routesMetadata = (Reflect.getOwnMetadata(controllerHttpKey, controllerConstructor) || []) as THttpMetadata;
-    const router = new Router(`/${prefix || ""}/${controllerMetadata.prefix}`);
+    const routesMetadata = (Reflect.getOwnMetadata(controllerHttpKey, controllerConstructor) ||
+        []) as THttpMetadata;
+    const router = new HttpRouter(`/${prefix || ""}/${controllerMetadata.prefix}`);
 
     routesMetadata.forEach((routeMetadata) => {
         if (typeof routeMetadata.descriptor.value !== "function") {
@@ -128,10 +157,98 @@ export const controllerCreator = (
         }
     });
 
-    return group.add(router);
+    return httpRouterGroup.add(router);
 };
 
-export const argumentsResolution = async (
+const webSocketCreator = ({
+    injector,
+    httpRouterGroup,
+    prefix,
+    webSocketRouterGroup,
+    webSocketConstructor
+}: Readonly<{
+    webSocketConstructor: new (...args: any[]) => unknown;
+    httpRouterGroup: HttpRouterGroup;
+    webSocketRouterGroup: WebSocketRouterGroup;
+    injector: Injector;
+    prefix?: string;
+}>): Readonly<{
+    httpRouterGroup: HttpRouterGroup;
+    webSocketRouterGroup: WebSocketRouterGroup;
+}> => {
+    if (!Reflect.getOwnMetadataKeys(webSocketConstructor).includes(webSocketKey)) {
+        throw Error(`${webSocketConstructor.name} is not a controller.`);
+    }
+
+    const webSocket = injector.get(webSocketConstructor);
+
+    if (!webSocket) {
+        throw Error("Can not initialize webSocket.");
+    }
+
+    const webSocketMetadata: TWebSocketMetadata = Reflect.getOwnMetadata(
+        webSocketKey,
+        webSocketConstructor
+    ) || {
+        prefix: "/",
+        events: [],
+        http: []
+    };
+
+    const fullPrefix = `/${prefix || ""}/${webSocketMetadata.prefix}`;
+
+    //#region [HTTP ROUTER]
+    const router = new HttpRouter(fullPrefix);
+
+    for (const [_key, httpMetadata] of Object.entries(webSocketMetadata.http)) {
+        if (typeof httpMetadata.descriptor?.value !== "function") {
+            continue;
+        }
+
+        const route = router.route(httpMetadata.path);
+        const handler = httpMetadata.descriptor.value.bind(webSocket);
+        const routeArgument = Object.freeze({
+            class: webSocketConstructor,
+            funcName: httpMetadata.methodName,
+            func: handler
+        });
+
+        switch (httpMetadata.httpMethod) {
+            case "GET":
+                route.get(routeArgument);
+                break;
+            case "POST":
+                route.post(routeArgument);
+                break;
+        }
+    }
+
+    httpRouterGroup.add(router);
+    //#endregion
+
+    //#region [WEBSOCKET ROUTER]
+    const webSocketRouter = new WebSocketRouter(fullPrefix);
+
+    for (const [key, event] of Object.entries(webSocketMetadata.events)) {
+        const webSocketRoute = new WebSocketRoute({
+            eventName: key,
+            metadata: event
+        });
+
+        webSocketRouter.addRoutes(webSocketRoute);
+    }
+
+    webSocketRouter.bind(webSocket);
+    webSocketRouterGroup.addRouters(webSocketRouter);
+    //#endregion
+
+    return Object.freeze({
+        httpRouterGroup: httpRouterGroup,
+        webSocketRouterGroup: webSocketRouterGroup
+    });
+};
+
+const argumentsResolution = async (
     data: unknown,
     zodSchema: Zod.Schema,
     argumentIndex: number,
@@ -170,7 +287,10 @@ export const argumentsResolution = async (
     }
 };
 
-export const moduleResolution = async (module: new (...args: any[]) => unknown, options: TBoolFactoryOptions) => {
+const moduleResolution = async (
+    module: new (...args: any[]) => unknown,
+    options: TBoolFactoryOptions
+) => {
     if (!Reflect.getOwnMetadataKeys(module).includes(moduleKey)) {
         throw Error(`${module.name} is not a module.`);
     }
@@ -189,11 +309,14 @@ export const moduleResolution = async (module: new (...args: any[]) => unknown, 
         dispatchers,
         controllers,
         dependencies,
+        webSockets,
         prefix: modulePrefix,
         config: moduleConfig
     } = moduleMetadata;
 
-    // Configuration(s)
+    const fullPrefix = `${options.prefix || ""}/${modulePrefix || ""}`;
+
+    //#region [Configuration(s)]
     const { config } = Object.freeze({
         config: {
             ...(typeof options.config !== "function" ? options.config : await options.config()),
@@ -204,10 +327,13 @@ export const moduleResolution = async (module: new (...args: any[]) => unknown, 
                 : await moduleConfig())
         }
     });
+    //#endregion
 
-    // Register config like an injection
+    //#region [Register config like an injection]
     injector.set(configKey, config);
+    //#endregion
 
+    //#region [Run loader(s)]
     if (loaders) {
         const loaderFunctions = [];
 
@@ -215,10 +341,24 @@ export const moduleResolution = async (module: new (...args: any[]) => unknown, 
             loaderFunctions.push(async () => {
                 try {
                     const result = await func({ config });
-                    console.info(`INFO! Loader [${key}] initialized successfully.`);
+
+                    console.info(
+                        `${ansiText(" INFO ", {
+                            color: "white",
+                            backgroundColor: "blue",
+                            bold: true
+                        })} Loader [${key}] initialized successfully.`
+                    );
+
                     return result;
                 } catch (error) {
-                    console.error(`WARNING! Loader [${key}] initialization failed.`);
+                    console.error(
+                        `${ansiText(" WARN ", {
+                            color: "yellow",
+                            backgroundColor: "red",
+                            bold: true
+                        })} Loader [${key}] initialization failed.`
+                    );
                     options.debug && console.error(error);
                     throw error;
                 }
@@ -232,22 +372,28 @@ export const moduleResolution = async (module: new (...args: any[]) => unknown, 
             injector.set(key, value);
         }
     }
+    //#endregion
 
-    // Dependencies
+    //#region [Dependencies]
     !dependencies || dependencies.map((dependency) => injector.get(dependency));
+    //#endregion
 
-    // Middleware(s)
-    const startMiddlewareGroup: Array<TGroupElementModel<"start", IMiddleware, NonNullable<IMiddleware["start"]>>> = [];
-    const endMiddlewareGroup: Array<TGroupElementModel<"end", IMiddleware, NonNullable<IMiddleware["end"]>>> = [];
+    //#region [Middleware(s)]
+    const startMiddlewareGroup: Array<
+        TGroupElementModel<"start", IMiddleware, NonNullable<IMiddleware["start"]>>
+    > = [];
+    const endMiddlewareGroup: Array<
+        TGroupElementModel<"end", IMiddleware, NonNullable<IMiddleware["end"]>>
+    > = [];
 
-    if (middlewares) {
-        for (let i = 0; i < middlewares.length; i++) {
-            const instance = injector.get<IMiddleware>(middlewares[i]);
+    middlewares &&
+        middlewares.forEach((middleware) => {
+            const instance = injector.get<IMiddleware>(middleware);
 
             if (instance.start && typeof instance.start === "function") {
                 startMiddlewareGroup.push(
                     Object.freeze({
-                        class: middlewares[i] as IMiddleware,
+                        class: middleware as IMiddleware,
                         funcName: "start",
                         func: instance.start.bind(instance)
                     })
@@ -257,16 +403,16 @@ export const moduleResolution = async (module: new (...args: any[]) => unknown, 
             if (instance.end && typeof instance.end === "function") {
                 endMiddlewareGroup.push(
                     Object.freeze({
-                        class: middlewares[i] as IMiddleware,
+                        class: middleware as IMiddleware,
                         funcName: "end",
                         func: instance.end.bind(instance)
                     })
                 );
             }
-        }
-    }
+        });
+    //#endregion
 
-    // Guard(s)
+    //#region [Guard(s)]
     const guardGroup = !guards
         ? []
         : guards.map((guard) => {
@@ -278,19 +424,24 @@ export const moduleResolution = async (module: new (...args: any[]) => unknown, 
                   func: guardInstance.enforce.bind(guardInstance)
               });
           });
+    //#endregion
 
-    // Before dispatcher(s)
-    const openDispatcherGroup: Array<TGroupElementModel<"open", IDispatcher, NonNullable<IDispatcher["open"]>>> = [];
-    const closeDispatcherGroup: Array<TGroupElementModel<"close", IDispatcher, NonNullable<IDispatcher["close"]>>> = [];
+    //#region [Before dispatcher(s)]
+    const openDispatcherGroup: Array<
+        TGroupElementModel<"open", IDispatcher, NonNullable<IDispatcher["open"]>>
+    > = [];
+    const closeDispatcherGroup: Array<
+        TGroupElementModel<"close", IDispatcher, NonNullable<IDispatcher["close"]>>
+    > = [];
 
-    if (dispatchers) {
-        for (let i = 0; i < dispatchers.length; i++) {
-            const instance = injector.get<IDispatcher>(dispatchers[i]);
+    dispatchers &&
+        dispatchers.forEach((dispatcher) => {
+            const instance = injector.get<IDispatcher>(dispatcher);
 
             if (instance.open && typeof instance.open === "function") {
                 openDispatcherGroup.push(
                     Object.freeze({
-                        class: dispatchers[i] as IDispatcher,
+                        class: dispatcher as IDispatcher,
                         funcName: "open",
                         func: instance.open.bind(instance)
                     })
@@ -300,22 +451,44 @@ export const moduleResolution = async (module: new (...args: any[]) => unknown, 
             if (instance.close && typeof instance.close === "function") {
                 closeDispatcherGroup.push(
                     Object.freeze({
-                        class: dispatchers[i] as IDispatcher,
+                        class: dispatcher as IDispatcher,
                         funcName: "close",
                         func: instance.close.bind(instance)
                     })
                 );
             }
-        }
-    }
+        });
+    //#endregion
 
-    // Controller(s)
-    const routerGroup = new RouterGroup();
+    //#region [Controller(s)]
+    const controllerRouterGroup = new HttpRouterGroup();
 
     controllers &&
-        controllers.map((controllerConstructor) =>
-            controllerCreator(controllerConstructor, routerGroup, injector, `${options.prefix || ""}/${modulePrefix || ""}`)
+        controllers.forEach((controllerConstructor) =>
+            controllerCreator({
+                controllerConstructor,
+                httpRouterGroup: controllerRouterGroup,
+                injector: injector,
+                prefix: fullPrefix
+            })
         );
+    //#endregion
+
+    //#region [WebSocket(s)]
+    const webSocketHttpRouterGroup = new HttpRouterGroup();
+    const webSocketRouterGroup = new WebSocketRouterGroup();
+
+    webSockets &&
+        webSockets.forEach((webSocket) =>
+            webSocketCreator({
+                webSocketConstructor: webSocket,
+                httpRouterGroup: webSocketHttpRouterGroup,
+                webSocketRouterGroup: webSocketRouterGroup,
+                injector,
+                prefix: fullPrefix
+            })
+        );
+    //#endregion
 
     return Object.freeze({
         prefix: moduleMetadata.prefix,
@@ -325,11 +498,13 @@ export const moduleResolution = async (module: new (...args: any[]) => unknown, 
         guardGroup,
         openDispatcherGroup,
         closeDispatcherGroup,
-        routerGroup
+        controllerRouterGroup,
+        webSocketHttpRouterGroup,
+        webSocketRouterGroup
     });
 };
 
-const fetcher = async (
+const webSocketFetcher = async (
     bun: Required<{
         request: Request;
         server: Server;
@@ -337,17 +512,82 @@ const fetcher = async (
     bool: Required<{
         responseHeaders: Headers;
         query: Record<string, unknown>;
-        route: NonNullable<ReturnType<RouterGroup["find"]>>;
+        route: NonNullable<ReturnType<HttpRouterGroup["find"]>>;
         moduleResolution: NonNullable<Awaited<ReturnType<typeof moduleResolution>>>;
     }>
 ) => {
+    const { request, server } = bun;
+    const {
+        query,
+        responseHeaders,
+        route: { model }
+    } = bool;
+
+    // Execute controller action
+    const isUpgrade = await model.func(...[server, request, query]);
+
+    if (typeof isUpgrade !== "boolean") {
+        return responseConverter(
+            new Response(
+                JSON.stringify({
+                    httpCode: 500,
+                    message: "Can not detect webSocket upgrade result.",
+                    data: undefined
+                }),
+                {
+                    status: 500,
+                    statusText: "Internal server error.",
+                    headers: responseHeaders
+                }
+            )
+        );
+    }
+
+    if (!isUpgrade) {
+        return responseConverter(
+            new Response(
+                JSON.stringify({
+                    httpCode: 500,
+                    message: "Can not upgrade.",
+                    data: undefined
+                }),
+                {
+                    status: 500,
+                    statusText: "Internal server error.",
+                    headers: responseHeaders
+                }
+            )
+        );
+    }
+
+    return isUpgrade;
+};
+
+const httpFetcher = async (
+    bun: Required<{
+        request: Request;
+        server: Server;
+    }>,
+    bool: Required<{
+        responseHeaders: Headers;
+        query: Record<string, unknown>;
+        route: NonNullable<ReturnType<HttpRouterGroup["find"]>>;
+        moduleResolution: NonNullable<Awaited<ReturnType<typeof moduleResolution>>>;
+    }>
+) => {
+    const { request, server: _server } = bun;
     const {
         query,
         responseHeaders,
         route: { parameters, model },
-        moduleResolution: { startMiddlewareGroup, endMiddlewareGroup, guardGroup, openDispatcherGroup, closeDispatcherGroup }
+        moduleResolution: {
+            startMiddlewareGroup,
+            endMiddlewareGroup,
+            guardGroup,
+            openDispatcherGroup,
+            closeDispatcherGroup
+        }
     } = bool;
-    const { request, server: _server } = bun;
 
     const context: Record<symbol, any> = {
         [requestHeadersArgsKey]: request.headers,
@@ -401,7 +641,9 @@ const fetcher = async (
                               );
                         break;
                     case contextArgsKey:
-                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        args[argsMetadata.index] = !argsMetadata.key
+                            ? contextHook
+                            : contextHook.get(argsMetadata.key);
                         break;
                     case requestHeadersArgsKey:
                         args[argsMetadata.index] = !argsMetadata.zodSchema
@@ -445,7 +687,9 @@ const fetcher = async (
                                 ? undefined
                                 : context[argsMetadata.type]
                             : await argumentsResolution(
-                                  !(argsMetadata.type in context) ? undefined : context[argsMetadata.type],
+                                  !(argsMetadata.type in context)
+                                      ? undefined
+                                      : context[argsMetadata.type],
                                   argsMetadata.zodSchema,
                                   argsMetadata.index,
                                   collection.funcName
@@ -493,7 +737,9 @@ const fetcher = async (
                               );
                         break;
                     case contextArgsKey:
-                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        args[argsMetadata.index] = !argsMetadata.key
+                            ? contextHook
+                            : contextHook.get(argsMetadata.key);
                         break;
                     case requestHeadersArgsKey:
                         args[argsMetadata.index] = !argsMetadata.zodSchema
@@ -587,7 +833,9 @@ const fetcher = async (
                               );
                         break;
                     case contextArgsKey:
-                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        args[argsMetadata.index] = !argsMetadata.key
+                            ? contextHook
+                            : contextHook.get(argsMetadata.key);
                         break;
                     case requestHeadersArgsKey:
                         args[argsMetadata.index] = !argsMetadata.zodSchema
@@ -646,7 +894,11 @@ const fetcher = async (
     const controllerActionArguments: any[] = [];
     const controllerActionCollection = model;
     const controllerActionMetadata: Record<string, TArgumentsMetadata> =
-        Reflect.getOwnMetadata(argumentsKey, controllerActionCollection.class, controllerActionCollection.funcName) || {};
+        Reflect.getOwnMetadata(
+            argumentsKey,
+            controllerActionCollection.class,
+            controllerActionCollection.funcName
+        ) || {};
 
     if (controllerActionMetadata) {
         for (const [_key, argsMetadata] of Object.entries(controllerActionMetadata)) {
@@ -726,7 +978,9 @@ const fetcher = async (
         }
     }
 
-    context[responseBodyArgsKey] = await controllerActionCollection.func(...controllerActionArguments);
+    context[responseBodyArgsKey] = await controllerActionCollection.func(
+        ...controllerActionArguments
+    );
 
     // Execute close dispatcher(s)
     for (let i = 0; i < closeDispatcherGroup.length; i++) {
@@ -759,7 +1013,9 @@ const fetcher = async (
                               );
                         break;
                     case contextArgsKey:
-                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        args[argsMetadata.index] = !argsMetadata.key
+                            ? contextHook
+                            : contextHook.get(argsMetadata.key);
                         break;
                     case requestHeadersArgsKey:
                         args[argsMetadata.index] = !argsMetadata.zodSchema
@@ -849,7 +1105,9 @@ const fetcher = async (
                               );
                         break;
                     case contextArgsKey:
-                        args[argsMetadata.index] = !argsMetadata.key ? contextHook : contextHook.get(argsMetadata.key);
+                        args[argsMetadata.index] = !argsMetadata.key
+                            ? contextHook
+                            : contextHook.get(argsMetadata.key);
                         break;
                     case requestHeadersArgsKey:
                         args[argsMetadata.index] = !argsMetadata.zodSchema
@@ -893,7 +1151,9 @@ const fetcher = async (
                                 ? undefined
                                 : context[argsMetadata.type]
                             : await argumentsResolution(
-                                  !(argsMetadata.type in context) ? undefined : context[argsMetadata.type],
+                                  !(argsMetadata.type in context)
+                                      ? undefined
+                                      : context[argsMetadata.type],
                                   argsMetadata.zodSchema,
                                   argsMetadata.index,
                                   collection.funcName
@@ -928,7 +1188,10 @@ const fetcher = async (
     );
 };
 
-export const BoolFactory = async (modules: Object | Array<Object>, options: TBoolFactoryOptions) => {
+export const BoolFactory = async (
+    modules: Object | Array<Object>,
+    options: TBoolFactoryOptions
+) => {
     try {
         const staticMap: Map<
             string,
@@ -940,7 +1203,14 @@ export const BoolFactory = async (modules: Object | Array<Object>, options: TBoo
 
         const modulesConverted = !Array.isArray(modules) ? [modules] : modules;
 
-        const { allowLogsMethods, staticOption, allowOrigins, allowMethods, allowCredentials, allowHeaders } = Object.freeze({
+        const {
+            allowLogsMethods,
+            staticOption,
+            allowOrigins,
+            allowMethods,
+            allowCredentials,
+            allowHeaders
+        } = Object.freeze({
             allowLogsMethods: options?.log?.methods,
             staticOption: options.static,
             allowOrigins: !options.cors?.origins
@@ -950,9 +1220,19 @@ export const BoolFactory = async (modules: Object | Array<Object>, options: TBoo
                     ? ["*"]
                     : options.cors.origins
                 : [options.cors.origins !== "*" ? options.cors.origins : "*"],
-            allowMethods: options.cors?.methods || ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            allowMethods: options.cors?.methods || [
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
+            ],
             allowCredentials: !options.cors?.credentials ? false : true,
-            allowHeaders: !options.cors?.headers || options.cors.headers.includes("*") ? ["*"] : options.cors.headers
+            allowHeaders:
+                !options.cors?.headers || options.cors.headers.includes("*")
+                    ? ["*"]
+                    : options.cors.headers
         });
 
         const moduleResolutions = await Promise.all(
@@ -964,14 +1244,28 @@ export const BoolFactory = async (modules: Object | Array<Object>, options: TBoo
         );
 
         const prefixs = [
-            ...new Set(availableModuleResolutions.map((availableModuleResolution) => availableModuleResolution.prefix))
+            ...new Set(
+                availableModuleResolutions.map(
+                    (availableModuleResolution) => availableModuleResolution.prefix
+                )
+            )
         ];
 
         if (prefixs.length !== availableModuleResolutions.length) {
-            throw Error(`Module prefix should be unique.`);
+            throw Error("Module prefix should be unique.");
         }
 
-        Bun.serve({
+        const webSocketsMap = new Map<string, TWebSocketEventHandlerMetadata>();
+
+        for (const availableModuleResolution of availableModuleResolutions) {
+            const webSocketMap = availableModuleResolution.webSocketRouterGroup.execute();
+
+            for (const [key, metadata] of webSocketMap.entries()) {
+                webSocketsMap.set(key, metadata);
+            }
+        }
+
+        const server = Bun.serve<TWebSocketUpgradeData>({
             port: options.port,
             fetch: async (request, server) => {
                 const start = performance.now();
@@ -982,13 +1276,77 @@ export const BoolFactory = async (modules: Object | Array<Object>, options: TBoo
                 const responseHeaders = new Headers();
 
                 try {
-                    allowCredentials && responseHeaders.set("Access-Control-Allow-Credentials", "true");
+                    const isUpgradable = isWebSocketUpgrade(request);
+
+                    let collection:
+                        | undefined
+                        | Required<{
+                              route: NonNullable<ReturnType<HttpRouterGroup["find"]>>;
+                              resolution: NonNullable<Awaited<ReturnType<typeof moduleResolution>>>;
+                          }>;
+
+                    if (isUpgradable) {
+                        for (const availableModuleResolution of availableModuleResolutions) {
+                            const routeResult =
+                                availableModuleResolution.webSocketHttpRouterGroup.find(
+                                    url.pathname,
+                                    request.method as keyof THttpMethods
+                                );
+
+                            if (routeResult) {
+                                collection = Object.freeze({
+                                    route: routeResult,
+                                    resolution: availableModuleResolution
+                                });
+                                break;
+                            }
+                        }
+
+                        if (!collection) {
+                            return responseConverter(
+                                new Response(
+                                    JSON.stringify({
+                                        httpCode: 404,
+                                        message: "Route not found",
+                                        data: undefined
+                                    }),
+                                    {
+                                        status: 404,
+                                        statusText: "Not found.",
+                                        headers: responseHeaders
+                                    }
+                                )
+                            );
+                        }
+
+                        const upgradeResult = await webSocketFetcher(
+                            {
+                                request,
+                                server
+                            },
+                            {
+                                query: query,
+                                responseHeaders: responseHeaders,
+                                route: collection.route,
+                                moduleResolution: collection.resolution
+                            }
+                        );
+
+                        return upgradeResult instanceof Response ? upgradeResult : undefined;
+                    }
+
+                    allowCredentials &&
+                        responseHeaders.set("Access-Control-Allow-Credentials", "true");
 
                     responseHeaders.set("Access-Control-Allow-Methods", allowMethods.join(", "));
                     responseHeaders.set("Access-Control-Allow-Headers", allowHeaders.join(", "));
                     responseHeaders.set(
                         "Access-Control-Allow-Origin",
-                        allowOrigins.includes("*") ? "*" : !allowOrigins.includes(origin) ? allowOrigins[0] : origin
+                        allowOrigins.includes("*")
+                            ? "*"
+                            : !allowOrigins.includes(origin)
+                            ? allowOrigins[0]
+                            : origin
                     );
 
                     if (!allowMethods.includes(method)) {
@@ -1087,15 +1445,8 @@ export const BoolFactory = async (modules: Object | Array<Object>, options: TBoo
                         }
                     }
 
-                    let collection:
-                        | undefined
-                        | Required<{
-                              route: NonNullable<ReturnType<RouterGroup["find"]>>;
-                              resolution: NonNullable<Awaited<ReturnType<typeof moduleResolution>>>;
-                          }>;
-
-                    for (let i = 0; i < availableModuleResolutions.length; i++) {
-                        const routeResult = availableModuleResolutions[i].routerGroup.find(
+                    for (const availableModuleResolution of availableModuleResolutions) {
+                        const routeResult = availableModuleResolution.controllerRouterGroup.find(
                             url.pathname,
                             request.method as keyof THttpMethods
                         );
@@ -1103,7 +1454,7 @@ export const BoolFactory = async (modules: Object | Array<Object>, options: TBoo
                         if (routeResult) {
                             collection = Object.freeze({
                                 route: routeResult,
-                                resolution: availableModuleResolutions[i]
+                                resolution: availableModuleResolution
                             });
                             break;
                         }
@@ -1126,7 +1477,7 @@ export const BoolFactory = async (modules: Object | Array<Object>, options: TBoo
                         );
                     }
 
-                    return await fetcher(
+                    return await httpFetcher(
                         {
                             request,
                             server
@@ -1145,23 +1496,199 @@ export const BoolFactory = async (modules: Object | Array<Object>, options: TBoo
                 } finally {
                     if (allowLogsMethods) {
                         const end = performance.now();
-                        const convertedPID = `${process.pid}`.yellow;
-                        const convertedMethod = `${request.method.yellow}`.bgBlue;
-                        const convertedReqIp = `${
-                            request.headers.get("x-forwarded-for") ||
-                            request.headers.get("x-real-ip") ||
-                            server.requestIP(request)?.address ||
-                            "<Unknown>"
-                        }`.yellow;
-                        const convertedTime = `${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`.yellow;
+                        const pathname = ansiText(url.pathname, { color: "blue" });
+                        const convertedPID = `${Bun.color("yellow", "ansi")}${process.pid}`;
+                        const convertedMethod = ansiText(request.method, {
+                            color: "yellow",
+                            backgroundColor: "blue"
+                        });
+                        const convertedReqIp = ansiText(
+                            `${
+                                request.headers.get("x-forwarded-for") ||
+                                request.headers.get("x-real-ip") ||
+                                server.requestIP(request)?.address ||
+                                "<Unknown>"
+                            }`,
+                            {
+                                color: "yellow"
+                            }
+                        );
+                        const convertedTime = ansiText(
+                            `${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`,
+                            {
+                                color: "yellow",
+                                backgroundColor: "blue"
+                            }
+                        );
 
-                        allowLogsMethods.includes(request.method.toUpperCase() as (typeof allowLogsMethods)[number]) &&
+                        allowLogsMethods.includes(
+                            request.method.toUpperCase() as (typeof allowLogsMethods)[number]
+                        ) &&
                             console.info(
-                                `PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${
-                                    new URL(request.url).pathname.blue
-                                } - Time: ${convertedTime}`
+                                `PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${pathname} - Time: ${convertedTime}`
                             );
                     }
+                }
+            },
+            websocket: {
+                open: (connection) => {
+                    const pathnameKey = `${connection.data.pathname}:::open`;
+                    const handlerMetadata = webSocketsMap.get(pathnameKey);
+
+                    if (!handlerMetadata) {
+                        return;
+                    }
+
+                    const argumentsMetadata = handlerMetadata.arguments || {};
+                    const args: Array<unknown> = [];
+
+                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                        switch (argumentMetadata.type) {
+                            case webSocketConnectionArgsKey:
+                                args[argumentMetadata.index] = connection;
+                                break;
+                            case webSocketServerArgsKey:
+                                args[argumentMetadata.index] = server;
+                                break;
+                        }
+                    }
+
+                    handlerMetadata.descriptor.value(...args);
+                },
+                close: (connection, code: number, reason: string) => {
+                    const pathnameKey = `${connection.data.pathname}:::close`;
+                    const handlerMetadata = webSocketsMap.get(pathnameKey);
+
+                    if (!handlerMetadata) {
+                        return;
+                    }
+
+                    const argumentsMetadata = handlerMetadata.arguments || {};
+                    const args: Array<unknown> = [];
+
+                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                        switch (argumentMetadata.type) {
+                            case webSocketConnectionArgsKey:
+                                args[argumentMetadata.index] = connection;
+                                break;
+                            case webSocketServerArgsKey:
+                                args[argumentMetadata.index] = server;
+                                break;
+                            case webSocketCloseCodeArgsKey:
+                                args[argumentMetadata.index] = code;
+                                break;
+                            case webSocketCloseReasonArgsKey:
+                                args[argumentMetadata.index] = reason;
+                                break;
+                        }
+                    }
+
+                    handlerMetadata.descriptor.value(...args);
+                },
+                message: (connection, message) => {
+                    const pathnameKey = `${connection.data.pathname}:::message`;
+                    const handlerMetadata = webSocketsMap.get(pathnameKey);
+
+                    if (!handlerMetadata) {
+                        return;
+                    }
+
+                    const argumentsMetadata = handlerMetadata.arguments || {};
+                    const args: Array<unknown> = [];
+
+                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                        switch (argumentMetadata.type) {
+                            case webSocketConnectionArgsKey:
+                                args[argumentMetadata.index] = connection;
+                                break;
+                            case webSocketMessageArgsKey:
+                                args[argumentMetadata.index] = message;
+                                break;
+                            case webSocketServerArgsKey:
+                                args[argumentMetadata.index] = server;
+                                break;
+                        }
+                    }
+
+                    handlerMetadata.descriptor.value(...args);
+                },
+                drain: (connection) => {
+                    const pathnameKey = `${connection.data.pathname}:::drain`;
+                    const handlerMetadata = webSocketsMap.get(pathnameKey);
+
+                    if (!handlerMetadata) {
+                        return;
+                    }
+
+                    const argumentsMetadata = handlerMetadata.arguments || {};
+                    const args: Array<unknown> = [];
+
+                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                        switch (argumentMetadata.type) {
+                            case webSocketConnectionArgsKey:
+                                args[argumentMetadata.index] = connection;
+                                break;
+                            case webSocketServerArgsKey:
+                                args[argumentMetadata.index] = server;
+                                break;
+                        }
+                    }
+
+                    handlerMetadata.descriptor.value(...args);
+                },
+                ping: (connection, data) => {
+                    const pathnameKey = `${connection.data.pathname}:::ping`;
+                    const handlerMetadata = webSocketsMap.get(pathnameKey);
+
+                    if (!handlerMetadata) {
+                        return;
+                    }
+
+                    const argumentsMetadata = handlerMetadata.arguments || {};
+                    const args: Array<unknown> = [];
+
+                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                        switch (argumentMetadata.type) {
+                            case webSocketConnectionArgsKey:
+                                args[argumentMetadata.index] = connection;
+                                break;
+                            case webSocketServerArgsKey:
+                                args[argumentMetadata.index] = server;
+                                break;
+                            case webSocketMessageArgsKey:
+                                args[argumentMetadata.index] = data;
+                                break;
+                        }
+                    }
+
+                    handlerMetadata.descriptor.value(...args);
+                },
+                pong: (connection, data) => {
+                    const pathnameKey = `${connection.data.pathname}:::pong`;
+                    const handlerMetadata = webSocketsMap.get(pathnameKey);
+
+                    if (!handlerMetadata) {
+                        return;
+                    }
+
+                    const argumentsMetadata = handlerMetadata.arguments || {};
+                    const args: Array<unknown> = [];
+
+                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                        switch (argumentMetadata.type) {
+                            case webSocketConnectionArgsKey:
+                                args[argumentMetadata.index] = connection;
+                                break;
+                            case webSocketServerArgsKey:
+                                args[argumentMetadata.index] = server;
+                                break;
+                            case webSocketMessageArgsKey:
+                                args[argumentMetadata.index] = data;
+                                break;
+                        }
+                    }
+
+                    handlerMetadata.descriptor.value(...args);
                 }
             }
         });

@@ -1,11 +1,11 @@
 "use strict";
 
-import Route from "./route";
+import HttpRoute from "./httpRoute";
 
-export class Router {
+export class HttpRouter {
     public readonly alias: string;
 
-    private _routes: Map<string, Route> = new Map();
+    private _routes: Map<string, HttpRoute> = new Map();
 
     constructor(alias: string) {
         this.alias = this._thinAlias(alias);
@@ -14,7 +14,7 @@ export class Router {
     public route(alias: string) {
         const thinAlias = this._thinAlias(`${this.alias}/${alias}`);
         const route = this._routes.get(thinAlias);
-        const newRoute = !route ? new Route(`${this.alias}/${alias}`) : route;
+        const newRoute = !route ? new HttpRoute(`${this.alias}/${alias}`) : route;
 
         if (!route) {
             this._routes.set(thinAlias, newRoute);
@@ -24,7 +24,9 @@ export class Router {
     }
 
     private _thinAlias(alias: string) {
-        return alias.replace(new RegExp("[/]{2,}", "g"), "/").replace(new RegExp("^[/]|[/]$", "g"), "");
+        return alias
+            .replace(new RegExp("[/]{2,}", "g"), "/")
+            .replace(new RegExp("^[/]|[/]$", "g"), "");
     }
 
     get routes() {
@@ -32,4 +34,4 @@ export class Router {
     }
 }
 
-export default Router;
+export default HttpRouter;

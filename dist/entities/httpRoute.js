@@ -1,5 +1,5 @@
 "use strict";
-export class Route {
+export class HttpRoute {
     static rootPattern = ":([a-z0-9A-Z_-]{1,})";
     static innerRootPattern = "([a-z0-9A-Z_-]{1,})";
     alias;
@@ -20,7 +20,7 @@ export class Route {
                 return undefined;
             }
             const parameters = Object();
-            const matchingRegex = this.alias.replace(new RegExp(Route.rootPattern, "g"), Route.innerRootPattern);
+            const matchingRegex = this.alias.replace(new RegExp(HttpRoute.rootPattern, "g"), HttpRoute.innerRootPattern);
             if (!new RegExp(matchingRegex).test(this._thinAlias(pathname))) {
                 return undefined;
             }
@@ -28,15 +28,15 @@ export class Route {
                 const aliasPart = aliasSplitted[index];
                 const pathnamePart = currentPathNameSplitted[index];
                 // Check pathmane path match a dynamic syntax, if no match => start compare equal or not
-                if (!new RegExp(Route.rootPattern, "g").test(aliasPart)) {
+                if (!new RegExp(HttpRoute.rootPattern, "g").test(aliasPart)) {
                     if (aliasPart !== pathnamePart)
                         return undefined;
                 }
                 else {
                     let isFailed = false;
-                    aliasPart.replace(new RegExp(Route.rootPattern, "g"), (match, key, offset) => {
+                    aliasPart.replace(new RegExp(HttpRoute.rootPattern, "g"), (match, key, offset) => {
                         if (offset === 0) {
-                            pathnamePart.replace(new RegExp(Route.innerRootPattern, "g"), (innerMatch, innerKey, innerOffset) => {
+                            pathnamePart.replace(new RegExp(HttpRoute.innerRootPattern, "g"), (innerMatch, innerKey, innerOffset) => {
                                 if (innerOffset === 0) {
                                     Object.assign(parameters, {
                                         [key]: innerMatch
@@ -83,14 +83,14 @@ export class Route {
                 const aliasPart = aliasSplitted[index];
                 const pathnamePart = currentPathNameSplitted[index];
                 // Check pathmane path match a dynamic syntax, if no match => start compare equal or not
-                if (!new RegExp(Route.rootPattern, "g").test(aliasPart)) {
+                if (!new RegExp(HttpRoute.rootPattern, "g").test(aliasPart)) {
                     if (aliasPart !== pathnamePart) {
                         return false;
                     }
                 }
                 else {
                     let isFailed = false;
-                    aliasPart.replace(new RegExp(Route.rootPattern, "g"), (subString, key, value) => {
+                    aliasPart.replace(new RegExp(HttpRoute.rootPattern, "g"), (subString, key, value) => {
                         if (!new RegExp(value, "g").test(pathnamePart)) {
                             isFailed = true;
                         }
@@ -120,8 +120,8 @@ export class Route {
      * @returns
      */
     get(handler) {
-        const currenTRouteModel = this._map.get("GET");
-        if (!currenTRouteModel) {
+        const currenTHttpRouteModel = this._map.get("GET");
+        if (!currenTHttpRouteModel) {
             this._map.set("GET", handler);
         }
         return this;
@@ -132,8 +132,8 @@ export class Route {
      * @returns
      */
     post(handler) {
-        const currenTRouteModel = this._map.get("POST");
-        if (!currenTRouteModel) {
+        const currenTHttpRouteModel = this._map.get("POST");
+        if (!currenTHttpRouteModel) {
             this._map.set("POST", handler);
         }
         return this;
@@ -144,8 +144,8 @@ export class Route {
      * @returns
      */
     put(handler) {
-        const currenTRouteModel = this._map.get("PUT");
-        if (!currenTRouteModel) {
+        const currenTHttpRouteModel = this._map.get("PUT");
+        if (!currenTHttpRouteModel) {
             this._map.set("PUT", handler);
         }
         return this;
@@ -156,8 +156,8 @@ export class Route {
      * @returns
      */
     delete(handler) {
-        const currenTRouteModel = this._map.get("DELETE");
-        if (!currenTRouteModel) {
+        const currenTHttpRouteModel = this._map.get("DELETE");
+        if (!currenTHttpRouteModel) {
             this._map.set("DELETE", handler);
         }
         return this;
@@ -168,8 +168,8 @@ export class Route {
      * @returns
      */
     connect(handler) {
-        const currenTRouteModel = this._map.get("CONNECT");
-        if (!currenTRouteModel) {
+        const currenTHttpRouteModel = this._map.get("CONNECT");
+        if (!currenTHttpRouteModel) {
             return this._map.set("CONNECT", handler);
         }
         return this;
@@ -180,8 +180,8 @@ export class Route {
      * @returns
      */
     options(handler) {
-        const currenTRouteModel = this._map.get("OPTIONS");
-        if (!currenTRouteModel) {
+        const currenTHttpRouteModel = this._map.get("OPTIONS");
+        if (!currenTHttpRouteModel) {
             return this._map.set("OPTIONS", handler);
         }
         return this;
@@ -192,8 +192,8 @@ export class Route {
      * @returns
      */
     trace(handler) {
-        const currenTRouteModel = this._map.get("TRACE");
-        if (!currenTRouteModel) {
+        const currenTHttpRouteModel = this._map.get("TRACE");
+        if (!currenTHttpRouteModel) {
             return this._map.set("TRACE", handler);
         }
         return this;
@@ -204,8 +204,8 @@ export class Route {
      * @returns
      */
     patch(handler) {
-        const currenTRouteModel = this._map.get("PATCH");
-        if (!currenTRouteModel) {
+        const currenTHttpRouteModel = this._map.get("PATCH");
+        if (!currenTHttpRouteModel) {
             return this._map.set("PATCH", handler);
         }
         return this;
@@ -216,7 +216,9 @@ export class Route {
      * @returns
      */
     _thinAlias(alias) {
-        return alias.replace(new RegExp("[/]{2,}", "g"), "/").replace(new RegExp("^[/]|[/]$", "g"), "");
+        return alias
+            .replace(new RegExp("[/]{2,}", "g"), "/")
+            .replace(new RegExp("^[/]|[/]$", "g"), "");
     }
     /**
      * Internal get fullpath after check regular expression
@@ -263,4 +265,4 @@ export class Route {
         return blockFiltered.join("/");
     }
 }
-export default Route;
+export default HttpRoute;

@@ -18,6 +18,14 @@ export { Inject } from "./inject";
 export { Injectable } from "./injectable";
 export { Middleware } from "./middleware";
 export { Module } from "./module";
+export { WebSocket } from "./webSocket";
+export {
+    WebSocketCloseCode,
+    WebSocketCloseReason,
+    WebSocketConnection,
+    WebSocketServer
+} from "./webSocketArguments";
+export { WebSocketEvent } from "./webSocketEvent";
 export { ZodSchema } from "./zodSchema";
 
 export type { TArgumentsMetadata } from "./arguments";
@@ -27,3 +35,5 @@ export type { TGuardMetadata } from "./guard";
 export type { THttpMetadata } from "./http";
 export type { TMiddlewareMetadata } from "./middleware";
 export type { TModuleMetadata, TModuleOptions } from "./module";
+export type { TWebSocketMetadata } from "./webSocket";
+export type { TWebSocketEventHandlerMetadata, TWebSocketEventMetadata } from "./webSocketEvent";

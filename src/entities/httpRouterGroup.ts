@@ -1,10 +1,10 @@
 import type { THttpMethods } from "../http";
-import type { Router } from "./router";
+import type { HttpRouter } from "./httpRouter";
 
-export class RouterGroup {
-    private _routers: Map<string, Router> = new Map();
+export class HttpRouterGroup {
+    private _routers: Map<string, HttpRouter> = new Map();
 
-    public add(...routers: Array<Router>) {
+    public add(...routers: Array<HttpRouter>) {
         for (let i = 0; i < routers.length; i++) {
             if (this._routers.has(routers[i].alias)) {
                 continue;

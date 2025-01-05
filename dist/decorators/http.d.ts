@@ -2,7 +2,7 @@ export type TRoute = {
     path: string;
     httpMethod: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
     methodName: string;
-    descriptor: PropertyDescriptor;
+    descriptor: TypedPropertyDescriptor<any>;
 };
 export type THttpMetadata = Array<TRoute>;
 /**
@@ -10,42 +10,42 @@ export type THttpMetadata = Array<TRoute>;
  * @param path
  * @returns
  */
-export declare const Get: (path?: string) => (target: Object, methodName: string, descriptor: PropertyDescriptor) => void;
+export declare const Get: (path?: string) => (target: Object, methodName: string | symbol, descriptor: TypedPropertyDescriptor<any>) => void;
 /**
  *
  * @param path
  * @returns
  */
-export declare const Post: (path?: string) => (target: Object, methodName: string, descriptor: PropertyDescriptor) => void;
+export declare const Post: (path?: string) => (target: Object, methodName: string | symbol, descriptor: TypedPropertyDescriptor<any>) => void;
 /**
  *
  * @param path
  * @returns
  */
-export declare const Put: (path?: string) => (target: Object, methodName: string, descriptor: PropertyDescriptor) => void;
+export declare const Put: (path?: string) => (target: Object, methodName: string | symbol, descriptor: TypedPropertyDescriptor<any>) => void;
 /**
  *
  * @param path
  * @returns
  */
-export declare const Patch: (path?: string) => (target: Object, methodName: string, descriptor: PropertyDescriptor) => void;
+export declare const Patch: (path?: string) => (target: Object, methodName: string | symbol, descriptor: TypedPropertyDescriptor<any>) => void;
 /**
  *
  * @param path
  * @returns
  */
-export declare const Delete: (path?: string) => (target: Object, methodName: string, descriptor: PropertyDescriptor) => void;
+export declare const Delete: (path?: string) => (target: Object, methodName: string | symbol, descriptor: TypedPropertyDescriptor<any>) => void;
 /**
  *
  * @param path
  * @returns
  */
-export declare const Options: (path?: string) => (target: Object, methodName: string, descriptor: PropertyDescriptor) => void;
+export declare const Options: (path?: string) => (target: Object, methodName: string | symbol, descriptor: TypedPropertyDescriptor<any>) => void;
 declare const _default: {
-    Get: (path?: string) => (target: Object, methodName: string, descriptor: PropertyDescriptor) => void;
-    Post: (path?: string) => (target: Object, methodName: string, descriptor: PropertyDescriptor) => void;
-    Put: (path?: string) => (target: Object, methodName: string, descriptor: PropertyDescriptor) => void;
-    Patch: (path?: string) => (target: Object, methodName: string, descriptor: PropertyDescriptor) => void;
-    Delete: (path?: string) => (target: Object, methodName: string, descriptor: PropertyDescriptor) => void;
+    Get: (path?: string) => (target: Object, methodName: string | symbol, descriptor: TypedPropertyDescriptor<any>) => void;
+    Post: (path?: string) => (target: Object, methodName: string | symbol, descriptor: TypedPropertyDescriptor<any>) => void;
+    Put: (path?: string) => (target: Object, methodName: string | symbol, descriptor: TypedPropertyDescriptor<any>) => void;
+    Patch: (path?: string) => (target: Object, methodName: string | symbol, descriptor: TypedPropertyDescriptor<any>) => void;
+    Delete: (path?: string) => (target: Object, methodName: string | symbol, descriptor: TypedPropertyDescriptor<any>) => void;
 };
 export default _default;

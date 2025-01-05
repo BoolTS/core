@@ -1,10 +1,10 @@
 import type { THttpMethods } from "../http";
-import type { Router } from "./router";
-export declare class RouterGroup {
+import type { HttpRouter } from "./httpRouter";
+export declare class HttpRouterGroup {
     private _routers;
-    add(...routers: Array<Router>): this;
+    add(...routers: Array<HttpRouter>): this;
     find(pathame: string, method: keyof THttpMethods): Readonly<{
         parameters: Record<string, string>;
-        model: import("./route").TRouteModel;
+        model: import("./httpRoute").THttpRouteModel;
     }> | undefined;
 }

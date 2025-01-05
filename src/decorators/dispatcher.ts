@@ -1,4 +1,5 @@
-import type { IDispatcher } from "../interfaces/dispatcher";
+import type { IDispatcher } from "../interfaces";
+
 import { dispatcherKey } from "../keys";
 
 export type TDispatcherMetadata = undefined;

@@ -1,5 +1,6 @@
-import type { IModule } from "../interfaces/module";
-import { controllerKey, dispatcherKey, guardKey, injectableKey, middlewareKey, moduleKey } from "../keys";
+import type { IModule } from "../interfaces";
+
+import { controllerKey, dispatcherKey, guardKey, injectableKey, middlewareKey, moduleKey, webSocketKey } from "../keys";
 
 type TInstances = Array<new (...args: any[]) => any>;
 type TLoaders<TConfig extends {} = {}> = Record<
@@ -17,6 +18,7 @@ export type TModuleOptions<TConfig extends {} = {}> =
           guards: TInstances;
           controllers: TInstances;
           dispatchers: TInstances;
+          webSockets: TInstances;
       }>
     | undefined;
 
@@ -30,13 +32,14 @@ export type TModuleMetadata<TConfig extends {} = {}> =
           guards: TInstances;
           controllers: TInstances;
           dispatchers: TInstances;
+          webSockets: TInstances;
       }>
     | undefined;
 
 export const Module =
     <TConfig extends {} = {}>(args?: TModuleOptions<TConfig>) =>
     <T extends { new (...args: any[]): IModule }>(target: T) => {
-        const { middlewares, guards, dispatchers, controllers, dependencies } = args || {};
+        const { middlewares, guards, dispatchers, controllers, dependencies, webSockets } = args || {};
 
         if (middlewares) {
             for (let i = 0; i < middlewares.length; i++) {
@@ -74,6 +77,14 @@ export const Module =
             for (let i = 0; i < dependencies.length; i++) {
                 if (!Reflect.getOwnMetadataKeys(dependencies[i]).includes(injectableKey)) {
                     throw Error(`${dependencies[i].name} is not an injectable.`);
+                }
+            }
+        }
+
+        if (webSockets) {
+            for (let i = 0; i < webSockets.length; i++) {
+                if (!Reflect.getOwnMetadataKeys(webSockets[i]).includes(webSocketKey)) {
+                    throw Error(`${webSockets[i].name} is not a websocket gateway.`);
                 }
             }
         }

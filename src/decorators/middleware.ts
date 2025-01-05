@@ -1,4 +1,5 @@
 import type { IMiddleware } from "../interfaces";
+
 import { middlewareKey } from "../keys";
 
 export type TMiddlewareMetadata = undefined;

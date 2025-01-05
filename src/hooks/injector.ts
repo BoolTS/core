@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { controllerKey, dispatcherKey, guardKey, injectableKey, injectKey, middlewareKey } from "../keys";
+import { controllerKey, dispatcherKey, guardKey, injectableKey, injectKey, middlewareKey, webSocketKey } from "../keys";
 
 type TDefinition<T = any> = { new (...args: any[]): T } | string | symbol;
 
@@ -27,7 +27,7 @@ export class Injector implements IInjector {
         const ownMetadataKeys = Reflect.getMetadataKeys(definition);
 
         if (
-            ![injectableKey, controllerKey, middlewareKey, guardKey, dispatcherKey].some((value) =>
+            ![injectableKey, controllerKey, middlewareKey, guardKey, dispatcherKey, webSocketKey].some((value) =>
                 ownMetadataKeys.includes(value)
             )
         ) {
