@@ -16,7 +16,7 @@ export declare class WebSocketRouter {
      * @param instance
      * @returns
      */
-    bind(instance: Object): this;
+    bind(instance: Object): ThisType<WebSocketRouter>;
     /**
      * Generate map for websocket handler metadata
      * @returns

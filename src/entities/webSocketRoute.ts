@@ -3,6 +3,7 @@ import type { TWebSocketEventHandlerMetadata } from "../decorators";
 export class WebSocketRoute {
     public readonly eventName: string;
     public readonly metadata: TWebSocketEventHandlerMetadata;
+    private _context: Object | undefined = undefined;
 
     constructor({
         eventName,
@@ -16,12 +17,19 @@ export class WebSocketRoute {
     }
 
     public bind(instance: Object): ThisType<WebSocketRoute> {
-        if (typeof this.metadata.descriptor.value !== "function") {
-            return this;
-        }
-
-        this.metadata.descriptor.value = this.metadata.descriptor.value.bind(instance);
+        this._context = instance;
 
         return this;
+    }
+
+    public execute(): Readonly<TWebSocketEventHandlerMetadata> {
+        return Object.freeze({
+            methodName: this.metadata.methodName,
+            descriptor:
+                !this._context || typeof this.metadata.descriptor.value !== "function"
+                    ? this.metadata.descriptor
+                    : this.metadata.descriptor.value.bind(this._context),
+            arguments: this.metadata.arguments
+        });
     }
 }

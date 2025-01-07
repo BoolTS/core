@@ -37,7 +37,7 @@ export class WebSocketRouter {
     execute() {
         const map = new Map();
         for (const route of this.routes) {
-            map.set(`${this.alias}:::${route.eventName}`, route.metadata);
+            map.set(`${this.alias}:::${route.eventName}`, route.execute());
         }
         return map;
     }

@@ -29,7 +29,7 @@ export class WebSocketRouter {
      * @param instance
      * @returns
      */
-    public bind(instance: Object) {
+    public bind(instance: Object): ThisType<WebSocketRouter> {
         for (const route of this.routes) {
             route.bind(instance);
         }
@@ -45,7 +45,7 @@ export class WebSocketRouter {
         const map = new Map<string, TWebSocketEventHandlerMetadata>();
 
         for (const route of this.routes) {
-            map.set(`${this.alias}:::${route.eventName}`, route.metadata);
+            map.set(`${this.alias}:::${route.eventName}`, route.execute());
         }
 
         return map;
