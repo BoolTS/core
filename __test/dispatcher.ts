@@ -1,6 +1,6 @@
-import type { IDispatcher } from "../src";
+import type { IDispatcher } from "@dist";
 
-import { Dispatcher } from "../src";
+import { Dispatcher } from "@dist";
 
 @Dispatcher()
 export class CustomDispatcher implements IDispatcher {

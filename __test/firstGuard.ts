@@ -1,4 +1,6 @@
-import { Guard, IGuard } from "../src";
+import type { IGuard } from "@dist";
+
+import { Guard } from "@dist";
 
 @Guard()
 export class FirstGuard implements IGuard {

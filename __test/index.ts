@@ -1,6 +1,6 @@
 import "reflect-metadata";
 
-import { BoolFactory } from "../src";
+import { BoolFactory } from "@dist";
 import { TestModule } from "./module";
 
 BoolFactory(TestModule, {

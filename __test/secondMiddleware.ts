@@ -1,5 +1,5 @@
-import type { IMiddleware } from "../src";
-import { Middleware } from "../src";
+import type { IMiddleware } from "@dist";
+import { Middleware } from "@dist";
 
 @Middleware()
 export class SecondMiddleware implements IMiddleware {

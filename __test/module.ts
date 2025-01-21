@@ -1,4 +1,4 @@
-import { Module } from "../src";
+import { Module } from "@dist";
 import { TestController } from "./controller";
 import { CustomDispatcher } from "./dispatcher";
 import { FirstGuard } from "./firstGuard";

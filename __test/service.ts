@@ -1,17 +1,14 @@
-import type { IService, IRepository } from "./interfaces";
+import type { IRepository, IService } from "./interfaces";
 
-import { Inject, Injectable } from "../src";
+import { Inject, Injectable } from "@dist";
 import { TestRepository } from "./repository";
-
 
 @Injectable()
 export class TestService implements IService {
-    constructor(
-        @Inject(TestRepository) private readonly testRepository: IRepository
-    ) { }
+    constructor(@Inject(TestRepository) private readonly testRepository: IRepository) {}
 
     /**
-     * 
+     *
      */
     exec() {
         console.log("This is test service.", this.testRepository);

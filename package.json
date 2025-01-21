@@ -1,11 +1,11 @@
 {
     "name": "@bool-ts/core",
-    "version": "1.8.1",
+    "version": "1.8.2",
     "description": "",
     "main": "dist/index.js",
     "scripts": {
         "test": "bun --hot run __test/index.ts",
-        "build": "tsc"
+        "build": "tsc --emitDeclarationOnly && bun build ./src/index.ts --outdir ./dist"
     },
     "repository": {
         "type": "git",

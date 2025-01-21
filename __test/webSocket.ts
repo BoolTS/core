@@ -7,7 +7,7 @@ import {
     WebSocketConnection,
     WebSocketEvent,
     WebSocketServer
-} from "../src";
+} from "@dist";
 
 @WebSocket()
 export class TestWebSocket {
