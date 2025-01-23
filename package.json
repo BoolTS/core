@@ -1,11 +1,11 @@
 {
     "name": "@bool-ts/core",
-    "version": "1.8.2",
+    "version": "1.9.0",
     "description": "",
     "main": "dist/index.js",
     "scripts": {
         "test": "bun --hot run __test/index.ts",
-        "build": "tsc --emitDeclarationOnly && bun build ./src/index.ts --outdir ./dist"
+        "build": "tsc --emitDeclarationOnly && bun build ./src/index.ts --outdir ./dist --minify"
     },
     "repository": {
         "type": "git",
@@ -19,14 +19,14 @@
     "homepage": "https://github.com/BoolTS/core#readme",
     "dependencies": {
         "@bool-ts/date-time": "^1.0.0",
-        "qs": "^6.13.1",
+        "qs": "^6.14.0",
         "reflect-metadata": "^0.2.2",
         "zod": "^3.24.1"
     },
     "devDependencies": {
         "@types/bun": "latest",
-        "@types/qs": "^6.9.17",
-        "typescript": "^5.7.2"
+        "@types/qs": "^6.9.18",
+        "typescript": "^5.7.3"
     },
     "private": "false"
 }
