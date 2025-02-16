@@ -1,5 +1,6 @@
 import type { Server } from "bun";
 import type { IWebSocket } from "../interfaces";
+import type { TArgumentsMetadataCollection } from "./arguments";
 import type { TWebSocketEventMetadata } from "./webSocketEvent";
 
 import { webSocketEventKey, webSocketKey } from "../keys";
@@ -9,6 +10,7 @@ export type TWebSocketHttpRouteMetadata = {
     httpMethod: "GET" | "POST";
     methodName: symbol;
     descriptor: PropertyDescriptor;
+    argumentsMetadata: TArgumentsMetadataCollection;
 };
 
 export type TWebSocketUpgradeData = {
@@ -59,13 +61,15 @@ export const WebSocket =
                       path: "/",
                       httpMethod: "GET",
                       methodName: upgradeHandlerSymbol,
-                      descriptor: descriptor
+                      descriptor: descriptor,
+                      argumentsMetadata: {}
                   },
                   {
                       path: "/",
                       httpMethod: "POST",
                       methodName: upgradeHandlerSymbol,
-                      descriptor: descriptor
+                      descriptor: descriptor,
+                      argumentsMetadata: {}
                   }
               ];
 

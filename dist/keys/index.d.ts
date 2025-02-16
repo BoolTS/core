@@ -9,6 +9,7 @@ export declare const injectKey: unique symbol;
 export declare const injectableKey: unique symbol;
 export declare const middlewareKey: unique symbol;
 export declare const moduleKey: unique symbol;
+export declare const containerKey: unique symbol;
 export declare const zodSchemaKey: unique symbol;
 export declare const webSocketKey: unique symbol;
 export declare const webSocketEventKey: unique symbol;

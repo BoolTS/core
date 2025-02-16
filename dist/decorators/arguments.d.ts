@@ -42,6 +42,7 @@ export type TArgumentsMetadata = {
     index: number;
     type: typeof routeModelArgsKey;
 };
+export type TArgumentsMetadataCollection = Record<`argumentIndexes.${number}`, TArgumentsMetadata>;
 export declare const RequestHeaders: (schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
 export declare const RequestHeader: (key: string, schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
 export declare const RequestBody: (schema?: Zod.Schema, parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text") => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;

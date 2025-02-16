@@ -13,7 +13,7 @@ export const Controller =
     <T extends { new (...args: any[]): IController }>(target: T) => {
         const metadata: TControllerMetadata = {
             prefix: !prefix?.startsWith("/") ? `/${prefix || ""}` : prefix,
-            httpMetadata: [...(Reflect.getOwnMetadata(controllerHttpKey, target.constructor) || [])]
+            httpMetadata: [...(Reflect.getOwnMetadata(controllerHttpKey, target) || [])]
         };
 
         Reflect.defineMetadata(controllerKey, metadata, target);

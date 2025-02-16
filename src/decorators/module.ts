@@ -1,6 +1,14 @@
 import type { IModule } from "../interfaces";
 
-import { controllerKey, dispatcherKey, guardKey, injectableKey, middlewareKey, moduleKey, webSocketKey } from "../keys";
+import {
+    controllerKey,
+    dispatcherKey,
+    guardKey,
+    injectableKey,
+    middlewareKey,
+    moduleKey,
+    webSocketKey
+} from "../keys";
 
 type TInstances = Array<new (...args: any[]) => any>;
 type TLoaders<TConfig extends {} = {}> = Record<
@@ -39,7 +47,8 @@ export type TModuleMetadata<TConfig extends {} = {}> =
 export const Module =
     <TConfig extends {} = {}>(args?: TModuleOptions<TConfig>) =>
     <T extends { new (...args: any[]): IModule }>(target: T) => {
-        const { middlewares, guards, dispatchers, controllers, dependencies, webSockets } = args || {};
+        const { middlewares, guards, dispatchers, controllers, dependencies, webSockets } =
+            args || {};
 
         if (middlewares) {
             for (let i = 0; i < middlewares.length; i++) {

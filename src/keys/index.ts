@@ -9,6 +9,7 @@ export const injectKey = Symbol("__bool:inject__");
 export const injectableKey = Symbol("__bool:injectable__");
 export const middlewareKey = Symbol("__bool:middleware__");
 export const moduleKey = Symbol("__bool:module__");
+export const containerKey = Symbol("__bool:container__");
 export const zodSchemaKey = Symbol("__bool:zodSchema__");
 export const webSocketKey = Symbol("__bool:webSocket__");
 export const webSocketEventKey = Symbol("__bool:webSocket:event__");

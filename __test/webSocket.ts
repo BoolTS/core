@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import type { TWebSocketUpgradeData } from "./decorators/webSocket";
+import type { TWebSocketUpgradeData } from "../dist/decorators/webSocket";
 
 import {
     WebSocket,

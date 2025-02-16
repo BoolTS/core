@@ -1,10 +1,13 @@
-import { controllerHttpKey } from "../keys";
+import type { TArgumentsMetadataCollection } from "./arguments";
+
+import { argumentsKey, controllerHttpKey } from "../keys";
 
 export type TRoute = {
     path: string;
     httpMethod: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
     methodName: string;
     descriptor: TypedPropertyDescriptor<any>;
+    argumentsMetadata: TArgumentsMetadataCollection;
 };
 
 export type THttpMetadata = Array<TRoute>;
@@ -16,13 +19,17 @@ const defaultDecorator =
             throw Error(`${method} decorator only use for class method.`);
         }
 
+        const argumentsMetadata: TArgumentsMetadataCollection =
+            Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
+
         const metadata: THttpMetadata = [
             ...(Reflect.getOwnMetadata(controllerHttpKey, target.constructor) || []),
             {
                 path: !path.startsWith("/") ? `/${path}` : path,
                 httpMethod: method.toUpperCase(),
                 methodName: methodName,
-                descriptor: descriptor
+                descriptor: descriptor,
+                argumentsMetadata: argumentsMetadata
             }
         ];
 

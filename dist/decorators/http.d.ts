@@ -1,8 +1,10 @@
+import type { TArgumentsMetadataCollection } from "./arguments";
 export type TRoute = {
     path: string;
     httpMethod: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
     methodName: string;
     descriptor: TypedPropertyDescriptor<any>;
+    argumentsMetadata: TArgumentsMetadataCollection;
 };
 export type THttpMetadata = Array<TRoute>;
 /**

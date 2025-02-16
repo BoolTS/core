@@ -1,10 +1,12 @@
 import type { IWebSocket } from "../interfaces";
+import type { TArgumentsMetadataCollection } from "./arguments";
 import type { TWebSocketEventMetadata } from "./webSocketEvent";
 export type TWebSocketHttpRouteMetadata = {
     path: string;
     httpMethod: "GET" | "POST";
     methodName: symbol;
     descriptor: PropertyDescriptor;
+    argumentsMetadata: TArgumentsMetadataCollection;
 };
 export type TWebSocketUpgradeData = {
     pathname: string;

@@ -1,9 +1,11 @@
+import type { TArgumentsMetadataCollection } from "../decorators/arguments";
 import "reflect-metadata";
 import Qs from "qs";
 export type TGroupElementModel<TFuncName extends keyof TClass, TClass extends Object = Object, TFunc = TClass[TFuncName]> = Readonly<{
     class: TClass;
     func: TFunc;
     funcName: TFuncName;
+    argumentsMetadata: TArgumentsMetadataCollection;
 }>;
 export type TBoolFactoryOptions = Required<{
     port: number;

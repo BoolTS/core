@@ -1,8 +1,10 @@
+import type { TArgumentsMetadataCollection } from "../decorators/arguments";
 import type { THttpMethods } from "../http";
 export type THttpRouteModel<T = unknown> = Readonly<{
     class: new (...args: Array<any>) => T;
     funcName: string | symbol;
     func: (...args: Array<any>) => unknown;
+    argumentsMetadata: TArgumentsMetadataCollection;
 }>;
 export declare class HttpRoute {
     static rootPattern: string;
@@ -51,6 +53,7 @@ export declare class HttpRoute {
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
+        argumentsMetadata: TArgumentsMetadataCollection;
     }>>;
     /**
      *
@@ -61,6 +64,7 @@ export declare class HttpRoute {
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
+        argumentsMetadata: TArgumentsMetadataCollection;
     }>>;
     /**
      *
@@ -71,6 +75,7 @@ export declare class HttpRoute {
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
+        argumentsMetadata: TArgumentsMetadataCollection;
     }>>;
     /**
      *
@@ -81,6 +86,7 @@ export declare class HttpRoute {
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
+        argumentsMetadata: TArgumentsMetadataCollection;
     }>>;
     /**
      *
