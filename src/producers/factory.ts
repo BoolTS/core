@@ -103,6 +103,69 @@ const responseConverter = (response: Response) => {
     return response;
 };
 
+const responseSerialize = ({
+    status,
+    statusText,
+    headers,
+    data
+}: {
+    status?: number;
+    statusText?: string;
+    headers: Headers;
+    data: unknown;
+}): Response => {
+    const contentType = headers.get("Content-Type") || "text/plain";
+
+    if (contentType.includes("application/json")) {
+        return responseConverter(
+            new Response(data instanceof ReadableStream ? data : JSON.stringify(data), {
+                status: status,
+                statusText: statusText,
+                headers: headers
+            })
+        );
+    }
+
+    if (contentType.includes("text/plain") || contentType.includes("text/html")) {
+        return responseConverter(
+            new Response(data instanceof ReadableStream ? data : String(data), {
+                status: status,
+                statusText: statusText,
+                headers: headers
+            })
+        );
+    }
+
+    if (contentType.includes("application/octet-stream")) {
+        if (
+            data instanceof Uint8Array ||
+            data instanceof ArrayBuffer ||
+            data instanceof Blob ||
+            data instanceof ReadableStream
+        ) {
+            return responseConverter(
+                new Response(data, { status: status, statusText: statusText, headers: headers })
+            );
+        }
+
+        throw new Error("Invalid data type for application/octet-stream");
+    }
+
+    if (contentType.includes("multipart/form-data")) {
+        if (data instanceof FormData) {
+            return responseConverter(
+                new Response(data, { status: status, statusText: statusText, headers: headers })
+            );
+        }
+
+        throw new Error("multipart/form-data requires FormData object");
+    }
+
+    return responseConverter(
+        new Response(String(data), { status: status, statusText: statusText, headers: headers })
+    );
+};
+
 const controllerCreator = ({
     controllerConstructor,
     httpRouterGroup,
@@ -808,6 +871,8 @@ const httpFetcher = async (
                 NonNullable<ReturnType<HttpRouterGroup["find"]>>["model"] | null | undefined
             >(routeModelArgsKey) || undefined;
 
+    context.setOptions({ isStatic: false });
+
     if (resolutedMap) {
         const { startMiddlewareGroup, guardGroup } = resolutedMap;
 
@@ -825,8 +890,8 @@ const httpFetcher = async (
                     switch (argMetadata.type) {
                         case contextArgsKey:
                             args[argMetadata.index] = !argMetadata.key
-                                ? context
-                                : context.get(argMetadata.key);
+                                ? context.setOptions({ isStatic: false })
+                                : context.setOptions({ isStatic: false }).get(argMetadata.key);
                             break;
                         case requestArgsKey:
                             args[argMetadata.index] = !argMetadata.zodSchema
@@ -938,8 +1003,8 @@ const httpFetcher = async (
                             break;
                         case contextArgsKey:
                             args[argMetadata.index] = !argMetadata.key
-                                ? context
-                                : context.get(argMetadata.key);
+                                ? context.setOptions({ isStatic: false })
+                                : context.setOptions({ isStatic: false }).get(argMetadata.key);
                             break;
                         case requestHeadersArgsKey:
                             args[argMetadata.index] = !argMetadata.zodSchema
@@ -1049,8 +1114,8 @@ const httpFetcher = async (
                             break;
                         case contextArgsKey:
                             args[argMetadata.index] = !argMetadata.key
-                                ? context
-                                : context.get(argMetadata.key);
+                                ? context.setOptions({ isStatic: false })
+                                : context.setOptions({ isStatic: false }).get(argMetadata.key);
                             break;
                         case requestHeadersArgsKey:
                             args[argMetadata.index] = !argMetadata.zodSchema
@@ -1142,8 +1207,8 @@ const httpFetcher = async (
                     break;
                 case contextArgsKey:
                     controllerActionArguments[argMetadata.index] = !argMetadata.key
-                        ? context
-                        : context.get(argMetadata.key);
+                        ? context.setOptions({ isStatic: false })
+                        : context.setOptions({ isStatic: false }).get(argMetadata.key);
                     break;
                 case requestHeadersArgsKey:
                     controllerActionArguments[argMetadata.index] = !argMetadata.zodSchema
@@ -1243,8 +1308,8 @@ const httpFetcher = async (
                             break;
                         case contextArgsKey:
                             args[argMetadata.index] = !argMetadata.key
-                                ? context
-                                : context.get(argMetadata.key);
+                                ? context.setOptions({ isStatic: false })
+                                : context.setOptions({ isStatic: false }).get(argMetadata.key);
                             break;
                         case requestHeadersArgsKey:
                             args[argMetadata.index] = !argMetadata.zodSchema
@@ -1342,8 +1407,8 @@ const httpFetcher = async (
                             break;
                         case contextArgsKey:
                             args[argMetadata.index] = !argMetadata.key
-                                ? context
-                                : context.get(argMetadata.key);
+                                ? context.setOptions({ isStatic: false })
+                                : context.setOptions({ isStatic: false }).get(argMetadata.key);
                             break;
                         case requestHeadersArgsKey:
                             args[argMetadata.index] = !argMetadata.zodSchema
@@ -1783,24 +1848,22 @@ export const BoolFactory = async (
                     const latestResponseHeaders =
                             context.get<Headers | null | undefined>(responseHeadersArgsKey) ||
                             new Headers(),
-                        latestResponseBody = context.get<BodyInit>(responseBodyArgsKey) || null,
-                        latestResponseStatus = context.get<unknown>(responseStatusArgsKey) || 200,
-                        latestResponseStatusText =
-                            context.get<unknown>(responseStatusArgsKey) || 200;
+                        latestResponseBody = context.get<unknown>(responseBodyArgsKey) || undefined,
+                        latestResponseStatus = context.get<unknown>(responseStatusArgsKey),
+                        latestResponseStatusText = context.get<unknown>(responseStatusArgsKey);
 
-                    return responseConverter(
-                        new Response(latestResponseBody, {
-                            status:
-                                typeof latestResponseStatus !== "number"
-                                    ? 200
-                                    : latestResponseStatus,
-                            statusText:
-                                typeof latestResponseStatusText !== "string"
-                                    ? undefined
-                                    : latestResponseStatusText,
-                            headers: latestResponseHeaders
-                        })
-                    );
+                    return responseSerialize({
+                        status:
+                            typeof latestResponseStatus !== "number"
+                                ? undefined
+                                : latestResponseStatus,
+                        statusText:
+                            typeof latestResponseStatusText !== "string"
+                                ? undefined
+                                : latestResponseStatusText,
+                        headers: latestResponseHeaders,
+                        data: latestResponseBody
+                    });
                 } catch (error) {
                     options.debug && console.error(error);
 
