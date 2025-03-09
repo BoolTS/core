@@ -1,9 +1,7 @@
-import "reflect-metadata";
-
 import { BoolFactory } from "@dist";
-import { TestModule } from "./module";
+import { AppContainer } from "container";
 
-BoolFactory(TestModule, {
+BoolFactory(AppContainer, {
     port: 3000,
     log: {
         methods: ["GET", "POST"]

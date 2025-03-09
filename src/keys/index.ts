@@ -32,3 +32,5 @@ export const responseHeadersArgsKey = Symbol("__bool:httpArguments:responseHeade
 export const contextArgsKey = Symbol("__bool:httpArguments:context__");
 export const routeModelArgsKey = Symbol("__bool:httpArguments:routeModel__");
 export const responseBodyArgsKey = Symbol("__bool:httpArguments:responseBody__");
+export const responseStatusArgsKey = Symbol("__bool:httpArguments:responseStatus__");
+export const responseStatusTextArgsKey = Symbol("__bool:httpArguments:responseStatusText__");

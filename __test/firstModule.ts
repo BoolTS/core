@@ -13,11 +13,9 @@ import { TestWebSocket } from "./webSocket";
     mongodb: string;
 }>({
     config: {
-        mongodb: "123"
-    },
-    loaders: {
-        mongodb: ({ config }) => {
-            return [Symbol.for("etst"), { hehe: "435345" }];
+        key: Symbol("firstModuleConfig"),
+        value: {
+            mongodb: "123"
         }
     },
     middlewares: [FirstMiddleware, SecondMiddleware],
@@ -27,4 +25,4 @@ import { TestWebSocket } from "./webSocket";
     dependencies: [TestService, TestRepository],
     webSockets: [TestWebSocket]
 })
-export class TestModule {}
+export class FirstModule {}

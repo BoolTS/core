@@ -1,6 +1,7 @@
 import type { IModule } from "../interfaces";
 
 import {
+    containerKey,
     controllerKey,
     dispatcherKey,
     guardKey,
@@ -15,10 +16,17 @@ type TLoaders<TConfig extends {} = {}> = Record<
     string | symbol,
     (args: { config: TConfig }) => [string | symbol, any] | Promise<[string | symbol, any]>
 >;
+export type TModuleConfig<TConfig> =
+    | TConfig
+    | (() => TConfig | Promise<TConfig>)
+    | Readonly<{
+          key: symbol;
+          value: TConfig | (() => TConfig | Promise<TConfig>);
+      }>;
 
 export type TModuleOptions<TConfig extends {} = {}> =
     | Partial<{
-          config: TConfig | (() => TConfig | Promise<TConfig>);
+          config: TModuleConfig<TConfig>;
           prefix: string;
           dependencies: TInstances;
           loaders: TLoaders<TConfig>;
@@ -32,7 +40,7 @@ export type TModuleOptions<TConfig extends {} = {}> =
 
 export type TModuleMetadata<TConfig extends {} = {}> =
     | Partial<{
-          config: TConfig | ((...args: any[]) => TConfig | Promise<TConfig>);
+          config: TModuleConfig<TConfig>;
           prefix: string;
           dependencies: TInstances;
           loaders: TLoaders<TConfig>;
@@ -47,6 +55,12 @@ export type TModuleMetadata<TConfig extends {} = {}> =
 export const Module =
     <TConfig extends {} = {}>(args?: TModuleOptions<TConfig>) =>
     <T extends { new (...args: any[]): IModule }>(target: T) => {
+        if (Reflect.hasOwnMetadata(containerKey, target)) {
+            throw new Error(
+                `Conflict detected! ${target.name} class cannot be both a Module and a Container.`
+            );
+        }
+
         const { middlewares, guards, dispatchers, controllers, dependencies, webSockets } =
             args || {};
 

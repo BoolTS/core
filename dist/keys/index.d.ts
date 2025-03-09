@@ -30,3 +30,5 @@ export declare const responseHeadersArgsKey: unique symbol;
 export declare const contextArgsKey: unique symbol;
 export declare const routeModelArgsKey: unique symbol;
 export declare const responseBodyArgsKey: unique symbol;
+export declare const responseStatusArgsKey: unique symbol;
+export declare const responseStatusTextArgsKey: unique symbol;

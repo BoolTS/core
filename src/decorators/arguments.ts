@@ -2,6 +2,7 @@ import * as Zod from "zod";
 import {
     argumentsKey,
     contextArgsKey,
+    httpServerArgsKey,
     paramArgsKey,
     paramsArgsKey,
     queryArgsKey,
@@ -64,6 +65,10 @@ export type TArgumentsMetadata =
     | {
           index: number;
           type: typeof routeModelArgsKey;
+      }
+    | {
+          index: number;
+          type: typeof httpServerArgsKey;
       };
 
 export type TArgumentsMetadataCollection = Record<`argumentIndexes.${number}`, TArgumentsMetadata>;
@@ -301,6 +306,28 @@ export const RouteModel =
             TArgumentsMetadata,
             {
                 type: typeof routeModelArgsKey;
+            }
+        >;
+
+        Reflect.defineMetadata(argumentsKey, metadata, target.constructor, methodName);
+    };
+
+export const HttpServer =
+    () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+        if (!methodName) {
+            return;
+        }
+
+        const metadata: TArgumentsMetadataCollection =
+            Reflect.getOwnMetadata(argumentsKey, target.constructor, methodName) || {};
+
+        metadata[`argumentIndexes.${parameterIndex}`] = {
+            index: parameterIndex,
+            type: httpServerArgsKey
+        } satisfies Extract<
+            TArgumentsMetadata,
+            {
+                type: typeof httpServerArgsKey;
             }
         >;
 

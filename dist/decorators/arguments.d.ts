@@ -1,5 +1,5 @@
 import * as Zod from "zod";
-import { contextArgsKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestBodyArgsKey, requestHeaderArgsKey, requestHeadersArgsKey, responseHeadersArgsKey, routeModelArgsKey } from "../keys";
+import { contextArgsKey, httpServerArgsKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestBodyArgsKey, requestHeaderArgsKey, requestHeadersArgsKey, responseHeadersArgsKey, routeModelArgsKey } from "../keys";
 export type TArgumentsMetadata = {
     index: number;
     type: typeof requestHeadersArgsKey;
@@ -41,6 +41,9 @@ export type TArgumentsMetadata = {
 } | {
     index: number;
     type: typeof routeModelArgsKey;
+} | {
+    index: number;
+    type: typeof httpServerArgsKey;
 };
 export type TArgumentsMetadataCollection = Record<`argumentIndexes.${number}`, TArgumentsMetadata>;
 export declare const RequestHeaders: (schema?: Zod.Schema) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
@@ -53,3 +56,4 @@ export declare const Request: (schema?: Zod.Schema) => (target: Object, methodNa
 export declare const ResponseHeaders: () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
 export declare const Context: (key?: symbol) => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
 export declare const RouteModel: () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const HttpServer: () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;

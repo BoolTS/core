@@ -10,7 +10,12 @@ export declare class Injector implements IInjector {
     private readonly _mapper;
     /**
      *
-     * @param constructor
+     * @param injectors
+     */
+    constructor(...injectors: Array<Injector>);
+    /**
+     *
+     * @param definition
      */
     get<T>(definition: TDefinition): any;
     /**
@@ -19,5 +24,6 @@ export declare class Injector implements IInjector {
      * @param value
      */
     set(key: TDefinition, value: any): void;
+    get entries(): [string | symbol | Function, any][];
 }
 export default Injector;

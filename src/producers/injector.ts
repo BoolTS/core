@@ -1,5 +1,13 @@
 import "reflect-metadata";
-import { controllerKey, dispatcherKey, guardKey, injectableKey, injectKey, middlewareKey, webSocketKey } from "../keys";
+import {
+    controllerKey,
+    dispatcherKey,
+    guardKey,
+    injectableKey,
+    injectKey,
+    middlewareKey,
+    webSocketKey
+} from "../keys";
 
 type TDefinition<T = any> = { new (...args: any[]): T } | string | symbol;
 
@@ -13,7 +21,19 @@ export class Injector implements IInjector {
 
     /**
      *
-     * @param constructor
+     * @param injectors
+     */
+    constructor(...injectors: Array<Injector>) {
+        injectors.forEach((injector) => {
+            injector.entries.forEach(([key, value]) => {
+                this._mapper.set(key, value);
+            });
+        });
+    }
+
+    /**
+     *
+     * @param definition
      */
     get<T>(definition: TDefinition) {
         if (this._mapper.has(definition)) {
@@ -27,11 +47,18 @@ export class Injector implements IInjector {
         const ownMetadataKeys = Reflect.getMetadataKeys(definition);
 
         if (
-            ![injectableKey, controllerKey, middlewareKey, guardKey, dispatcherKey, webSocketKey].some((value) =>
-                ownMetadataKeys.includes(value)
-            )
+            ![
+                injectableKey,
+                controllerKey,
+                middlewareKey,
+                guardKey,
+                dispatcherKey,
+                webSocketKey
+            ].some((value) => ownMetadataKeys.includes(value))
         ) {
-            throw Error("Missing dependency declaration, please check @Injectable() used on dependency(ies).");
+            throw Error(
+                "Missing dependency declaration, please check @Injectable() used on dependency(ies)."
+            );
         }
 
         // Initialize dependencies injection
@@ -50,7 +77,15 @@ export class Injector implements IInjector {
      * @param value
      */
     set(key: TDefinition, value: any) {
+        if (this._mapper.has(key)) {
+            throw Error(`${String(key)} already exists in injector collection.`);
+        }
+
         this._mapper.set(key, value);
+    }
+
+    get entries() {
+        return [...this._mapper.entries()];
     }
 }
 

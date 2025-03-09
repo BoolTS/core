@@ -1,4 +1,4 @@
-export type { IContext } from "./context";
+export type { IContext, TContextOptions } from "./context";
 export type { IController } from "./controller";
 export type { IDispatcher } from "./dispatcher";
 export type { IGuard } from "./guard";

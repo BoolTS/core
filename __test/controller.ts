@@ -52,7 +52,7 @@ const headersSchema = Zod.object({
 @Controller("test")
 export class TestController {
     constructor(
-        @Inject(Symbol.for("etst")) private readonly testInject: any,
+        @Inject(Symbol.for("mongo")) private readonly testInject: any,
         @Inject(TestService) private readonly testService: IService
     ) {
         console.log("testInject", testInject);
