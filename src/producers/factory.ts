@@ -489,7 +489,7 @@ const containerResolution = async ({
 
             if (instance.end && typeof instance.end === "function") {
                 const argumentsMetadata: TArgumentsMetadataCollection =
-                    Reflect.getOwnMetadata(argumentsKey, middleware, "start") || {};
+                    Reflect.getOwnMetadata(argumentsKey, middleware, "end") || {};
 
                 endMiddlewareGroup.push(
                     Object.freeze({
@@ -663,7 +663,7 @@ const moduleResolution = async ({
 
             if (instance.end && typeof instance.end === "function") {
                 const argumentsMetadata: TArgumentsMetadataCollection =
-                    Reflect.getOwnMetadata(argumentsKey, middleware, "start") || {};
+                    Reflect.getOwnMetadata(argumentsKey, middleware, "end") || {};
 
                 endMiddlewareGroup.push(
                     Object.freeze({
