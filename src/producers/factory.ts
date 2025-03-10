@@ -852,24 +852,31 @@ const httpFetcher = async (
 ) => {
     const { context: outerContext, route, resolutedMap } = bool;
 
-    const context = (!outerContext ? new Context() : new Context(outerContext)).setOptions({
-        isStatic: true
-    });
+    const contextOptions = { isStatic: true };
+    const context = (!outerContext ? new Context() : new Context(outerContext)).setOptions(
+        contextOptions
+    );
 
     if (route) {
         context.set(paramsArgsKey, route.parameters).set(routeModelArgsKey, route.model);
     }
 
-    const httpServer = context.get<Server | null | undefined>(httpServerArgsKey) || undefined,
-        request = context.get<Request | null | undefined>(requestArgsKey) || undefined,
-        requestHeaders = context.get<Headers | null | undefined>(requestHeaderArgsKey) || undefined,
+    const httpServer =
+            context.get<Server | null | undefined>(httpServerArgsKey, contextOptions) || undefined,
+        request =
+            context.get<Request | null | undefined>(requestArgsKey, contextOptions) || undefined,
+        requestHeaders =
+            context.get<Headers | null | undefined>(requestHeaderArgsKey, contextOptions) ||
+            undefined,
         responseHeaders =
-            context.get<Headers | null | undefined>(responseHeadersArgsKey) || undefined,
-        parameters = context.get<TParamsType | null | undefined>(paramsArgsKey) || undefined,
+            context.get<Headers | null | undefined>(responseHeadersArgsKey, contextOptions) ||
+            undefined,
+        parameters =
+            context.get<TParamsType | null | undefined>(paramsArgsKey, contextOptions) || undefined,
         routeModel =
             context.get<
                 NonNullable<ReturnType<HttpRouterGroup["find"]>>["model"] | null | undefined
-            >(routeModelArgsKey) || undefined;
+            >(routeModelArgsKey, contextOptions) || undefined;
 
     if (resolutedMap) {
         const { startMiddlewareGroup, guardGroup } = resolutedMap;
@@ -889,7 +896,7 @@ const httpFetcher = async (
                         case contextArgsKey:
                             args[argMetadata.index] = !argMetadata.key
                                 ? context
-                                : context.get(argMetadata.key);
+                                : context.get(argMetadata.key, contextOptions);
                             break;
                         case requestArgsKey:
                             args[argMetadata.index] = !argMetadata.zodSchema
@@ -952,13 +959,13 @@ const httpFetcher = async (
                             break;
                         default:
                             args[argMetadata.index] = !argMetadata.zodSchema
-                                ? !context.has(argMetadata.type)
+                                ? !context.has(argMetadata.type, contextOptions)
                                     ? undefined
-                                    : context.get(argMetadata.type)
+                                    : context.get(argMetadata.type, contextOptions)
                                 : await argumentsResolution(
                                       !(argMetadata.type in context)
                                           ? undefined
-                                          : context.get(argMetadata.type),
+                                          : context.get(argMetadata.type, contextOptions),
                                       argMetadata.zodSchema,
                                       argMetadata.index,
                                       functionName
@@ -1597,6 +1604,7 @@ export const BoolFactory = async (
                 let context = new Context()
                     .setOptions({ isStatic: true })
                     .set(httpServerArgsKey, server)
+                    .set(requestArgsKey, request)
                     .set(requestHeaderArgsKey, request.headers)
                     .set(responseHeadersArgsKey, responseHeaders)
                     .set(queryArgsKey, query);
