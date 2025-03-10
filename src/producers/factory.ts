@@ -871,8 +871,6 @@ const httpFetcher = async (
                 NonNullable<ReturnType<HttpRouterGroup["find"]>>["model"] | null | undefined
             >(routeModelArgsKey) || undefined;
 
-    context.setOptions({ isStatic: false });
-
     if (resolutedMap) {
         const { startMiddlewareGroup, guardGroup } = resolutedMap;
 
@@ -890,8 +888,8 @@ const httpFetcher = async (
                     switch (argMetadata.type) {
                         case contextArgsKey:
                             args[argMetadata.index] = !argMetadata.key
-                                ? context.setOptions({ isStatic: false })
-                                : context.setOptions({ isStatic: false }).get(argMetadata.key);
+                                ? context
+                                : context.get(argMetadata.key);
                             break;
                         case requestArgsKey:
                             args[argMetadata.index] = !argMetadata.zodSchema
@@ -1003,8 +1001,8 @@ const httpFetcher = async (
                             break;
                         case contextArgsKey:
                             args[argMetadata.index] = !argMetadata.key
-                                ? context.setOptions({ isStatic: false })
-                                : context.setOptions({ isStatic: false }).get(argMetadata.key);
+                                ? context
+                                : context.get(argMetadata.key);
                             break;
                         case requestHeadersArgsKey:
                             args[argMetadata.index] = !argMetadata.zodSchema
@@ -1114,8 +1112,8 @@ const httpFetcher = async (
                             break;
                         case contextArgsKey:
                             args[argMetadata.index] = !argMetadata.key
-                                ? context.setOptions({ isStatic: false })
-                                : context.setOptions({ isStatic: false }).get(argMetadata.key);
+                                ? context
+                                : context.get(argMetadata.key);
                             break;
                         case requestHeadersArgsKey:
                             args[argMetadata.index] = !argMetadata.zodSchema
@@ -1207,8 +1205,8 @@ const httpFetcher = async (
                     break;
                 case contextArgsKey:
                     controllerActionArguments[argMetadata.index] = !argMetadata.key
-                        ? context.setOptions({ isStatic: false })
-                        : context.setOptions({ isStatic: false }).get(argMetadata.key);
+                        ? context
+                        : context.get(argMetadata.key);
                     break;
                 case requestHeadersArgsKey:
                     controllerActionArguments[argMetadata.index] = !argMetadata.zodSchema
@@ -1308,8 +1306,8 @@ const httpFetcher = async (
                             break;
                         case contextArgsKey:
                             args[argMetadata.index] = !argMetadata.key
-                                ? context.setOptions({ isStatic: false })
-                                : context.setOptions({ isStatic: false }).get(argMetadata.key);
+                                ? context
+                                : context.get(argMetadata.key);
                             break;
                         case requestHeadersArgsKey:
                             args[argMetadata.index] = !argMetadata.zodSchema
@@ -1407,8 +1405,8 @@ const httpFetcher = async (
                             break;
                         case contextArgsKey:
                             args[argMetadata.index] = !argMetadata.key
-                                ? context.setOptions({ isStatic: false })
-                                : context.setOptions({ isStatic: false }).get(argMetadata.key);
+                                ? context
+                                : context.get(argMetadata.key);
                             break;
                         case requestHeadersArgsKey:
                             args[argMetadata.index] = !argMetadata.zodSchema
@@ -1843,14 +1841,19 @@ export const BoolFactory = async (
                         context = newContext;
                     }
 
-                    context.setOptions({ isStatic: false });
-
                     const latestResponseHeaders =
-                            context.get<Headers | null | undefined>(responseHeadersArgsKey) ||
-                            new Headers(),
-                        latestResponseBody = context.get<unknown>(responseBodyArgsKey) || undefined,
-                        latestResponseStatus = context.get<unknown>(responseStatusArgsKey),
-                        latestResponseStatusText = context.get<unknown>(responseStatusArgsKey);
+                            context.get<Headers | null | undefined>(responseHeadersArgsKey, {
+                                isStatic: true
+                            }) || new Headers(),
+                        latestResponseBody =
+                            context.get<unknown>(responseBodyArgsKey, { isStatic: false }) ||
+                            undefined,
+                        latestResponseStatus = context.get<unknown>(responseStatusArgsKey, {
+                            isStatic: false
+                        }),
+                        latestResponseStatusText = context.get<unknown>(responseStatusArgsKey, {
+                            isStatic: false
+                        });
 
                     return responseSerialize({
                         status:
