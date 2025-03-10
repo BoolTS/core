@@ -5,5 +5,6 @@ BoolFactory(AppContainer, {
     port: 3000,
     log: {
         methods: ["GET", "POST"]
-    }
+    },
+    debug: true
 });

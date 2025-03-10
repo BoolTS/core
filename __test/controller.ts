@@ -75,7 +75,7 @@ export class TestController {
         @RequestBody(bodySchema)
         body: Zod.infer<typeof bodySchema>
     ) {
-        console.log("req.headers", params);
+        console.log("req.headers", params, body);
         console.log("===========================");
     }
 

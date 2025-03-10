@@ -840,18 +840,21 @@ const webSocketFetcher = async (
     return isUpgrade;
 };
 
-const httpFetcher = async (
-    bool: Required<{}> &
-        Partial<{
-            route: NonNullable<ReturnType<HttpRouterGroup["find"]>>;
-            resolutedMap:
-                | Partial<NonNullable<Awaited<ReturnType<typeof containerResolution>>>>
-                | Partial<NonNullable<Awaited<ReturnType<typeof moduleResolution>>>>;
-            context: Context;
-        }>
-) => {
-    const { context: outerContext, route, resolutedMap } = bool;
-
+const httpFetcher = async ({
+    context: outerContext,
+    route,
+    options,
+    resolutedMap
+}: Partial<{
+    route: NonNullable<ReturnType<HttpRouterGroup["find"]>>;
+    resolutedMap:
+        | Partial<NonNullable<Awaited<ReturnType<typeof containerResolution>>>>
+        | Partial<NonNullable<Awaited<ReturnType<typeof moduleResolution>>>>;
+    context: Context;
+    options: Partial<{
+        isContainer: boolean;
+    }>;
+}>) => {
     const contextOptions = { isStatic: true };
     const context = (!outerContext ? new Context() : new Context(outerContext)).setOptions(
         contextOptions
@@ -1078,7 +1081,7 @@ const httpFetcher = async (
         }
     }
 
-    if (routeModel) {
+    if (routeModel && !options?.isContainer) {
         if (
             resolutedMap &&
             "openDispatcherGroup" in resolutedMap &&
@@ -1793,6 +1796,9 @@ export const BoolFactory = async (
                                 injector: resolutedContainer.injector,
                                 startMiddlewareGroup: resolutedContainer.startMiddlewareGroup,
                                 guardGroup: resolutedContainer.guardGroup
+                            },
+                            options: {
+                                isContainer: true
                             }
                         });
 
@@ -1843,6 +1849,9 @@ export const BoolFactory = async (
                             resolutedMap: {
                                 injector: resolutedContainer.injector,
                                 endMiddlewareGroup: resolutedContainer.endMiddlewareGroup
+                            },
+                            options: {
+                                isContainer: true
                             }
                         });
 
