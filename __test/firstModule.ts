@@ -15,7 +15,7 @@ import { TestWebSocket } from "./webSocket";
     },
     // middlewares: [FirstMiddleware, SecondMiddleware],
     // guards: [FirstGuard, SecondGuard],
-    // dispatchers: [CustomDispatcher],
+    // interceptors: [CustomInterceptor],
     controllers: [TestController],
     dependencies: [TestService, TestRepository],
     webSockets: [TestWebSocket]

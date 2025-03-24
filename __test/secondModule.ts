@@ -1,8 +1,8 @@
 import { Module } from "@dist";
 import { TestController } from "./controller";
-import { CustomDispatcher } from "./dispatcher";
 import { FirstGuard } from "./firstGuard";
 import { FirstMiddleware } from "./firstMiddleware";
+import { CustomInterceptor } from "./interceptor";
 import { TestRepository } from "./repository";
 import { SecondGuard } from "./secondGuard";
 import { SecondMiddleware } from "./secondMiddleware";
@@ -21,7 +21,7 @@ import { TestWebSocket } from "./webSocket";
     },
     middlewares: [FirstMiddleware, SecondMiddleware],
     guards: [FirstGuard, SecondGuard],
-    dispatchers: [CustomDispatcher],
+    interceptors: [CustomInterceptor],
     controllers: [TestController],
     dependencies: [TestService, TestRepository],
     webSockets: [TestWebSocket]

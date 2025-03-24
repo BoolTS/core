@@ -2,7 +2,7 @@ export declare const argumentsKey: unique symbol;
 export declare const webSocketEventArgumentsKey: unique symbol;
 export declare const configKey: unique symbol;
 export declare const controllerKey: unique symbol;
-export declare const dispatcherKey: unique symbol;
+export declare const interceptorKey: unique symbol;
 export declare const guardKey: unique symbol;
 export declare const controllerHttpKey: unique symbol;
 export declare const injectKey: unique symbol;

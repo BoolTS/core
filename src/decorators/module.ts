@@ -3,9 +3,9 @@ import type { IModule } from "../interfaces";
 import {
     containerKey,
     controllerKey,
-    dispatcherKey,
     guardKey,
     injectableKey,
+    interceptorKey,
     middlewareKey,
     moduleKey,
     webSocketKey
@@ -33,7 +33,7 @@ export type TModuleOptions<TConfig extends {} = {}> =
           middlewares: TInstances;
           guards: TInstances;
           controllers: TInstances;
-          dispatchers: TInstances;
+          interceptors: TInstances;
           webSockets: TInstances;
       }>
     | undefined;
@@ -47,7 +47,7 @@ export type TModuleMetadata<TConfig extends {} = {}> =
           middlewares: TInstances;
           guards: TInstances;
           controllers: TInstances;
-          dispatchers: TInstances;
+          interceptors: TInstances;
           webSockets: TInstances;
       }>
     | undefined;
@@ -61,7 +61,7 @@ export const Module =
             );
         }
 
-        const { middlewares, guards, dispatchers, controllers, dependencies, webSockets } =
+        const { middlewares, guards, interceptors, controllers, dependencies, webSockets } =
             args || {};
 
         if (middlewares) {
@@ -80,10 +80,10 @@ export const Module =
             }
         }
 
-        if (dispatchers) {
-            for (let i = 0; i < dispatchers.length; i++) {
-                if (!Reflect.getOwnMetadataKeys(dispatchers[i]).includes(dispatcherKey)) {
-                    throw Error(`${dispatchers[i].name} is not a dispatcher.`);
+        if (interceptors) {
+            for (let i = 0; i < interceptors.length; i++) {
+                if (!Reflect.getOwnMetadataKeys(interceptors[i]).includes(interceptorKey)) {
+                    throw Error(`${interceptors[i].name} is not a interceptor.`);
                 }
             }
         }

@@ -1,10 +1,10 @@
 import "reflect-metadata";
 import {
     controllerKey,
-    dispatcherKey,
     guardKey,
     injectableKey,
     injectKey,
+    interceptorKey,
     middlewareKey,
     webSocketKey
 } from "../keys";
@@ -52,7 +52,7 @@ export class Injector implements IInjector {
                 controllerKey,
                 middlewareKey,
                 guardKey,
-                dispatcherKey,
+                interceptorKey,
                 webSocketKey
             ].some((value) => ownMetadataKeys.includes(value))
         ) {

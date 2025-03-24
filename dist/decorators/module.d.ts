@@ -15,7 +15,7 @@ export type TModuleOptions<TConfig extends {} = {}> = Partial<{
     middlewares: TInstances;
     guards: TInstances;
     controllers: TInstances;
-    dispatchers: TInstances;
+    interceptors: TInstances;
     webSockets: TInstances;
 }> | undefined;
 export type TModuleMetadata<TConfig extends {} = {}> = Partial<{
@@ -26,7 +26,7 @@ export type TModuleMetadata<TConfig extends {} = {}> = Partial<{
     middlewares: TInstances;
     guards: TInstances;
     controllers: TInstances;
-    dispatchers: TInstances;
+    interceptors: TInstances;
     webSockets: TInstances;
 }> | undefined;
 export declare const Module: <TConfig extends {} = {}>(args?: TModuleOptions<TConfig>) => <T extends {

@@ -8,8 +8,7 @@ import type {
 } from "../decorators";
 import type { TArgumentsMetadataCollection } from "../decorators/arguments";
 import type { TWebSocketUpgradeData } from "../decorators/webSocket";
-import type { IGuard, IMiddleware } from "../interfaces";
-import type { IDispatcher } from "../interfaces/dispatcher";
+import type { IGuard, IInterceptor, IMiddleware } from "../interfaces";
 
 import "reflect-metadata";
 
@@ -549,7 +548,7 @@ const moduleResolution = async ({
         loaders,
         middlewares,
         guards,
-        dispatchers,
+        interceptors,
         controllers,
         dependencies,
         webSockets,
@@ -695,25 +694,25 @@ const moduleResolution = async ({
               });
     //#endregion
 
-    //#region [Before dispatcher(s)]
-    const openDispatcherGroup: Array<
-        TGroupElementModel<"open", IDispatcher, NonNullable<IDispatcher["open"]>>
+    //#region [Before interceptor(s)]
+    const openInterceptorGroup: Array<
+        TGroupElementModel<"open", IInterceptor, NonNullable<IInterceptor["open"]>>
     > = [];
-    const closeDispatcherGroup: Array<
-        TGroupElementModel<"close", IDispatcher, NonNullable<IDispatcher["close"]>>
+    const closeInterceptorGroup: Array<
+        TGroupElementModel<"close", IInterceptor, NonNullable<IInterceptor["close"]>>
     > = [];
 
-    !dispatchers ||
-        dispatchers.forEach((dispatcher) => {
-            const instance = injector.get<IDispatcher>(dispatcher);
+    !interceptors ||
+        interceptors.forEach((interceptor) => {
+            const instance = injector.get<IInterceptor>(interceptor);
 
             if (instance.open && typeof instance.open === "function") {
                 const argumentsMetadata: TArgumentsMetadataCollection =
-                    Reflect.getOwnMetadata(argumentsKey, dispatcher, "open") || {};
+                    Reflect.getOwnMetadata(argumentsKey, interceptor, "open") || {};
 
-                openDispatcherGroup.push(
+                openInterceptorGroup.push(
                     Object.freeze({
-                        class: dispatcher as IDispatcher,
+                        class: interceptor as IInterceptor,
                         funcName: "open",
                         func: instance.open.bind(instance),
                         argumentsMetadata: argumentsMetadata
@@ -723,11 +722,11 @@ const moduleResolution = async ({
 
             if (instance.close && typeof instance.close === "function") {
                 const argumentsMetadata: TArgumentsMetadataCollection =
-                    Reflect.getOwnMetadata(argumentsKey, dispatcher, "close") || {};
+                    Reflect.getOwnMetadata(argumentsKey, interceptor, "close") || {};
 
-                closeDispatcherGroup.push(
+                closeInterceptorGroup.push(
                     Object.freeze({
-                        class: dispatcher as IDispatcher,
+                        class: interceptor as IInterceptor,
                         funcName: "close",
                         func: instance.close.bind(instance),
                         argumentsMetadata: argumentsMetadata
@@ -773,8 +772,8 @@ const moduleResolution = async ({
         startMiddlewareGroup: startMiddlewareGroup,
         endMiddlewareGroup: endMiddlewareGroup,
         guardGroup: guardGroup,
-        openDispatcherGroup: openDispatcherGroup,
-        closeDispatcherGroup: closeDispatcherGroup,
+        openInterceptorGroup: openInterceptorGroup,
+        closeInterceptorGroup: closeInterceptorGroup,
         controllerRouterGroup: controllerRouterGroup,
         webSocketHttpRouterGroup: webSocketHttpRouterGroup,
         webSocketRouterGroup: webSocketRouterGroup
@@ -1084,19 +1083,19 @@ const httpFetcher = async ({
     if (routeModel && !options?.isContainer) {
         if (
             resolutedMap &&
-            "openDispatcherGroup" in resolutedMap &&
-            resolutedMap.openDispatcherGroup
+            "openInterceptorGroup" in resolutedMap &&
+            resolutedMap.openInterceptorGroup
         ) {
-            const { openDispatcherGroup } = resolutedMap;
+            const { openInterceptorGroup } = resolutedMap;
 
-            // Execute open dispatcher(s)
-            for (let i = 0; i < openDispatcherGroup.length; i++) {
+            // Execute open interceptor(s)
+            for (let i = 0; i < openInterceptorGroup.length; i++) {
                 const args = [];
                 const {
                     func: handler,
                     funcName: functionName,
                     argumentsMetadata
-                } = openDispatcherGroup[i];
+                } = openInterceptorGroup[i];
 
                 for (const [_key, argMetadata] of Object.entries(argumentsMetadata)) {
                     switch (argMetadata.type) {
@@ -1278,19 +1277,19 @@ const httpFetcher = async ({
 
         if (
             resolutedMap &&
-            "closeDispatcherGroup" in resolutedMap &&
-            resolutedMap.closeDispatcherGroup
+            "closeInterceptorGroup" in resolutedMap &&
+            resolutedMap.closeInterceptorGroup
         ) {
-            const { closeDispatcherGroup } = resolutedMap;
+            const { closeInterceptorGroup } = resolutedMap;
 
-            // Execute close dispatcher(s)
-            for (let i = 0; i < closeDispatcherGroup.length; i++) {
+            // Execute close interceptor(s)
+            for (let i = 0; i < closeInterceptorGroup.length; i++) {
                 const args = [];
                 const {
                     func: handler,
                     funcName: functionName,
                     argumentsMetadata
-                } = closeDispatcherGroup[i];
+                } = closeInterceptorGroup[i];
 
                 for (const [_key, argMetadata] of Object.entries(argumentsMetadata)) {
                     switch (argMetadata.type) {
