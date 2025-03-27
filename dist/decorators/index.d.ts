@@ -20,5 +20,5 @@ export type { THttpMetadata } from "./http";
 export type { TInterceptorMetadata } from "./interceptor";
 export type { TMiddlewareMetadata } from "./middleware";
 export type { TModuleConfig, TModuleMetadata, TModuleOptions } from "./module";
-export type { TWebSocketMetadata } from "./webSocket";
+export type { TWebSocketHttpMetadata, TWebSocketHttpRouteMetadata, TWebSocketMetadata, TWebSocketUpgradeData } from "./webSocket";
 export type { TWebSocketEventHandlerMetadata, TWebSocketEventMetadata } from "./webSocketEvent";

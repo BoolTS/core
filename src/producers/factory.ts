@@ -1949,7 +1949,7 @@ export const BoolFactory = async (
 
                     handlerMetadata.descriptor.value(...args);
                 },
-                close: (connection, code: number, reason: string) => {
+                close: (connection, code, reason) => {
                     const pathnameKey = `${connection.data.pathname}:::close`;
                     const handlerMetadata = webSocketsMap.get(pathnameKey);
 
