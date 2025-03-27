@@ -20,3 +20,4 @@ export declare const WebSocketConnection: () => (target: Object, methodName: str
 export declare const WebSocketServer: () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
 export declare const WebSocketCloseCode: () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
 export declare const WebSocketCloseReason: () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const WebSocketMessage: () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;

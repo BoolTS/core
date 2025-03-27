@@ -142,3 +142,31 @@ export const WebSocketCloseReason =
             methodName
         );
     };
+
+export const WebSocketMessage =
+    () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+        if (!methodName) {
+            return;
+        }
+
+        const webSocketEventArgumentsMetadata: TWebsocketArgumentsMetadataGroup =
+            Reflect.getOwnMetadata(webSocketEventArgumentsKey, target.constructor, methodName) ||
+            {};
+
+        webSocketEventArgumentsMetadata[`argumentIndexes.${parameterIndex}`] = {
+            index: parameterIndex,
+            type: webSocketMessageArgsKey
+        } satisfies Extract<
+            TWebsocketArgumentsMetadata,
+            {
+                type: typeof webSocketMessageArgsKey;
+            }
+        >;
+
+        Reflect.defineMetadata(
+            webSocketEventArgumentsKey,
+            webSocketEventArgumentsMetadata,
+            target.constructor,
+            methodName
+        );
+    };

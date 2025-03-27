@@ -9,7 +9,7 @@ export { Interceptor } from "./interceptor";
 export { Middleware } from "./middleware";
 export { Module } from "./module";
 export { WebSocket } from "./webSocket";
-export { WebSocketCloseCode, WebSocketCloseReason, WebSocketConnection, WebSocketServer } from "./webSocketArguments";
+export { WebSocketCloseCode, WebSocketCloseReason, WebSocketConnection, WebSocketMessage, WebSocketServer } from "./webSocketArguments";
 export { WebSocketEvent } from "./webSocketEvent";
 export { ZodSchema } from "./zodSchema";
 export type { TArgumentsMetadata } from "./arguments";
