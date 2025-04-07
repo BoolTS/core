@@ -1,11 +1,11 @@
 {
     "name": "@bool-ts/core",
-    "version": "1.9.10",
+    "version": "1.9.12",
     "description": "",
     "main": "dist/index.js",
     "scripts": {
         "test": "bun --hot run __test/index.ts",
-        "build": "tsc --emitDeclarationOnly && bun build ./src/index.ts --outdir ./dist --minify"
+        "build": "tsc --emitDeclarationOnly && bun build --minify --sourcemap ./src/index.ts --outdir ./dist"
     },
     "repository": {
         "type": "git",
@@ -28,5 +28,8 @@
         "@types/qs": "^6.9.18",
         "typescript": "^5.8.2"
     },
-    "private": "false"
+    "private": "false",
+    "publishConfig": {
+        "access": "public"
+    }
 }
