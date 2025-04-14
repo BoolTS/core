@@ -23,12 +23,13 @@ export class WebSocketRoute {
     }
 
     public execute(): Readonly<TWebSocketEventHandlerMetadata> {
+        if (this._context && typeof this.metadata.descriptor.value === "function") {
+            this.metadata.descriptor.value = this.metadata.descriptor.value.bind(this._context);
+        }
+
         return Object.freeze({
             methodName: this.metadata.methodName,
-            descriptor:
-                !this._context || typeof this.metadata.descriptor.value !== "function"
-                    ? this.metadata.descriptor
-                    : this.metadata.descriptor.value.bind(this._context),
+            descriptor: this.metadata.descriptor,
             arguments: this.metadata.arguments
         });
     }

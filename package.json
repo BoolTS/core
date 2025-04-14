@@ -1,6 +1,6 @@
 {
     "name": "@bool-ts/core",
-    "version": "1.9.17",
+    "version": "1.9.19",
     "description": "Core package for BoolTS framework",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
