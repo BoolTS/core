@@ -1,6 +1,5 @@
-import type { IModule } from "../interfaces";
-
 import { containerKey, guardKey, injectableKey, middlewareKey, moduleKey } from "../keys";
+import type { TConstructor } from "../ultils";
 
 type TInstances = Array<new (...args: any[]) => any>;
 type TLoaders<TConfig extends {} = {}> = Record<
@@ -38,8 +37,10 @@ export type TContainerMetadata<TConfig extends {} = {}> =
     | undefined;
 
 export const Container =
-    <TConfig extends {} = {}>(args?: TContainerOptions<TConfig>) =>
-    <T extends { new (...args: any[]): IModule }>(target: T) => {
+    <TConfig extends {} = {}, K extends TConstructor<Object> = TConstructor<Object>>(
+        args?: TContainerOptions<TConfig>
+    ) =>
+    (target: K) => {
         const { modules, middlewares, guards, dependencies } = args || {};
 
         if (Reflect.hasOwnMetadata(moduleKey, target)) {

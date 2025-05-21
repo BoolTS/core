@@ -32,7 +32,8 @@ export type TWebsocketArgumentsMetadata =
 export type TWebsocketArgumentsMetadataGroup = Record<string, TWebsocketArgumentsMetadata>;
 
 export const WebSocketConnection =
-    () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>() =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -60,7 +61,8 @@ export const WebSocketConnection =
     };
 
 export const WebSocketServer =
-    () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>() =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -88,7 +90,8 @@ export const WebSocketServer =
     };
 
 export const WebSocketCloseCode =
-    () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>() =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -116,7 +119,8 @@ export const WebSocketCloseCode =
     };
 
 export const WebSocketCloseReason =
-    () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>() =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -144,7 +148,8 @@ export const WebSocketCloseReason =
     };
 
 export const WebSocketMessage =
-    () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>() =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }

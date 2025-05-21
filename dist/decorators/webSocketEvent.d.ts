@@ -11,5 +11,5 @@ export type TWebSocketEventMetadata = Record<"open" | "close" | "message" | "dra
  * @param path
  * @returns
  */
-export declare const WebSocketEvent: (eventName: "open" | "close" | "message" | "drain" | "ping" | "pong") => (target: Object, methodName: string, descriptor: PropertyDescriptor) => void;
+export declare const WebSocketEvent: <T extends Object>(eventName: "open" | "close" | "message" | "drain" | "ping" | "pong") => (target: T, methodName: string, descriptor: PropertyDescriptor) => void;
 export default WebSocket;

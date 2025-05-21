@@ -1,4 +1,4 @@
-import type { IWebSocket } from "../interfaces";
+import type { TConstructor } from "../ultils";
 import type { TArgumentsMetadataCollection } from "./arguments";
 import type { TWebSocketEventMetadata } from "./webSocketEvent";
 export type TWebSocketHttpRouteMetadata = {
@@ -19,9 +19,7 @@ export type TWebSocketMetadata = Required<{
     events: TWebSocketEventMetadata;
     http: TWebSocketHttpMetadata;
 }>;
-export declare const WebSocket: (args?: Partial<{
+export declare const WebSocket: <T extends TConstructor<Object>>(args?: Partial<{
     prefix: string;
-}>) => <T extends {
-    new (...args: any[]): IWebSocket;
-}>(target: T) => void;
+}>) => (target: T) => void;
 export default WebSocket;

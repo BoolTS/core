@@ -1,2 +1,2 @@
-export interface IController<T = any> {
+export interface IController {
 }

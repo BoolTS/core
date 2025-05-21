@@ -1,5 +1,5 @@
 import type { Server } from "bun";
-import type { IWebSocket } from "../interfaces";
+import type { TConstructor } from "../ultils";
 import type { TArgumentsMetadataCollection } from "./arguments";
 import type { TWebSocketEventMetadata } from "./webSocketEvent";
 
@@ -42,12 +42,12 @@ const upgradeHandler = (server: Server, request: Request, query: Record<string, 
 };
 
 export const WebSocket =
-    (
+    <T extends TConstructor<Object>>(
         args?: Partial<{
             prefix: string;
         }>
     ) =>
-    <T extends { new (...args: any[]): IWebSocket }>(target: T) => {
+    (target: T) => {
         const { prefix } = args || {};
 
         target.prototype[upgradeHandlerSymbol] = upgradeHandler;

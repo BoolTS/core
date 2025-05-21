@@ -13,8 +13,11 @@ export type TRoute = {
 export type THttpMetadata = Array<TRoute>;
 
 const defaultDecorator =
-    (path: string, method: "Get" | "Post" | "Put" | "Patch" | "Delete" | "Options") =>
-    (target: Object, methodName: string | symbol, descriptor: TypedPropertyDescriptor<any>) => {
+    <T, K extends Object>(
+        path: string,
+        method: "Get" | "Post" | "Put" | "Patch" | "Delete" | "Options"
+    ) =>
+    (target: K, methodName: string | symbol, descriptor: TypedPropertyDescriptor<T>) => {
         if (!(descriptor?.value instanceof Function)) {
             throw Error(`${method} decorator only use for class method.`);
         }
@@ -42,42 +45,42 @@ const defaultDecorator =
  * @param path
  * @returns
  */
-export const Get = (path = "/") => defaultDecorator(path, "Get");
+export const Get = <T, K extends Object>(path = "/") => defaultDecorator<T, K>(path, "Get");
 
 /**
  *
  * @param path
  * @returns
  */
-export const Post = (path = "/") => defaultDecorator(path, "Post");
+export const Post = <T, K extends Object>(path = "/") => defaultDecorator<T, K>(path, "Post");
 
 /**
  *
  * @param path
  * @returns
  */
-export const Put = (path = "/") => defaultDecorator(path, "Put");
+export const Put = <T, K extends Object>(path = "/") => defaultDecorator<T, K>(path, "Put");
 
 /**
  *
  * @param path
  * @returns
  */
-export const Patch = (path = "/") => defaultDecorator(path, "Patch");
+export const Patch = <T, K extends Object>(path = "/") => defaultDecorator<T, K>(path, "Patch");
 
 /**
  *
  * @param path
  * @returns
  */
-export const Delete = (path = "/") => defaultDecorator(path, "Delete");
+export const Delete = <T, K extends Object>(path = "/") => defaultDecorator<T, K>(path, "Delete");
 
 /**
  *
  * @param path
  * @returns
  */
-export const Options = (path = "/") => defaultDecorator(path, "Options");
+export const Options = <T, K extends Object>(path = "/") => defaultDecorator<T, K>(path, "Options");
 
 export default {
     Get,

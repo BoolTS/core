@@ -1,4 +1,4 @@
-import type { IModule } from "../interfaces";
+import type { TConstructor } from "../ultils";
 
 import {
     containerKey,
@@ -53,8 +53,10 @@ export type TModuleMetadata<TConfig extends {} = {}> =
     | undefined;
 
 export const Module =
-    <TConfig extends {} = {}>(args?: TModuleOptions<TConfig>) =>
-    <T extends { new (...args: any[]): IModule }>(target: T) => {
+    <TConfig extends {} = {}, K extends TConstructor<Object> = TConstructor<Object>>(
+        args?: TModuleOptions<TConfig>
+    ) =>
+    (target: K) => {
         if (Reflect.hasOwnMetadata(containerKey, target)) {
             throw new Error(
                 `Conflict detected! ${target.name} class cannot be both a Module and a Container.`

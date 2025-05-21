@@ -16,8 +16,8 @@ export type TWebsocketArgumentsMetadata = {
     type: typeof webSocketCloseReasonArgsKey;
 };
 export type TWebsocketArgumentsMetadataGroup = Record<string, TWebsocketArgumentsMetadata>;
-export declare const WebSocketConnection: () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const WebSocketServer: () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const WebSocketCloseCode: () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const WebSocketCloseReason: () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const WebSocketMessage: () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const WebSocketConnection: <T extends Object>() => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const WebSocketServer: <T extends Object>() => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const WebSocketCloseCode: <T extends Object>() => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const WebSocketCloseReason: <T extends Object>() => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const WebSocketMessage: <T extends Object>() => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;

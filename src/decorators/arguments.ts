@@ -74,8 +74,8 @@ export type TArgumentsMetadata =
 export type TArgumentsMetadataCollection = Record<`argumentIndexes.${number}`, TArgumentsMetadata>;
 
 export const RequestHeaders =
-    (schema?: Zod.Schema) =>
-    (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>(schema?: Zod.Schema) =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -98,8 +98,8 @@ export const RequestHeaders =
     };
 
 export const RequestHeader =
-    (key: string, schema?: Zod.Schema) =>
-    (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>(key: string, schema?: Zod.Schema) =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -123,8 +123,11 @@ export const RequestHeader =
     };
 
 export const RequestBody =
-    (schema?: Zod.Schema, parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text") =>
-    (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>(
+        schema?: Zod.Schema,
+        parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text"
+    ) =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -148,8 +151,8 @@ export const RequestBody =
     };
 
 export const Params =
-    (schema?: Zod.Schema) =>
-    (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>(schema?: Zod.Schema) =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -172,8 +175,8 @@ export const Params =
     };
 
 export const Param =
-    (key: string, schema?: Zod.Schema) =>
-    (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>(key: string, schema?: Zod.Schema) =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -197,8 +200,8 @@ export const Param =
     };
 
 export const Query =
-    (schema?: Zod.Schema) =>
-    (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>(schema?: Zod.Schema) =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -221,8 +224,8 @@ export const Query =
     };
 
 export const Request =
-    (schema?: Zod.Schema) =>
-    (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>(schema?: Zod.Schema) =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -245,7 +248,8 @@ export const Request =
     };
 
 export const ResponseHeaders =
-    () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>() =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -267,8 +271,8 @@ export const ResponseHeaders =
     };
 
 export const Context =
-    (key?: symbol) =>
-    (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>(key?: symbol) =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -291,7 +295,8 @@ export const Context =
     };
 
 export const RouteModel =
-    () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>() =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -313,7 +318,8 @@ export const RouteModel =
     };
 
 export const HttpServer =
-    () => (target: Object, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <T extends Object>() =>
+    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }

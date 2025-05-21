@@ -1,4 +1,4 @@
-import type { IController } from "../interfaces";
+import type { TConstructor } from "../ultils";
 import type { THttpMetadata } from "./http";
 
 import { controllerHttpKey, controllerKey } from "../keys";
@@ -9,8 +9,8 @@ export type TControllerMetadata = Required<{
 }>;
 
 export const Controller =
-    (prefix?: string) =>
-    <T extends { new (...args: any[]): IController }>(target: T) => {
+    <T extends TConstructor<Object>>(prefix?: string) =>
+    (target: T) => {
         const metadata: TControllerMetadata = {
             prefix: !prefix?.startsWith("/") ? `/${prefix || ""}` : prefix,
             httpMetadata: [...(Reflect.getOwnMetadata(controllerHttpKey, target) || [])]

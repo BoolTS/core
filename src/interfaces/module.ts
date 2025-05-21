@@ -1,1 +1,1 @@
-export interface IModule<T = any> {}
+export interface IModule {}

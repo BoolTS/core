@@ -1,4 +1,4 @@
-import type { IModule } from "../interfaces";
+import type { TConstructor } from "../ultils";
 type TInstances = Array<new (...args: any[]) => any>;
 type TLoaders<TConfig extends {} = {}> = Record<string | symbol, (args: {
     config: TConfig;
@@ -29,7 +29,5 @@ export type TModuleMetadata<TConfig extends {} = {}> = Partial<{
     interceptors: TInstances;
     webSockets: TInstances;
 }> | undefined;
-export declare const Module: <TConfig extends {} = {}>(args?: TModuleOptions<TConfig>) => <T extends {
-    new (...args: any[]): IModule;
-}>(target: T) => void;
+export declare const Module: <TConfig extends {} = {}, K extends TConstructor<Object> = TConstructor<Object>>(args?: TModuleOptions<TConfig>) => (target: K) => void;
 export default Module;
