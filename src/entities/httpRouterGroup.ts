@@ -17,7 +17,7 @@ export class HttpRouterGroup {
     }
 
     public find(pathame: string, method: keyof THttpMethods) {
-        for (const router of [...this._routers.values()]) {
+        for (const router of this._routers.values()) {
             for (const route of router.routes.values()) {
                 const result = route.test(pathame, method);
 
