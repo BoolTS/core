@@ -1,7 +1,6 @@
 import { Container } from "@dist";
 import { mongodbKey } from "_constants";
 import { FirstModule } from "firstModule";
-import { SecondModule } from "secondModule";
 import { TestRepository } from "./repository";
 import { TestService } from "./service";
 
@@ -12,11 +11,9 @@ import { TestService } from "./service";
         mongodb: "123"
     },
     loaders: {
-        mongodb: ({ config }) => {
-            return [mongodbKey, { hehe: "435345" }];
-        }
+        mongodb: ({ config }) => [mongodbKey, { hehe: "435345" }]
     },
-    modules: [FirstModule, SecondModule],
+    modules: [FirstModule],
     dependencies: [TestService, TestRepository]
 })
 export class AppContainer {}

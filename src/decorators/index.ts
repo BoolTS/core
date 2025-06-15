@@ -29,9 +29,8 @@ export {
     WebSocketServer
 } from "./webSocketArguments";
 export { WebSocketEvent } from "./webSocketEvent";
-export { ZodSchema } from "./zodSchema";
 
-export type { TArgumentsMetadata } from "./arguments";
+export type { TArgumentsMetadata, TArgumentsMetadataCollection } from "./arguments";
 export type { TContainerConfig, TContainerMetadata, TContainerOptions } from "./container";
 export type { TControllerMetadata } from "./controller";
 export type { TGuardMetadata } from "./guard";

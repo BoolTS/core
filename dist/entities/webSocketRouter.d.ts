@@ -29,3 +29,4 @@ export declare class WebSocketRouter {
      */
     static thinAlias(alias: string): string;
 }
+export default WebSocketRouter;

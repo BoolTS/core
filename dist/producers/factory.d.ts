@@ -1,6 +1,8 @@
 import type { TArgumentsMetadataCollection } from "../decorators/arguments";
+import type { TConstructor } from "../ultils";
 import "reflect-metadata";
 import Qs from "qs";
+import { Application } from "../entities";
 export type TParamsType = Record<string, string>;
 export type TGroupElementModel<TFuncName extends keyof TClass, TClass extends Object = Object, TFunc = TClass[TFuncName]> = Readonly<{
     class: TClass;
@@ -31,5 +33,5 @@ export type TBoolFactoryOptions = Required<{
         headers: Array<string>;
     }>;
 }>;
-export declare const BoolFactory: (classConstructor: new (...args: any[]) => unknown, options: TBoolFactoryOptions) => Promise<void>;
+export declare const BoolFactory: <T extends Object>(classConstructor: TConstructor<T>, options: TBoolFactoryOptions) => Promise<Application<T>>;
 export default BoolFactory;

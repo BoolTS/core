@@ -62,3 +62,5 @@ export class WebSocketRouter {
             .replace(new RegExp("^[/]|[/]$", "g"), "");
     }
 }
+
+export default WebSocketRouter;

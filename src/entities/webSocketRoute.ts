@@ -34,3 +34,5 @@ export class WebSocketRoute {
         });
     }
 }
+
+export default WebSocketRoute;

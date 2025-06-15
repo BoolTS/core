@@ -22,6 +22,12 @@ export class HttpRoute {
         this.alias = this._thinAlias(alias);
     }
 
+    /**
+     *
+     * @param pathname
+     * @param method
+     * @returns
+     */
     public test(
         pathname: string,
         method: keyof THttpMethods
@@ -105,6 +111,9 @@ export class HttpRoute {
 
     /**
      *
+     * @param pathname
+     * @param method
+     * @returns
      */
     public isMatch(pathname: string, method: keyof THttpMethods) {
         try {
@@ -167,7 +176,7 @@ export class HttpRoute {
 
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     public get(handler: THttpRouteModel) {
@@ -182,7 +191,7 @@ export class HttpRoute {
 
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     public post(handler: THttpRouteModel) {
@@ -197,7 +206,7 @@ export class HttpRoute {
 
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     public put(handler: THttpRouteModel) {
@@ -212,7 +221,7 @@ export class HttpRoute {
 
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     public delete(handler: THttpRouteModel) {
@@ -227,7 +236,7 @@ export class HttpRoute {
 
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     public connect(handler: THttpRouteModel) {
@@ -242,7 +251,7 @@ export class HttpRoute {
 
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     public options(handler: THttpRouteModel) {
@@ -257,7 +266,7 @@ export class HttpRoute {
 
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     public trace(handler: THttpRouteModel) {
@@ -272,7 +281,7 @@ export class HttpRoute {
 
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     public patch(handler: THttpRouteModel) {
@@ -287,7 +296,7 @@ export class HttpRoute {
 
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     private _thinAlias(alias: string) {

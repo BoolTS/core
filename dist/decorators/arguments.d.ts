@@ -1,36 +1,35 @@
-import * as Zod from "zod";
 import { contextArgsKey, httpServerArgsKey, paramArgsKey, paramsArgsKey, queryArgsKey, requestArgsKey, requestBodyArgsKey, requestHeaderArgsKey, requestHeadersArgsKey, responseHeadersArgsKey, routeModelArgsKey } from "../keys";
-export type TArgumentsMetadata = {
+export type TArgumentsMetadata<TValidationSchema = unknown> = {
     index: number;
     type: typeof requestHeadersArgsKey;
-    zodSchema?: Zod.Schema;
+    validationSchema?: TValidationSchema;
 } | {
     index: number;
     type: typeof requestHeaderArgsKey;
     key: string;
-    zodSchema?: Zod.Schema;
+    validationSchema?: TValidationSchema;
 } | {
     index: number;
     type: typeof requestBodyArgsKey;
-    zodSchema?: Zod.Schema;
+    validationSchema?: TValidationSchema;
     parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text";
 } | {
     index: number;
     type: typeof paramsArgsKey;
-    zodSchema?: Zod.Schema;
+    validationSchema?: TValidationSchema;
 } | {
     index: number;
     type: typeof paramArgsKey;
     key: string;
-    zodSchema?: Zod.Schema;
+    validationSchema?: TValidationSchema;
 } | {
     index: number;
     type: typeof queryArgsKey;
-    zodSchema?: Zod.Schema;
+    validationSchema?: TValidationSchema;
 } | {
     index: number;
     type: typeof requestArgsKey;
-    zodSchema?: Zod.Schema;
+    validationSchema?: TValidationSchema;
 } | {
     index: number;
     type: typeof responseHeadersArgsKey;
@@ -46,14 +45,14 @@ export type TArgumentsMetadata = {
     type: typeof httpServerArgsKey;
 };
 export type TArgumentsMetadataCollection = Record<`argumentIndexes.${number}`, TArgumentsMetadata>;
-export declare const RequestHeaders: <T extends Object>(schema?: Zod.Schema) => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const RequestHeader: <T extends Object>(key: string, schema?: Zod.Schema) => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const RequestBody: <T extends Object>(schema?: Zod.Schema, parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text") => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const Params: <T extends Object>(schema?: Zod.Schema) => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const Param: <T extends Object>(key: string, schema?: Zod.Schema) => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const Query: <T extends Object>(schema?: Zod.Schema) => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const Request: <T extends Object>(schema?: Zod.Schema) => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const ResponseHeaders: <T extends Object>() => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const Context: <T extends Object>(key?: symbol) => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const RouteModel: <T extends Object>() => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
-export declare const HttpServer: <T extends Object>() => (target: T, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const RequestHeaders: <TTarget extends Object, TValidationSchema = unknown>(validationSchema?: TValidationSchema) => (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const RequestHeader: <TTarget extends Object, TValidationSchema = unknown>(key: string, validationSchema?: TValidationSchema) => (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const RequestBody: <TTarget extends Object, TValidationSchema = unknown>(validationSchema?: TValidationSchema, parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text") => (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const Params: <TTarget extends Object, TValidationSchema = unknown>(validationSchema?: TValidationSchema) => (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const Param: <TTarget extends Object, TValidationSchema = unknown>(key: string, validationSchema?: TValidationSchema) => (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const Query: <TTarget extends Object, TValidationSchema = unknown>(validationSchema?: TValidationSchema) => (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const Request: <TTarget extends Object, TValidationSchema = unknown>(validationSchema?: TValidationSchema) => (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const ResponseHeaders: <TTarget extends Object>() => (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const Context: <TTarget extends Object>(key?: symbol) => (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const RouteModel: <TTarget extends Object>() => (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => void;
+export declare const HttpServer: <TTarget extends Object>() => (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => void;
