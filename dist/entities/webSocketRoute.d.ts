@@ -10,3 +10,4 @@ export declare class WebSocketRoute {
     bind(instance: Object): ThisType<WebSocketRoute>;
     execute(): Readonly<TWebSocketEventHandlerMetadata>;
 }
+export default WebSocketRoute;

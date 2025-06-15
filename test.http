@@ -10,7 +10,7 @@ content-type: application/json
 
 {
     "data": {
-        "age": 2,
+        "age": "234",
         "name": "sample",
         "time": "Wed, 21 Oct 2015 18:27:50 GMT"
     }

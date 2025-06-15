@@ -1,4 +1,3 @@
-import * as Zod from "zod";
 import {
     argumentsKey,
     contextArgsKey,
@@ -14,44 +13,44 @@ import {
     routeModelArgsKey
 } from "../keys";
 
-export type TArgumentsMetadata =
+export type TArgumentsMetadata<TValidationSchema = unknown> =
     | {
           index: number;
           type: typeof requestHeadersArgsKey;
-          zodSchema?: Zod.Schema;
+          validationSchema?: TValidationSchema;
       }
     | {
           index: number;
           type: typeof requestHeaderArgsKey;
           key: string;
-          zodSchema?: Zod.Schema;
+          validationSchema?: TValidationSchema;
       }
     | {
           index: number;
           type: typeof requestBodyArgsKey;
-          zodSchema?: Zod.Schema;
+          validationSchema?: TValidationSchema;
           parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text";
       }
     | {
           index: number;
           type: typeof paramsArgsKey;
-          zodSchema?: Zod.Schema;
+          validationSchema?: TValidationSchema;
       }
     | {
           index: number;
           type: typeof paramArgsKey;
           key: string;
-          zodSchema?: Zod.Schema;
+          validationSchema?: TValidationSchema;
       }
     | {
           index: number;
           type: typeof queryArgsKey;
-          zodSchema?: Zod.Schema;
+          validationSchema?: TValidationSchema;
       }
     | {
           index: number;
           type: typeof requestArgsKey;
-          zodSchema?: Zod.Schema;
+          validationSchema?: TValidationSchema;
       }
     | {
           index: number;
@@ -74,8 +73,8 @@ export type TArgumentsMetadata =
 export type TArgumentsMetadataCollection = Record<`argumentIndexes.${number}`, TArgumentsMetadata>;
 
 export const RequestHeaders =
-    <T extends Object>(schema?: Zod.Schema) =>
-    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <TTarget extends Object, TValidationSchema = unknown>(validationSchema?: TValidationSchema) =>
+    (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -86,7 +85,7 @@ export const RequestHeaders =
         metadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
             type: requestHeadersArgsKey,
-            zodSchema: schema
+            validationSchema: validationSchema
         } satisfies Extract<
             TArgumentsMetadata,
             {
@@ -98,8 +97,11 @@ export const RequestHeaders =
     };
 
 export const RequestHeader =
-    <T extends Object>(key: string, schema?: Zod.Schema) =>
-    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <TTarget extends Object, TValidationSchema = unknown>(
+        key: string,
+        validationSchema?: TValidationSchema
+    ) =>
+    (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -111,7 +113,7 @@ export const RequestHeader =
             index: parameterIndex,
             type: requestHeaderArgsKey,
             key: key,
-            zodSchema: schema
+            validationSchema: validationSchema
         } satisfies Extract<
             TArgumentsMetadata,
             {
@@ -123,11 +125,11 @@ export const RequestHeader =
     };
 
 export const RequestBody =
-    <T extends Object>(
-        schema?: Zod.Schema,
+    <TTarget extends Object, TValidationSchema = unknown>(
+        validationSchema?: TValidationSchema,
         parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text"
     ) =>
-    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
+    (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -138,7 +140,7 @@ export const RequestBody =
         metadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
             type: requestBodyArgsKey,
-            zodSchema: schema,
+            validationSchema: validationSchema,
             parser: parser
         } satisfies Extract<
             TArgumentsMetadata,
@@ -151,8 +153,8 @@ export const RequestBody =
     };
 
 export const Params =
-    <T extends Object>(schema?: Zod.Schema) =>
-    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <TTarget extends Object, TValidationSchema = unknown>(validationSchema?: TValidationSchema) =>
+    (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -163,7 +165,7 @@ export const Params =
         metadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
             type: paramsArgsKey,
-            zodSchema: schema
+            validationSchema: validationSchema
         } satisfies Extract<
             TArgumentsMetadata,
             {
@@ -175,8 +177,11 @@ export const Params =
     };
 
 export const Param =
-    <T extends Object>(key: string, schema?: Zod.Schema) =>
-    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <TTarget extends Object, TValidationSchema = unknown>(
+        key: string,
+        validationSchema?: TValidationSchema
+    ) =>
+    (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -188,7 +193,7 @@ export const Param =
             index: parameterIndex,
             type: paramArgsKey,
             key: key,
-            zodSchema: schema
+            validationSchema: validationSchema
         } satisfies Extract<
             TArgumentsMetadata,
             {
@@ -200,8 +205,8 @@ export const Param =
     };
 
 export const Query =
-    <T extends Object>(schema?: Zod.Schema) =>
-    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <TTarget extends Object, TValidationSchema = unknown>(validationSchema?: TValidationSchema) =>
+    (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -212,7 +217,7 @@ export const Query =
         metadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
             type: queryArgsKey,
-            zodSchema: schema
+            validationSchema: validationSchema
         } satisfies Extract<
             TArgumentsMetadata,
             {
@@ -224,8 +229,8 @@ export const Query =
     };
 
 export const Request =
-    <T extends Object>(schema?: Zod.Schema) =>
-    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <TTarget extends Object, TValidationSchema = unknown>(validationSchema?: TValidationSchema) =>
+    (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -236,7 +241,7 @@ export const Request =
         metadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
             type: requestArgsKey,
-            zodSchema: schema
+            validationSchema: validationSchema
         } satisfies Extract<
             TArgumentsMetadata,
             {
@@ -248,8 +253,8 @@ export const Request =
     };
 
 export const ResponseHeaders =
-    <T extends Object>() =>
-    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <TTarget extends Object>() =>
+    (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -271,8 +276,8 @@ export const ResponseHeaders =
     };
 
 export const Context =
-    <T extends Object>(key?: symbol) =>
-    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <TTarget extends Object>(key?: symbol) =>
+    (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -295,8 +300,8 @@ export const Context =
     };
 
 export const RouteModel =
-    <T extends Object>() =>
-    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <TTarget extends Object>() =>
+    (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }
@@ -318,8 +323,8 @@ export const RouteModel =
     };
 
 export const HttpServer =
-    <T extends Object>() =>
-    (target: T, methodName: string | symbol | undefined, parameterIndex: number) => {
+    <TTarget extends Object>() =>
+    (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
         }

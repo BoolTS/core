@@ -1,7 +1,7 @@
-import { containerKey, guardKey, injectableKey, middlewareKey, moduleKey } from "../keys";
 import type { TConstructor } from "../ultils";
 
-type TInstances = Array<new (...args: any[]) => any>;
+import { containerKey, guardKey, injectableKey, middlewareKey, moduleKey } from "../keys";
+
 type TLoaders<TConfig extends {} = {}> = Record<
     string | symbol,
     (args: { config: TConfig }) => [string | symbol, any] | Promise<[string | symbol, any]>
@@ -16,23 +16,23 @@ export type TContainerConfig<TConfig> =
 
 export type TContainerOptions<TConfig extends {} = {}> =
     | Partial<{
-          config: TContainerConfig<TConfig>;
-          modules: TInstances;
-          dependencies: TInstances;
           loaders: TLoaders<TConfig>;
-          middlewares: TInstances;
-          guards: TInstances;
+          config: TContainerConfig<TConfig>;
+          modules: Array<TConstructor<unknown>>;
+          dependencies: Array<TConstructor<unknown>>;
+          middlewares: Array<TConstructor<unknown>>;
+          guards: Array<TConstructor<unknown>>;
       }>
     | undefined;
 
 export type TContainerMetadata<TConfig extends {} = {}> =
     | Partial<{
-          modules: TInstances;
-          config: TContainerConfig<TConfig>;
-          dependencies: TInstances;
           loaders: TLoaders<TConfig>;
-          middlewares: TInstances;
-          guards: TInstances;
+          config: TContainerConfig<TConfig>;
+          modules: Array<TConstructor<unknown>>;
+          dependencies: Array<TConstructor<unknown>>;
+          middlewares: Array<TConstructor<unknown>>;
+          guards: Array<TConstructor<unknown>>;
       }>
     | undefined;
 

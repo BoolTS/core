@@ -12,41 +12,50 @@ export declare class HttpRoute {
     readonly alias: string;
     private _map;
     constructor(alias: string);
+    /**
+     *
+     * @param pathname
+     * @param method
+     * @returns
+     */
     test(pathname: string, method: keyof THttpMethods): Readonly<{
         parameters: Record<string, string>;
         model: THttpRouteModel;
     }> | false | undefined;
     /**
      *
+     * @param pathname
+     * @param method
+     * @returns
      */
     isMatch(pathname: string, method: keyof THttpMethods): boolean | undefined;
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     get(handler: THttpRouteModel): this;
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     post(handler: THttpRouteModel): this;
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     put(handler: THttpRouteModel): this;
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     delete(handler: THttpRouteModel): this;
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     connect(handler: THttpRouteModel): this | Map<keyof THttpMethods, Readonly<{
@@ -57,7 +66,7 @@ export declare class HttpRoute {
     }>>;
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     options(handler: THttpRouteModel): this | Map<keyof THttpMethods, Readonly<{
@@ -68,7 +77,7 @@ export declare class HttpRoute {
     }>>;
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     trace(handler: THttpRouteModel): this | Map<keyof THttpMethods, Readonly<{
@@ -79,7 +88,7 @@ export declare class HttpRoute {
     }>>;
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     patch(handler: THttpRouteModel): this | Map<keyof THttpMethods, Readonly<{
@@ -90,7 +99,7 @@ export declare class HttpRoute {
     }>>;
     /**
      *
-     * @param handlers
+     * @param handler
      * @returns
      */
     private _thinAlias;

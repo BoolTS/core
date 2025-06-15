@@ -61,3 +61,5 @@ export class Context implements IContext {
         return [...this._dynamicMap.entries()];
     }
 }
+
+export default Context;

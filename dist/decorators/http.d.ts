@@ -12,42 +12,42 @@ export type THttpMetadata = Array<TRoute>;
  * @param path
  * @returns
  */
-export declare const Get: <T, K extends Object>(path?: string) => (target: K, methodName: string | symbol, descriptor: TypedPropertyDescriptor<T>) => void;
+export declare const Get: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
 /**
  *
  * @param path
  * @returns
  */
-export declare const Post: <T, K extends Object>(path?: string) => (target: K, methodName: string | symbol, descriptor: TypedPropertyDescriptor<T>) => void;
+export declare const Post: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
 /**
  *
  * @param path
  * @returns
  */
-export declare const Put: <T, K extends Object>(path?: string) => (target: K, methodName: string | symbol, descriptor: TypedPropertyDescriptor<T>) => void;
+export declare const Put: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
 /**
  *
  * @param path
  * @returns
  */
-export declare const Patch: <T, K extends Object>(path?: string) => (target: K, methodName: string | symbol, descriptor: TypedPropertyDescriptor<T>) => void;
+export declare const Patch: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
 /**
  *
  * @param path
  * @returns
  */
-export declare const Delete: <T, K extends Object>(path?: string) => (target: K, methodName: string | symbol, descriptor: TypedPropertyDescriptor<T>) => void;
+export declare const Delete: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
 /**
  *
  * @param path
  * @returns
  */
-export declare const Options: <T, K extends Object>(path?: string) => (target: K, methodName: string | symbol, descriptor: TypedPropertyDescriptor<T>) => void;
+export declare const Options: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
 declare const _default: {
-    Get: <T, K extends Object>(path?: string) => (target: K, methodName: string | symbol, descriptor: TypedPropertyDescriptor<T>) => void;
-    Post: <T, K extends Object>(path?: string) => (target: K, methodName: string | symbol, descriptor: TypedPropertyDescriptor<T>) => void;
-    Put: <T, K extends Object>(path?: string) => (target: K, methodName: string | symbol, descriptor: TypedPropertyDescriptor<T>) => void;
-    Patch: <T, K extends Object>(path?: string) => (target: K, methodName: string | symbol, descriptor: TypedPropertyDescriptor<T>) => void;
-    Delete: <T, K extends Object>(path?: string) => (target: K, methodName: string | symbol, descriptor: TypedPropertyDescriptor<T>) => void;
+    Get: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
+    Post: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
+    Put: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
+    Patch: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
+    Delete: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
 };
 export default _default;

@@ -23,3 +23,4 @@ export declare class WebSocketRouterGroup {
      */
     static thinPrefix(prefix: string): string;
 }
+export default WebSocketRouterGroup;
