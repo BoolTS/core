@@ -60,7 +60,7 @@ export class TestController {
 
     @Get("abc/:id.xml")
     public get(@Param("id") id: string) {
-        console.log("HEHE", id, typeof id);
+        console.error("HEHE", id, typeof id);
         console.log("this.testService", this.testService.exec());
     }
 
@@ -75,8 +75,9 @@ export class TestController {
         @RequestBody(bodySchema)
         body: Zod.infer<typeof bodySchema>
     ) {
-        console.log("req.headers", params, body);
+        console.error("req.headers", params, body);
         console.log("===========================");
+        throw new Error("Test error");
     }
 
     @Put()
