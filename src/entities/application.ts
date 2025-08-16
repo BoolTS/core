@@ -511,14 +511,11 @@ export class Application<TRootClass extends Object = Object> {
                             .setOptions({ isStatic: false })
                             .set(responseStatusArgsKey, 404)
                             .set(responseStatusTextArgsKey, "Not found.")
-                            .set(
-                                responseBodyArgsKey,
-                                JSON.stringify({
-                                    httpCode: 404,
-                                    message: "Route not found",
-                                    data: undefined
-                                })
-                            );
+                            .set(responseBodyArgsKey, {
+                                httpCode: 404,
+                                message: "Route not found",
+                                data: undefined
+                            });
                     } else {
                         const { context: newContext } = await this.httpFetcher({
                             context: context,
@@ -1474,7 +1471,12 @@ export class Application<TRootClass extends Object = Object> {
                 data instanceof ReadableStream
             ) {
                 return this.finalizeResponse(
-                    new Response(data, { status: status, statusText: statusText, headers: headers })
+                    new Response(
+                        data instanceof Uint8Array
+                            ? String.fromCharCode(...new Uint8Array(data))
+                            : data,
+                        { status: status, statusText: statusText, headers: headers }
+                    )
                 );
             }
 

@@ -1,13 +1,32 @@
 {
     "name": "@bool-ts/core",
-    "version": "2.0.1",
-    "description": "Core package for BoolTS framework",
+    "version": "2.0.2",
+    "author": "Trần Đức Tâm (Neo)",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/BoolTS/core.git"
+    },
     "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
+    "dependencies": {
+        "@bool-ts/date-time": "^1.0.0",
+        "qs": "^6.14.0",
+        "reflect-metadata": "^0.2.2",
+        "zod": "^4.0.17"
+    },
+    "devDependencies": {
+        "@types/bun": "latest",
+        "@types/qs": "^6.14.0",
+        "typescript": "^5.9.2"
+    },
+    "bugs": {
+        "url": "https://github.com/BoolTS/core/issues"
+    },
+    "description": "Core package for BoolTS framework",
     "files": [
         "./dist",
         "./src"
     ],
+    "homepage": "https://github.com/BoolTS/core#readme",
     "keywords": [
         "bool",
         "typescript",
@@ -15,36 +34,14 @@
         "bun",
         "framework"
     ],
-    "scripts": {
-        "test": "bun --hot run __test/index.ts",
-        "build": "tsc --emitDeclarationOnly && bun run app.build.ts"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/BoolTS/core.git"
-    },
-    "author": "Trần Đức Tâm (Neo)",
     "license": "MIT",
-    "bugs": {
-        "url": "https://github.com/BoolTS/core/issues"
-    },
-    "homepage": "https://github.com/BoolTS/core#readme",
-    "dependencies": {
-        "@bool-ts/date-time": "^1.0.0",
-        "qs": "^6.14.0",
-        "reflect-metadata": "^0.2.2",
-        "zod": "^3.25.67"
-    },
-    "devDependencies": {
-        "@types/bun": "latest",
-        "@types/qs": "^6.14.0",
-        "typescript": "^5.8.3"
-    },
-    "peerDependencies": {
-        "zod": "^3.25.61"
-    },
     "private": false,
     "publishConfig": {
         "access": "public"
-    }
+    },
+    "scripts": {
+        "build": "tsc --emitDeclarationOnly && bun run app.build.ts",
+        "test": "bun --hot run __test/index.ts"
+    },
+    "types": "./dist/index.d.ts"
 }
