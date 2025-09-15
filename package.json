@@ -1,27 +1,20 @@
 {
-    "name": "@bool-ts/core",
-    "version": "2.0.2",
     "author": "Trần Đức Tâm (Neo)",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/BoolTS/core.git"
+    "bugs": {
+        "url": "https://github.com/BoolTS/core/issues"
     },
-    "main": "./dist/index.js",
     "dependencies": {
         "@bool-ts/date-time": "^1.0.0",
         "qs": "^6.14.0",
         "reflect-metadata": "^0.2.2",
-        "zod": "^4.0.17"
+        "zod": "^4.1.8"
     },
+    "description": "Core package for BoolTS framework",
     "devDependencies": {
         "@types/bun": "latest",
         "@types/qs": "^6.14.0",
         "typescript": "^5.9.2"
     },
-    "bugs": {
-        "url": "https://github.com/BoolTS/core/issues"
-    },
-    "description": "Core package for BoolTS framework",
     "files": [
         "./dist",
         "./src"
@@ -35,13 +28,20 @@
         "framework"
     ],
     "license": "MIT",
+    "main": "./dist/index.js",
+    "name": "@bool-ts/core",
     "private": false,
     "publishConfig": {
         "access": "public"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/BoolTS/core.git"
     },
     "scripts": {
         "build": "tsc --emitDeclarationOnly && bun run app.build.ts",
         "test": "bun --hot run __test/index.ts"
     },
-    "types": "./dist/index.d.ts"
+    "types": "./dist/index.d.ts",
+    "version": "2.0.3"
 }
