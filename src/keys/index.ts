@@ -1,36 +1,42 @@
-export const argumentsKey = Symbol("__bool:arguments__");
-export const webSocketEventArgumentsKey = Symbol("__bool:webSocketEventArguments__");
-export const configKey = Symbol("__bool:config__");
-export const controllerKey = Symbol("__bool:controller__");
-export const interceptorKey = Symbol("__bool:interceptor__");
-export const guardKey = Symbol("__bool:guard__");
-export const controllerHttpKey = Symbol("__bool:controller.http__");
-export const injectKey = Symbol("__bool:inject__");
-export const injectableKey = Symbol("__bool:injectable__");
-export const middlewareKey = Symbol("__bool:middleware__");
-export const moduleKey = Symbol("__bool:module__");
-export const containerKey = Symbol("__bool:container__");
-export const zodSchemaKey = Symbol("__bool:zodSchema__");
-export const webSocketKey = Symbol("__bool:webSocket__");
-export const webSocketEventKey = Symbol("__bool:webSocket:event__");
+const prefix = "__boolTypescriptCore";
 
-export const webSocketServerArgsKey = Symbol("__bool:webSocketArguments:server__");
-export const webSocketConnectionArgsKey = Symbol("__bool:webSocketArguments:connection__");
-export const webSocketMessageArgsKey = Symbol("__bool:webSocketArguments:message__");
-export const webSocketCloseCodeArgsKey = Symbol("__bool:webSocketArguments:closeCode__");
-export const webSocketCloseReasonArgsKey = Symbol("__bool:webSocketArguments:closeReason__");
+export const argumentsKey = Symbol.for(`__${prefix}:arguments__`);
+export const webSocketEventArgumentsKey = Symbol.for(`__${prefix}:webSocketEventArguments__`);
+export const configKey = Symbol.for(`__${prefix}:config__`);
+export const controllerKey = Symbol.for(`__${prefix}:controller__`);
+export const interceptorKey = Symbol.for(`__${prefix}:interceptor__`);
+export const guardKey = Symbol.for(`__${prefix}:guard__`);
+export const controllerHttpKey = Symbol.for(`__${prefix}:controller.http__`);
+export const injectKey = Symbol.for(`__${prefix}:inject__`);
+export const injectableKey = Symbol.for(`__${prefix}:injectable__`);
+export const middlewareKey = Symbol.for(`__${prefix}:middleware__`);
+export const moduleKey = Symbol.for(`__${prefix}:module__`);
+export const containerKey = Symbol.for(`__${prefix}:container__`);
+export const zodSchemaKey = Symbol.for(`__${prefix}:zodSchema__`);
+export const webSocketKey = Symbol.for(`__${prefix}:webSocket__`);
+export const webSocketEventKey = Symbol.for(`__${prefix}:webSocket:event__`);
 
-export const httpServerArgsKey = Symbol("__bool:httpArguments:server__");
-export const requestHeadersArgsKey = Symbol("__bool:httpArguments:requestHeaders__");
-export const requestHeaderArgsKey = Symbol("__bool:httpArguments:requestHeader__");
-export const requestBodyArgsKey = Symbol("__bool:httpArguments:requestBody__");
-export const paramsArgsKey = Symbol("__bool:httpArguments:params__");
-export const paramArgsKey = Symbol("__bool:httpArguments:param__");
-export const queryArgsKey = Symbol("__bool:httpArguments:query__");
-export const requestArgsKey = Symbol("__bool:httpArguments:request__");
-export const responseHeadersArgsKey = Symbol("__bool:httpArguments:responseHeaders__");
-export const contextArgsKey = Symbol("__bool:httpArguments:context__");
-export const routeModelArgsKey = Symbol("__bool:httpArguments:routeModel__");
-export const responseBodyArgsKey = Symbol("__bool:httpArguments:responseBody__");
-export const responseStatusArgsKey = Symbol("__bool:httpArguments:responseStatus__");
-export const responseStatusTextArgsKey = Symbol("__bool:httpArguments:responseStatusText__");
+export const webSocketServerArgsKey = Symbol.for(`__${prefix}:webSocketArguments:server__`);
+export const webSocketConnectionArgsKey = Symbol.for(`__${prefix}:webSocketArguments:connection__`);
+export const webSocketMessageArgsKey = Symbol.for(`__${prefix}:webSocketArguments:message__`);
+export const webSocketCloseCodeArgsKey = Symbol.for(`__${prefix}:webSocketArguments:closeCode__`);
+export const webSocketCloseReasonArgsKey = Symbol.for(
+    `__${prefix}:webSocketArguments:closeReason__`
+);
+
+export const httpServerArgsKey = Symbol.for(`__${prefix}:httpArguments:server__`);
+export const requestHeadersArgsKey = Symbol.for(`__${prefix}:httpArguments:requestHeaders__`);
+export const requestHeaderArgsKey = Symbol.for(`__${prefix}:httpArguments:requestHeader__`);
+export const requestBodyArgsKey = Symbol.for(`__${prefix}:httpArguments:requestBody__`);
+export const paramsArgsKey = Symbol.for(`__${prefix}:httpArguments:params__`);
+export const paramArgsKey = Symbol.for(`__${prefix}:httpArguments:param__`);
+export const queryArgsKey = Symbol.for(`__${prefix}:httpArguments:query__`);
+export const requestArgsKey = Symbol.for(`__${prefix}:httpArguments:request__`);
+export const responseHeadersArgsKey = Symbol.for(`__${prefix}:httpArguments:responseHeaders__`);
+export const contextArgsKey = Symbol.for(`__${prefix}:httpArguments:context__`);
+export const routeModelArgsKey = Symbol.for(`__${prefix}:httpArguments:routeModel__`);
+export const responseBodyArgsKey = Symbol.for(`__${prefix}:httpArguments:responseBody__`);
+export const responseStatusArgsKey = Symbol.for(`__${prefix}:httpArguments:responseStatus__`);
+export const responseStatusTextArgsKey = Symbol.for(
+    `__${prefix}:httpArguments:responseStatusText__`
+);
