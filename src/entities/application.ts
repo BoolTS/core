@@ -280,7 +280,7 @@ export class Application<TRootClass extends Object = Object> {
 
         const { resolutedContainer, resolutedModules, webSocketsMap } = await this.preLaunch();
 
-        const server = Bun.serve<TWebSocketUpgradeData, {}>({
+        const server = Bun.serve<TWebSocketUpgradeData>({
             port: this.options.port,
             fetch: async (request, server) => {
                 const start = performance.now(),
@@ -1474,7 +1474,11 @@ export class Application<TRootClass extends Object = Object> {
                 data instanceof ReadableStream
             ) {
                 return this.finalizeResponse(
-                    new Response(data, { status: status, statusText: statusText, headers: headers })
+                    new Response(data as BodyInit, {
+                        status: status,
+                        statusText: statusText,
+                        headers: headers
+                    })
                 );
             }
 
@@ -1541,8 +1545,10 @@ export class Application<TRootClass extends Object = Object> {
         }
 
         const httpServer =
-                context.get<Server | null | undefined>(httpServerArgsKey, contextOptions) ||
-                undefined,
+                context.get<Server<TWebSocketUpgradeData> | null | undefined>(
+                    httpServerArgsKey,
+                    contextOptions
+                ) || undefined,
             request =
                 context.get<Request | null | undefined>(requestArgsKey, contextOptions) ||
                 undefined,
@@ -2176,7 +2182,7 @@ export class Application<TRootClass extends Object = Object> {
     private async webSocketFetcher(
         bun: Required<{
             request: Request;
-            server: Server;
+            server: Server<TWebSocketUpgradeData>;
         }>,
         bool: Required<{
             responseHeaders: Headers;
