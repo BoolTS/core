@@ -7,13 +7,13 @@
         "@bool-ts/date-time": "^1.0.0",
         "qs": "^6.14.0",
         "reflect-metadata": "^0.2.2",
-        "zod": "^4.1.8"
+        "zod": "^4.1.12"
     },
     "description": "Core package for BoolTS framework",
     "devDependencies": {
         "@types/bun": "latest",
         "@types/qs": "^6.14.0",
-        "typescript": "^5.9.2"
+        "typescript": "^5.9.3"
     },
     "files": [
         "./dist",
@@ -43,5 +43,5 @@
         "test": "bun --hot run __test/index.ts"
     },
     "types": "./dist/index.d.ts",
-    "version": "2.0.4"
+    "version": "2.1.0"
 }

@@ -29,10 +29,14 @@ export type TWebSocketMetadata = Required<{
 
 const upgradeHandlerSymbol = Symbol("__bool:webSocket.upgrade__");
 
-const upgradeHandler = (server: Server, request: Request, query: Record<string, unknown>) => {
+const upgradeHandler = (
+    server: Server<TWebSocketUpgradeData>,
+    request: Request,
+    query: Record<string, unknown>
+) => {
     const url = new URL(request.url);
 
-    return server.upgrade<TWebSocketUpgradeData>(request, {
+    return server.upgrade(request, {
         data: {
             method: request.method.toUpperCase(),
             pathname: url.pathname,
