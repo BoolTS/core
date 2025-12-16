@@ -332,7 +332,7 @@ export class Application<TRootClass extends Object = Object> {
                                 new Response(
                                     JSON.stringify({
                                         httpCode: 404,
-                                        message: "Route not found",
+                                        message: "Route not found.",
                                         data: undefined
                                     }),
                                     {
@@ -511,11 +511,14 @@ export class Application<TRootClass extends Object = Object> {
                             .setOptions({ isStatic: false })
                             .set(responseStatusArgsKey, 404)
                             .set(responseStatusTextArgsKey, "Not found.")
-                            .set(responseBodyArgsKey, {
-                                httpCode: 404,
-                                message: "Route not found",
-                                data: undefined
-                            });
+                            .set(
+                                responseBodyArgsKey,
+                                JSON.stringify({
+                                    httpCode: 404,
+                                    message: "Route not found.",
+                                    data: undefined
+                                })
+                            );
                     } else {
                         const { context: newContext } = await this.httpFetcher({
                             context: context,
