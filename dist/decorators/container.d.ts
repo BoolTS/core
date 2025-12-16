@@ -1,7 +1,7 @@
 import type { TConstructor } from "../ultils";
 type TLoaders<TConfig extends {} = {}> = Record<string | symbol, (args: {
     config: TConfig;
-}) => [string | symbol, any] | Promise<[string | symbol, any]>>;
+}) => [string | symbol, unknown] | Promise<[string | symbol, unknown]>>;
 export type TContainerConfig<TConfig> = TConfig | (() => TConfig | Promise<TConfig>) | Readonly<{
     key: symbol;
     value: TConfig | (() => TConfig | Promise<TConfig>);

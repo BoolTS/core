@@ -4,7 +4,7 @@ import { containerKey, guardKey, injectableKey, middlewareKey, moduleKey } from 
 
 type TLoaders<TConfig extends {} = {}> = Record<
     string | symbol,
-    (args: { config: TConfig }) => [string | symbol, any] | Promise<[string | symbol, any]>
+    (args: { config: TConfig }) => [string | symbol, unknown] | Promise<[string | symbol, unknown]>
 >;
 export type TContainerConfig<TConfig> =
     | TConfig
