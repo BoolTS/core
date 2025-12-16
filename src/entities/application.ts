@@ -985,33 +985,38 @@ export class Application<TRootClass extends Object = Object> {
 
         //#region [Configuration(s)]
         const { config } = Object.freeze({
-            config: {
-                ...(typeof options.config !== "function" ? options.config : await options.config()),
-                ...(typeof moduleConfig !== "function"
-                    ? typeof moduleConfig !== "object"
-                        ? undefined
-                        : "key" in moduleConfig &&
-                          "value" in moduleConfig &&
-                          typeof moduleConfig.key === "symbol"
-                        ? typeof moduleConfig.value !== "function"
-                            ? moduleConfig.value
-                            : await moduleConfig.value()
-                        : moduleConfig
-                    : await moduleConfig())
-            }
+            config: !moduleConfig
+                ? undefined
+                : {
+                      ...(typeof options.config !== "function"
+                          ? options.config
+                          : await options.config()),
+                      ...(typeof moduleConfig !== "function"
+                          ? typeof moduleConfig !== "object"
+                              ? undefined
+                              : "key" in moduleConfig &&
+                                "value" in moduleConfig &&
+                                typeof moduleConfig.key === "symbol"
+                              ? typeof moduleConfig.value !== "function"
+                                  ? moduleConfig.value
+                                  : await moduleConfig.value()
+                              : moduleConfig
+                          : await moduleConfig())
+                  }
         });
         //#endregion
 
         //#region [Register config like an injection]
-        injector.set(
-            moduleConfig &&
-                "key" in moduleConfig &&
-                "value" in moduleConfig &&
-                typeof moduleConfig.key === "symbol"
-                ? moduleConfig.key
-                : configKey,
-            config
-        );
+        config &&
+            injector.set(
+                moduleConfig &&
+                    "key" in moduleConfig &&
+                    "value" in moduleConfig &&
+                    typeof moduleConfig.key === "symbol"
+                    ? moduleConfig.key
+                    : configKey,
+                config
+            );
         //#endregion
 
         //#region [Run loader(s)]

@@ -16,7 +16,7 @@ export class TestWebSocket {
     @WebSocketEvent("open")
     onOpen(
         @WebSocketServer()
-        server: Server,
+        server: Server<TWebSocketUpgradeData>,
         @WebSocketConnection()
         connection: ServerWebSocket<TWebSocketUpgradeData>
     ) {
@@ -26,7 +26,7 @@ export class TestWebSocket {
     @WebSocketEvent("close")
     onClose(
         @WebSocketServer()
-        server: Server,
+        server: Server<TWebSocketUpgradeData>,
         @WebSocketConnection()
         connection: ServerWebSocket<TWebSocketUpgradeData>,
         @WebSocketCloseCode()
@@ -40,7 +40,7 @@ export class TestWebSocket {
     @WebSocketEvent("message")
     onMessage(
         @WebSocketServer()
-        server: Server,
+        server: Server<TWebSocketUpgradeData>,
         @WebSocketConnection()
         connection: ServerWebSocket<TWebSocketUpgradeData>,
         @WebSocketMessage()
@@ -50,7 +50,7 @@ export class TestWebSocket {
     @WebSocketEvent("ping")
     onPing(
         @WebSocketServer()
-        server: Server,
+        server: Server<TWebSocketUpgradeData>,
         @WebSocketConnection()
         connection: ServerWebSocket<TWebSocketUpgradeData>,
         @WebSocketMessage()
@@ -60,7 +60,7 @@ export class TestWebSocket {
     @WebSocketEvent("pong")
     onPong(
         @WebSocketServer()
-        server: Server,
+        server: Server<TWebSocketUpgradeData>,
         @WebSocketConnection()
         connection: ServerWebSocket<TWebSocketUpgradeData>,
         @WebSocketMessage()
@@ -70,7 +70,7 @@ export class TestWebSocket {
     @WebSocketEvent("drain")
     onDrain(
         @WebSocketServer()
-        server: Server,
+        server: Server<TWebSocketUpgradeData>,
         @WebSocketConnection()
         connection: ServerWebSocket<TWebSocketUpgradeData>
     ) {
