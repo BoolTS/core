@@ -1,5 +1,3 @@
-"use strict";
-
 import HttpRoute from "./httpRoute";
 
 export class HttpRouter {
@@ -7,7 +5,7 @@ export class HttpRouter {
 
     private _routes: Map<string, HttpRoute> = new Map();
 
-    constructor(alias: string) {
+    constructor({ alias }: { alias: string }) {
         this.alias = this._thinAlias(alias);
     }
 
@@ -19,7 +17,7 @@ export class HttpRouter {
     public route(alias: string) {
         const thinAlias = this._thinAlias(`${this.alias}/${alias}`);
         const route = this._routes.get(thinAlias);
-        const newRoute = !route ? new HttpRoute(`${this.alias}/${alias}`) : route;
+        const newRoute = !route ? new HttpRoute({ alias: `${this.alias}/${alias}` }) : route;
 
         if (!route) {
             this._routes.set(thinAlias, newRoute);

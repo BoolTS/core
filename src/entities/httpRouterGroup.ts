@@ -1,4 +1,5 @@
 import type { THttpMethods } from "../http";
+import type { THttpRouteModel } from "./httpRoute";
 import type { HttpRouter } from "./httpRouter";
 
 export class HttpRouterGroup {
@@ -18,23 +19,32 @@ export class HttpRouterGroup {
 
     /**
      *
-     * @param pathame
+     * @param pathname
      * @param method
      * @returns
      */
-    public find(pathame: string, method: keyof THttpMethods) {
+    public find({ pathname, method }: { pathname: string; method: THttpMethods }): Readonly<{
+        parameters: Record<string, string | undefined>;
+        model: THttpRouteModel;
+    }> | null {
         for (const router of this._routers.values()) {
             for (const route of router.routes.values()) {
-                const result = route.test(pathame, method);
+                const testResult = route.test({ pathname });
 
-                if (!result) {
+                if (!testResult) {
                     continue;
                 }
 
-                return result;
+                const execResult = route.exec({ pathname, method });
+
+                if (!execResult) {
+                    continue;
+                }
+
+                return execResult;
             }
         }
 
-        return undefined;
+        return null;
     }
 }

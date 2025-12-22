@@ -7,13 +7,20 @@ import type {
     TWebSocketEventHandlerMetadata,
     TWebSocketMetadata
 } from "../decorators";
-import { HttpClientError, HttpServerError, jsonErrorInfer, type THttpMethods } from "../http";
+import type { THttpMethods } from "../http";
 import type { IGuard, IInterceptor, IMiddleware } from "../interfaces";
+import type { ICustomValidator } from "../interfaces/customValidator";
 import type { TConstructor } from "../ultils";
 
 import { ETimeUnit, add as TimeAdd } from "@bool-ts/date-time";
 import { parse as QsParse } from "qs";
-import type { ICustomValidator } from "../interfaces/customValidator";
+import {
+    HttpClientError,
+    httpMethods,
+    httpMethodsStandardization,
+    HttpServerError,
+    jsonErrorInfer
+} from "../http";
 import {
     argumentsKey,
     configKey,
@@ -46,38 +53,39 @@ import { Context } from "./context";
 import { HttpRouter } from "./httpRouter";
 import { HttpRouterGroup } from "./httpRouterGroup";
 import { Injector } from "./injector";
-import ValidationFailed from "./validationFailed";
+import { ValidationFailed } from "./validationFailed";
 import { WebSocketRoute } from "./webSocketRoute";
 import { WebSocketRouter } from "./webSocketRouter";
 import { WebSocketRouterGroup } from "./webSocketRouterGroup";
 
 type TParamsType = Record<string, string>;
 
-type TApplicationOptions = Required<{
-    port: number;
-}> &
-    Partial<{
-        config: Record<string | symbol, any> | (() => Record<string | symbol, any>);
-        prefix: string;
-        debug: boolean;
-        log: Partial<{
-            methods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
-        }>;
-        queryParser: Parameters<typeof QsParse>[1];
-        static: Required<{
-            path: string;
-        }> &
-            Partial<{
-                headers: TParamsType;
-                cacheTimeInSeconds: number;
+type TApplicationOptions<AllowedMethods extends Array<THttpMethods> = Array<THttpMethods>> =
+    Required<{
+        port: number;
+    }> &
+        Partial<{
+            config: Record<string | symbol, any> | (() => Record<string | symbol, any>);
+            prefix: string;
+            debug: boolean;
+            log: Partial<{
+                methods: AllowedMethods;
             }>;
-        cors: Partial<{
-            credentials: boolean;
-            origins: string | Array<string>;
-            methods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
-            headers: Array<string>;
+            queryParser: Parameters<typeof QsParse>[1];
+            static: Required<{
+                path: string;
+            }> &
+                Partial<{
+                    headers: TParamsType;
+                    cacheTimeInSeconds: number;
+                }>;
+            cors: Partial<{
+                credentials: boolean;
+                origins: string | Array<string>;
+                methods: Array<THttpMethods>;
+                headers: Array<string>;
+            }>;
         }>;
-    }>;
 
 type TGroupElementModel<
     TFuncName extends keyof TClass,
@@ -99,10 +107,10 @@ type TStaticMap = Map<
 >;
 
 type TResolutedOptions = Readonly<{
-    allowLogsMethods: ("GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS")[];
-    allowOrigins: string[];
-    allowMethods: string[];
-    allowHeaders: string[];
+    allowLogsMethods: Array<THttpMethods>;
+    allowOrigins: Array<string>;
+    allowMethods: Array<THttpMethods>;
+    allowHeaders: Array<string>;
     allowCredentials: boolean;
     staticOption?: Required<{
         path: string;
@@ -133,7 +141,7 @@ type TValidator = undefined | ICustomValidator;
 
 export class Application<TRootClass extends Object = Object> {
     #preLaunchData: TPreLaunch;
-    #inputedConstructorKeys: any[];
+    #inputedConstructorKeys: Array<any>;
     #injector = new Injector();
     #staticMap: TStaticMap = new Map();
     #resolutedOptions: TResolutedOptions;
@@ -170,14 +178,7 @@ export class Application<TRootClass extends Object = Object> {
                     ? ["*"]
                     : this.options.cors.origins
                 : [this.options.cors.origins !== "*" ? this.options.cors.origins : "*"],
-            allowMethods: this.options.cors?.methods || [
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE",
-                "OPTIONS"
-            ],
+            allowMethods: this.options.cors?.methods || httpMethods,
             allowCredentials: !this.options.cors?.credentials ? false : true,
             allowHeaders:
                 !this.options.cors?.headers || this.options.cors.headers.includes("*")
@@ -299,6 +300,25 @@ export class Application<TRootClass extends Object = Object> {
                     .set(queryArgsKey, query);
 
                 try {
+                    const validateRequestMethod = httpMethodsStandardization(method);
+
+                    if (!validateRequestMethod) {
+                        return this.finalizeResponse(
+                            new Response(
+                                JSON.stringify({
+                                    httpCode: 405,
+                                    message: "Method Not Allowed.",
+                                    data: undefined
+                                }),
+                                {
+                                    status: 405,
+                                    statusText: "Method Not Allowed.",
+                                    headers: responseHeaders
+                                }
+                            )
+                        );
+                    }
+
                     const isUpgradable = isWebSocketUpgrade(request);
 
                     let collection:
@@ -313,10 +333,10 @@ export class Application<TRootClass extends Object = Object> {
                     if (isUpgradable) {
                         for (const availableModuleResolution of resolutedModules) {
                             const routeResult =
-                                availableModuleResolution.webSocketHttpRouterGroup.find(
-                                    url.pathname,
-                                    request.method as keyof THttpMethods
-                                );
+                                availableModuleResolution.webSocketHttpRouterGroup.find({
+                                    pathname: url.pathname,
+                                    method: method
+                                });
 
                             if (routeResult) {
                                 collection = Object.freeze({
@@ -492,10 +512,10 @@ export class Application<TRootClass extends Object = Object> {
                     }
 
                     for (const availableModuleResolution of resolutedModules) {
-                        const routeResult = availableModuleResolution.controllerRouterGroup.find(
-                            url.pathname,
-                            method as keyof THttpMethods
-                        );
+                        const routeResult = availableModuleResolution.controllerRouterGroup.find({
+                            pathname: url.pathname,
+                            method: method
+                        });
 
                         if (routeResult) {
                             collection = Object.freeze({
@@ -1304,7 +1324,9 @@ export class Application<TRootClass extends Object = Object> {
             httpMetadata: []
         };
 
-        const router = new HttpRouter(`/${prefix || ""}/${controllerMetadata.prefix}`);
+        const router = new HttpRouter({
+            alias: `/${prefix || ""}/${controllerMetadata.prefix}`
+        });
 
         controllerMetadata.httpMetadata.forEach((routeMetadata) => {
             if (typeof routeMetadata.descriptor.value !== "function") {
@@ -1313,7 +1335,7 @@ export class Application<TRootClass extends Object = Object> {
 
             const route = router.route(routeMetadata.path);
             const handler = routeMetadata.descriptor.value.bind(controller);
-            const routeArgument = Object.freeze({
+            const httpRouteModel = Object.freeze({
                 class: controllerConstructor,
                 funcName: routeMetadata.methodName,
                 func: handler,
@@ -1322,17 +1344,17 @@ export class Application<TRootClass extends Object = Object> {
 
             switch (routeMetadata.httpMethod) {
                 case "GET":
-                    return route.get(routeArgument);
+                    return route.get({ model: httpRouteModel });
                 case "POST":
-                    return route.post(routeArgument);
+                    return route.post({ model: httpRouteModel });
                 case "PUT":
-                    return route.put(routeArgument);
+                    return route.put({ model: httpRouteModel });
                 case "PATCH":
-                    return route.patch(routeArgument);
+                    return route.patch({ model: httpRouteModel });
                 case "DELETE":
-                    return route.delete(routeArgument);
+                    return route.delete({ model: httpRouteModel });
                 case "OPTIONS":
-                    return route.options(routeArgument);
+                    return route.options({ model: httpRouteModel });
             }
         });
 
@@ -1382,7 +1404,9 @@ export class Application<TRootClass extends Object = Object> {
         const fullPrefix = `/${prefix || ""}/${webSocketMetadata.prefix}`;
 
         //#region [HTTP ROUTER]
-        const router = new HttpRouter(fullPrefix);
+        const router = new HttpRouter({
+            alias: fullPrefix
+        });
 
         for (const [_key, httpMetadata] of Object.entries(webSocketMetadata.http)) {
             if (typeof httpMetadata.descriptor?.value !== "function") {
@@ -1391,7 +1415,7 @@ export class Application<TRootClass extends Object = Object> {
 
             const route = router.route(httpMetadata.path);
             const handler = httpMetadata.descriptor.value.bind(webSocket);
-            const routeArgument = Object.freeze({
+            const httpRouteModel = Object.freeze({
                 class: webSocketConstructor,
                 funcName: httpMetadata.methodName,
                 func: handler,
@@ -1400,10 +1424,10 @@ export class Application<TRootClass extends Object = Object> {
 
             switch (httpMetadata.httpMethod) {
                 case "GET":
-                    route.get(routeArgument);
+                    route.get({ model: httpRouteModel });
                     break;
                 case "POST":
-                    route.post(routeArgument);
+                    route.post({ model: httpRouteModel });
                     break;
             }
         }
@@ -1453,21 +1477,31 @@ export class Application<TRootClass extends Object = Object> {
 
         if (contentType.includes("application/json")) {
             return this.finalizeResponse(
-                new Response(data instanceof ReadableStream ? data : JSON.stringify(data), {
-                    status: status,
-                    statusText: statusText,
-                    headers: headers
-                })
+                new Response(
+                    !data
+                        ? undefined
+                        : data instanceof ReadableStream
+                        ? data
+                        : JSON.stringify(data),
+                    {
+                        status: !data ? 204 : status,
+                        statusText: statusText,
+                        headers: headers
+                    }
+                )
             );
         }
 
         if (contentType.includes("text/plain") || contentType.includes("text/html")) {
             return this.finalizeResponse(
-                new Response(data instanceof ReadableStream ? data : String(data), {
-                    status: status,
-                    statusText: statusText,
-                    headers: headers
-                })
+                new Response(
+                    !data ? undefined : data instanceof ReadableStream ? data : String(data),
+                    {
+                        status: !data ? 204 : status,
+                        statusText: statusText,
+                        headers: headers
+                    }
+                )
             );
         }
 
@@ -1501,7 +1535,11 @@ export class Application<TRootClass extends Object = Object> {
         }
 
         return this.finalizeResponse(
-            new Response(String(data), { status: status, statusText: statusText, headers: headers })
+            new Response(!data ? undefined : String(data), {
+                status: !data ? 204 : status,
+                statusText: statusText,
+                headers: headers
+            })
         );
     }
 

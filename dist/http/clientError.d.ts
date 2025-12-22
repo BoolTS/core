@@ -29,13 +29,13 @@ export declare const httpClientErrors: Readonly<{
     431: "REQUEST_HEADER_FIELDS_TOO_LARGE";
     451: "UNAVAILABLE_FOR_LEGAL_REASONS";
 }>;
-export declare class HttpClientError<T extends keyof typeof httpClientErrors = keyof typeof httpClientErrors, K = any> extends Error {
+export declare class HttpClientError<T extends keyof typeof httpClientErrors = keyof typeof httpClientErrors, K = unknown> extends Error {
     readonly httpCode: T;
     readonly message: (typeof httpClientErrors)[T] | string;
-    readonly data: K;
+    readonly data: K | undefined;
     constructor({ httpCode, data, message }: {
         httpCode: T;
-        data: K;
+        data?: K;
         message?: string;
     });
 }

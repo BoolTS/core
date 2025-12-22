@@ -30,12 +30,15 @@ export const httpClientErrors = Object.freeze({
     451: "UNAVAILABLE_FOR_LEGAL_REASONS"
 });
 
-export class HttpClientError<T extends keyof typeof httpClientErrors = keyof typeof httpClientErrors, K = any> extends Error {
+export class HttpClientError<
+    T extends keyof typeof httpClientErrors = keyof typeof httpClientErrors,
+    K = unknown
+> extends Error {
     public readonly httpCode: T;
     public readonly message: (typeof httpClientErrors)[T] | string;
-    public readonly data: K;
+    public readonly data: K | undefined;
 
-    constructor({ httpCode, data, message }: { httpCode: T; data: K; message?: string }) {
+    constructor({ httpCode, data, message }: { httpCode: T; data?: K; message?: string }) {
         super();
 
         this.httpCode = httpCode;

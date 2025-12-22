@@ -12,12 +12,15 @@ export const httpServerErrors = Object.freeze({
     511: "NETWORK_AUTHENTICATION_REQUIRED"
 });
 
-export class HttpServerError<T extends keyof typeof httpServerErrors = keyof typeof httpServerErrors, K = any> extends Error {
+export class HttpServerError<
+    T extends keyof typeof httpServerErrors = keyof typeof httpServerErrors,
+    K = any
+> extends Error {
     public readonly httpCode: T;
     public readonly message: (typeof httpServerErrors)[T] | string;
-    public readonly data: K;
+    public readonly data: K | undefined;
 
-    constructor({ httpCode, data, message }: { httpCode: T; data: K; message?: string }) {
+    constructor({ httpCode, data, message }: { httpCode: T; data?: K; message?: string }) {
         super();
 
         this.httpCode = httpCode;

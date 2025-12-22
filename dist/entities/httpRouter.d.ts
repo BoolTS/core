@@ -2,7 +2,9 @@ import HttpRoute from "./httpRoute";
 export declare class HttpRouter {
     readonly alias: string;
     private _routes;
-    constructor(alias: string);
+    constructor({ alias }: {
+        alias: string;
+    });
     /**
      *
      * @param alias

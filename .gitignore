@@ -131,3 +131,4 @@ out
 
 .vscode
 .DS_Store
+__test/

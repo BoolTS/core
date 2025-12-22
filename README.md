@@ -26,7 +26,7 @@ bun add @bool-ts/core
 
 ## Documentation
 
-For detailed documentation, please visit [https://boolts.dev](https://boolts.dev)
+For detailed documentation, please visit [https://www.booljs.com](https://www.booljs.com)
 
 ## Quick Start
 

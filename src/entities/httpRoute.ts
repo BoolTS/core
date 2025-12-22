@@ -1,5 +1,3 @@
-"use strict";
-
 import type { TArgumentsMetadataCollection } from "../decorators/arguments";
 import type { THttpMethods } from "../http";
 
@@ -10,16 +8,25 @@ export type THttpRouteModel<T = unknown> = Readonly<{
     argumentsMetadata: TArgumentsMetadataCollection;
 }>;
 
+const BASE_URL = "http://www.booljs.com";
+
 export class HttpRoute {
     public static rootPattern = ":([a-z0-9A-Z_-]{1,})";
     public static innerRootPattern = "([a-z0-9A-Z_-]{1,})";
 
     public readonly alias: string;
 
-    private _map = new Map<keyof THttpMethods, THttpRouteModel>();
+    #map = new Map<THttpMethods, THttpRouteModel>();
+    #urlPattern: URLPattern;
 
-    constructor(alias: string) {
-        this.alias = this._thinAlias(alias);
+    constructor({ alias }: { alias: string }) {
+        const thinAlias = this._thinAlias(alias);
+
+        this.alias = thinAlias;
+        this.#urlPattern = new URLPattern({
+            pathname: thinAlias,
+            baseURL: BASE_URL
+        });
     }
 
     /**
@@ -28,162 +35,62 @@ export class HttpRoute {
      * @param method
      * @returns
      */
-    public test(
-        pathname: string,
-        method: keyof THttpMethods
-    ):
-        | Readonly<{ parameters: Record<string, string>; model: THttpRouteModel }>
-        | false
-        | undefined {
+    public test({ pathname }: { pathname: string }): boolean {
         try {
-            const model = this._map.get(method);
-            const aliasSplitted = this.alias.split("/");
-            const currentPathNameSplitted = this._thinAlias(pathname).split("/");
+            return this.#urlPattern.test({
+                pathname: this._thinAlias(pathname),
+                baseURL: BASE_URL
+            });
+        } catch (error) {
+            console.error(error);
+
+            return false;
+        }
+    }
+
+    public exec({ pathname, method }: { pathname: string; method: THttpMethods }): Readonly<{
+        parameters: Record<string, string | undefined>;
+        model: THttpRouteModel;
+    }> | null {
+        try {
+            const model = this.#map.get(method);
 
             if (!model) {
-                return undefined;
+                return null;
             }
 
-            // Compare splitted length
-            if (aliasSplitted.length !== currentPathNameSplitted.length) {
-                return undefined;
+            const inferResult = this.#urlPattern.exec({
+                pathname: this._thinAlias(pathname),
+                baseURL: BASE_URL
+            });
+
+            if (!inferResult) {
+                return null;
             }
 
-            const parameters: Record<string, string> = Object();
-            const matchingRegex = this.alias.replace(
-                new RegExp(HttpRoute.rootPattern, "g"),
-                HttpRoute.innerRootPattern
-            );
-
-            if (!new RegExp(matchingRegex).test(this._thinAlias(pathname))) {
-                return undefined;
-            }
-
-            for (let index = 0; index < aliasSplitted.length; index++) {
-                const aliasPart = aliasSplitted[index];
-                const pathnamePart = currentPathNameSplitted[index];
-
-                // Check pathmane path match a dynamic syntax, if no match => start compare equal or not
-                if (!new RegExp(HttpRoute.rootPattern, "g").test(aliasPart)) {
-                    if (aliasPart !== pathnamePart) return undefined;
-                } else {
-                    let isFailed = false;
-
-                    aliasPart.replace(
-                        new RegExp(HttpRoute.rootPattern, "g"),
-                        (match, key, offset) => {
-                            if (offset === 0) {
-                                pathnamePart.replace(
-                                    new RegExp(HttpRoute.innerRootPattern, "g"),
-                                    (innerMatch, innerKey, innerOffset) => {
-                                        if (innerOffset === 0) {
-                                            Object.assign(parameters, {
-                                                [key]: innerMatch
-                                            });
-                                        }
-
-                                        return innerMatch;
-                                    }
-                                );
-                            }
-
-                            return match;
-                        }
-                    );
-
-                    if (isFailed) {
-                        return undefined;
-                    }
-                }
-
-                continue;
-            }
+            const parameters = inferResult.pathname.groups;
 
             return Object.freeze({
                 parameters: parameters,
                 model: model
             });
-        } catch (err) {
-            console.error(err);
-            return false;
+        } catch (error) {
+            console.error(error);
+
+            return null;
         }
     }
 
     /**
      *
-     * @param pathname
-     * @param method
+     * @param model
      * @returns
      */
-    public isMatch(pathname: string, method: keyof THttpMethods) {
-        try {
-            const handlers = this._map.get(method);
-
-            if (!handlers) {
-                return undefined;
-            }
-
-            const aliasSplitted = this.alias.split("/");
-            const currentPathNameSplitted = this._thinAlias(pathname).split("/");
-
-            // Compare splitted length
-            if (aliasSplitted.length !== currentPathNameSplitted.length) {
-                return false;
-            }
-
-            const parameters = Object();
-
-            for (let index = 0; index < aliasSplitted.length; index++) {
-                const aliasPart = aliasSplitted[index];
-                const pathnamePart = currentPathNameSplitted[index];
-
-                // Check pathmane path match a dynamic syntax, if no match => start compare equal or not
-                if (!new RegExp(HttpRoute.rootPattern, "g").test(aliasPart)) {
-                    if (aliasPart !== pathnamePart) {
-                        return false;
-                    }
-                } else {
-                    let isFailed = false;
-
-                    aliasPart.replace(
-                        new RegExp(HttpRoute.rootPattern, "g"),
-                        (subString, key, value) => {
-                            if (!new RegExp(value, "g").test(pathnamePart)) {
-                                isFailed = true;
-                            } else {
-                                Object.assign(parameters, {
-                                    [key]: pathnamePart
-                                });
-                            }
-                            return "";
-                        }
-                    );
-
-                    if (isFailed) {
-                        return false;
-                    }
-                }
-
-                continue;
-            }
-
-            return true;
-        } catch (err) {
-            console.error(err);
-            return undefined;
-        }
-    }
-
-    /**
-     *
-     * @param handler
-     * @returns
-     */
-    public get(handler: THttpRouteModel) {
-        const currenTHttpRouteModel = this._map.get("GET");
+    public get({ model }: { model: THttpRouteModel }) {
+        const currenTHttpRouteModel = this.#map.get("GET");
 
         if (!currenTHttpRouteModel) {
-            this._map.set("GET", handler);
+            this.#map.set("GET", model);
         }
 
         return this;
@@ -191,14 +98,14 @@ export class HttpRoute {
 
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    public post(handler: THttpRouteModel) {
-        const currenTHttpRouteModel = this._map.get("POST");
+    public post({ model }: { model: THttpRouteModel }) {
+        const currenTHttpRouteModel = this.#map.get("POST");
 
         if (!currenTHttpRouteModel) {
-            this._map.set("POST", handler);
+            this.#map.set("POST", model);
         }
 
         return this;
@@ -206,14 +113,14 @@ export class HttpRoute {
 
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    public put(handler: THttpRouteModel) {
-        const currenTHttpRouteModel = this._map.get("PUT");
+    public put({ model }: { model: THttpRouteModel }) {
+        const currenTHttpRouteModel = this.#map.get("PUT");
 
         if (!currenTHttpRouteModel) {
-            this._map.set("PUT", handler);
+            this.#map.set("PUT", model);
         }
 
         return this;
@@ -221,14 +128,14 @@ export class HttpRoute {
 
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    public delete(handler: THttpRouteModel) {
-        const currenTHttpRouteModel = this._map.get("DELETE");
+    public delete({ model }: { model: THttpRouteModel }) {
+        const currenTHttpRouteModel = this.#map.get("DELETE");
 
         if (!currenTHttpRouteModel) {
-            this._map.set("DELETE", handler);
+            this.#map.set("DELETE", model);
         }
 
         return this;
@@ -236,14 +143,14 @@ export class HttpRoute {
 
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    public connect(handler: THttpRouteModel) {
-        const currenTHttpRouteModel = this._map.get("CONNECT");
+    public connect({ model }: { model: THttpRouteModel }) {
+        const currenTHttpRouteModel = this.#map.get("CONNECT");
 
         if (!currenTHttpRouteModel) {
-            return this._map.set("CONNECT", handler);
+            return this.#map.set("CONNECT", model);
         }
 
         return this;
@@ -251,14 +158,14 @@ export class HttpRoute {
 
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    public options(handler: THttpRouteModel) {
-        const currenTHttpRouteModel = this._map.get("OPTIONS");
+    public options({ model }: { model: THttpRouteModel }) {
+        const currenTHttpRouteModel = this.#map.get("OPTIONS");
 
         if (!currenTHttpRouteModel) {
-            return this._map.set("OPTIONS", handler);
+            return this.#map.set("OPTIONS", model);
         }
 
         return this;
@@ -266,14 +173,14 @@ export class HttpRoute {
 
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    public trace(handler: THttpRouteModel) {
-        const currenTHttpRouteModel = this._map.get("TRACE");
+    public trace({ model }: { model: THttpRouteModel }) {
+        const currenTHttpRouteModel = this.#map.get("TRACE");
 
         if (!currenTHttpRouteModel) {
-            return this._map.set("TRACE", handler);
+            return this.#map.set("TRACE", model);
         }
 
         return this;
@@ -281,14 +188,14 @@ export class HttpRoute {
 
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    public patch(handler: THttpRouteModel) {
-        const currenTHttpRouteModel = this._map.get("PATCH");
+    public patch({ model }: { model: THttpRouteModel }) {
+        const currenTHttpRouteModel = this.#map.get("PATCH");
 
         if (!currenTHttpRouteModel) {
-            return this._map.set("PATCH", handler);
+            return this.#map.set("PATCH", model);
         }
 
         return this;
@@ -296,7 +203,7 @@ export class HttpRoute {
 
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
     private _thinAlias(alias: string) {

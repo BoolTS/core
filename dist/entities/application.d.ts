@@ -1,16 +1,17 @@
 import type { TContainerMetadata, TWebSocketEventHandlerMetadata } from "../decorators";
+import type { THttpMethods } from "../http";
+import type { ICustomValidator } from "../interfaces/customValidator";
 import type { TConstructor } from "../ultils";
 import { parse as QsParse } from "qs";
-import type { ICustomValidator } from "../interfaces/customValidator";
 type TParamsType = Record<string, string>;
-type TApplicationOptions = Required<{
+type TApplicationOptions<AllowedMethods extends Array<THttpMethods> = Array<THttpMethods>> = Required<{
     port: number;
 }> & Partial<{
     config: Record<string | symbol, any> | (() => Record<string | symbol, any>);
     prefix: string;
     debug: boolean;
     log: Partial<{
-        methods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
+        methods: AllowedMethods;
     }>;
     queryParser: Parameters<typeof QsParse>[1];
     static: Required<{
@@ -22,7 +23,7 @@ type TApplicationOptions = Required<{
     cors: Partial<{
         credentials: boolean;
         origins: string | Array<string>;
-        methods: Array<"GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS">;
+        methods: Array<THttpMethods>;
         headers: Array<string>;
     }>;
 }>;

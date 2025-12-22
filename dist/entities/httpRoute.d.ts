@@ -7,58 +7,69 @@ export type THttpRouteModel<T = unknown> = Readonly<{
     argumentsMetadata: TArgumentsMetadataCollection;
 }>;
 export declare class HttpRoute {
+    #private;
     static rootPattern: string;
     static innerRootPattern: string;
     readonly alias: string;
-    private _map;
-    constructor(alias: string);
+    constructor({ alias }: {
+        alias: string;
+    });
     /**
      *
      * @param pathname
      * @param method
      * @returns
      */
-    test(pathname: string, method: keyof THttpMethods): Readonly<{
-        parameters: Record<string, string>;
+    test({ pathname }: {
+        pathname: string;
+    }): boolean;
+    exec({ pathname, method }: {
+        pathname: string;
+        method: THttpMethods;
+    }): Readonly<{
+        parameters: Record<string, string | undefined>;
         model: THttpRouteModel;
-    }> | false | undefined;
+    }> | null;
     /**
      *
-     * @param pathname
-     * @param method
+     * @param model
      * @returns
      */
-    isMatch(pathname: string, method: keyof THttpMethods): boolean | undefined;
+    get({ model }: {
+        model: THttpRouteModel;
+    }): this;
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    get(handler: THttpRouteModel): this;
+    post({ model }: {
+        model: THttpRouteModel;
+    }): this;
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    post(handler: THttpRouteModel): this;
+    put({ model }: {
+        model: THttpRouteModel;
+    }): this;
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    put(handler: THttpRouteModel): this;
+    delete({ model }: {
+        model: THttpRouteModel;
+    }): this;
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    delete(handler: THttpRouteModel): this;
-    /**
-     *
-     * @param handler
-     * @returns
-     */
-    connect(handler: THttpRouteModel): this | Map<keyof THttpMethods, Readonly<{
+    connect({ model }: {
+        model: THttpRouteModel;
+    }): this | Map<THttpMethods, Readonly<{
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
@@ -66,10 +77,12 @@ export declare class HttpRoute {
     }>>;
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    options(handler: THttpRouteModel): this | Map<keyof THttpMethods, Readonly<{
+    options({ model }: {
+        model: THttpRouteModel;
+    }): this | Map<THttpMethods, Readonly<{
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
@@ -77,10 +90,12 @@ export declare class HttpRoute {
     }>>;
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    trace(handler: THttpRouteModel): this | Map<keyof THttpMethods, Readonly<{
+    trace({ model }: {
+        model: THttpRouteModel;
+    }): this | Map<THttpMethods, Readonly<{
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
@@ -88,10 +103,12 @@ export declare class HttpRoute {
     }>>;
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
-    patch(handler: THttpRouteModel): this | Map<keyof THttpMethods, Readonly<{
+    patch({ model }: {
+        model: THttpRouteModel;
+    }): this | Map<THttpMethods, Readonly<{
         class: new (...args: Array<any>) => unknown;
         funcName: string | symbol;
         func: (...args: Array<any>) => unknown;
@@ -99,7 +116,7 @@ export declare class HttpRoute {
     }>>;
     /**
      *
-     * @param handler
+     * @param model
      * @returns
      */
     private _thinAlias;

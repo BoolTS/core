@@ -1,17 +1,31 @@
 import { HttpClientError } from "./clientError";
 import { HttpServerError } from "./serverError";
 
-export type THttpMethods = {
-    GET: "GET";
-    HEAD: "HEAD";
-    POST: "POST";
-    PUT: "PUT";
-    DELETE: "DELETE";
-    CONNECT: "CONNECT";
-    OPTIONS: "OPTIONS";
-    TRACE: "TRACE";
-    PATCH: "PATCH";
-};
+export type THttpMethods =
+    | "GET"
+    | "HEAD"
+    | "POST"
+    | "PUT"
+    | "DELETE"
+    | "CONNECT"
+    | "OPTIONS"
+    | "TRACE"
+    | "PATCH";
+
+export const httpMethods: Array<THttpMethods> = [
+    "GET",
+    "HEAD",
+    "POST",
+    "PUT",
+    "DELETE",
+    "CONNECT",
+    "OPTIONS",
+    "TRACE",
+    "PATCH"
+];
+
+export const httpMethodsStandardization = (method: string): method is THttpMethods =>
+    !!httpMethods.find((httpMethod) => httpMethod === method);
 
 export const jsonErrorInfer = (data: any, headers: Headers = new Headers()) => {
     headers.set("Content-Type", "application/json");
@@ -59,3 +73,4 @@ export const jsonErrorInfer = (data: any, headers: Headers = new Headers()) => {
 
 export * from "./clientError";
 export * from "./serverError";
+
