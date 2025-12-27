@@ -5,9 +5,9 @@
     },
     "dependencies": {
         "@bool-ts/date-time": "^1.0.0",
-        "qs": "^6.14.0",
+        "qs": "^6.14.1",
         "reflect-metadata": "^0.2.2",
-        "zod": "^4.2.1"
+        "zod": "^4.3.4"
     },
     "description": "Core package for BoolTS framework",
     "devDependencies": {
@@ -40,8 +40,9 @@
     },
     "scripts": {
         "build": "tsc --emitDeclarationOnly && bun run app.build.ts",
-        "test": "bun --hot run __test/index.ts"
+        "test:server": "bun --hot run __test/server/index.ts",
+        "test:socket": "bun --hot run __test/client/socket.ts"
     },
     "types": "./dist/index.d.ts",
-    "version": "2.2.4"
+    "version": "2.3.0"
 }
