@@ -575,14 +575,16 @@ export class Application<TRootClass extends Object = Object> {
                         latestResponseStatus = context.get<unknown>(responseStatusArgsKey, {
                             isStatic: false
                         }),
-                        latestResponseStatusText = context.get<unknown>(responseStatusArgsKey, {
+                        latestResponseStatusText = context.get<unknown>(responseStatusTextArgsKey, {
                             isStatic: false
                         });
 
                     return this.serializeResponse({
                         status:
                             typeof latestResponseStatus !== "number"
-                                ? undefined
+                                ? method === "POST"
+                                    ? 201
+                                    : undefined
                                 : latestResponseStatus,
                         statusText:
                             typeof latestResponseStatusText !== "string"
