@@ -495,22 +495,6 @@ export class Application<TRootClass extends Object = Object> {
                         }
                     }
 
-                    if (resolutedContainer) {
-                        const { context: newContext } = await this.httpFetcher({
-                            context: context,
-                            resolutedMap: {
-                                injector: resolutedContainer.injector,
-                                startMiddlewareGroup: resolutedContainer.startMiddlewareGroup,
-                                guardGroup: resolutedContainer.guardGroup
-                            },
-                            options: {
-                                isContainer: true
-                            }
-                        });
-
-                        context = newContext;
-                    }
-
                     for (const availableModuleResolution of resolutedModules) {
                         const routeResult = availableModuleResolution.controllerRouterGroup.find({
                             pathname: url.pathname,
@@ -524,6 +508,23 @@ export class Application<TRootClass extends Object = Object> {
                             });
                             break;
                         }
+                    }
+
+                    if (resolutedContainer) {
+                        const { context: newContext } = await this.httpFetcher({
+                            context: context,
+                            route: collection?.route,
+                            resolutedMap: {
+                                injector: resolutedContainer.injector,
+                                startMiddlewareGroup: resolutedContainer.startMiddlewareGroup,
+                                guardGroup: resolutedContainer.guardGroup
+                            },
+                            options: {
+                                isContainer: true
+                            }
+                        });
+
+                        context = newContext;
                     }
 
                     if (!collection) {
@@ -1579,7 +1580,7 @@ export class Application<TRootClass extends Object = Object> {
         }>;
     }>) {
         const contextOptions = { isStatic: true };
-        const context = (!outerContext ? new Context() : new Context(outerContext)).setOptions(
+        const context = new Context(...(!outerContext ? [] : [outerContext])).setOptions(
             contextOptions
         );
 
