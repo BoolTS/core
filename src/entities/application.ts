@@ -1589,7 +1589,7 @@ export class Application<TRootClass extends Object = Object> {
         if (route) {
             context
                 .set(paramsArgsKey, route.parameters, { isPassthrough: true })
-                .set(routeModelArgsKey, route.model);
+                .set(routeModelArgsKey, route.model, { isPassthrough: true });
         }
 
         const httpServer =

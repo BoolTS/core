@@ -43,5 +43,5 @@
         "test": "bun --hot run __test/index.ts"
     },
     "types": "./dist/index.d.ts",
-    "version": "2.2.2"
+    "version": "2.2.3"
 }
