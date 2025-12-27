@@ -18,7 +18,10 @@ export class Context implements IContext {
     }
 
     get<T = unknown>(key: symbol, options?: TContextOptions) {
-        const temporaryOptions = options || this._options;
+        const temporaryOptions = {
+            ...this._options,
+            ...options
+        };
 
         return !temporaryOptions?.isStatic
             ? (this._dynamicMap.get(key) as T)
@@ -26,13 +29,19 @@ export class Context implements IContext {
     }
 
     has(key: symbol, options?: TContextOptions) {
-        const temporaryOptions = options || this._options;
+        const temporaryOptions = {
+            ...this._options,
+            ...options
+        };
 
         return !temporaryOptions?.isStatic ? this._dynamicMap.has(key) : this._staticMap.has(key);
     }
 
     set(key: symbol, value: any, options?: TContextOptions) {
-        const temporaryOptions = options || this._options;
+        const temporaryOptions = {
+            ...this._options,
+            ...options
+        };
 
         if (!temporaryOptions?.isStatic) {
             this._dynamicMap.set(key, value);
