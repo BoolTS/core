@@ -3,7 +3,7 @@ import type {
     TWebsocketArgumentsMetadataGroup
 } from "./webSocketArguments";
 
-import { webSocketEventArgumentsKey, webSocketEventKey } from "../keys";
+import { webSocketEventArgumentsKey, webSocketEventKey } from "../constants/keys";
 
 export type TWebSocketEventHandlerMetadata = Required<{
     methodName: string;

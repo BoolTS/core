@@ -1,17 +1,22 @@
 import type { THttpMethods } from "../http";
+import type {
+    TCloseInterceptorHandlers,
+    TGuardHandlers,
+    TOpenInterceptorHandlers
+} from "../interfaces";
 import type { THttpRouteModel } from "./httpRoute";
 import type { HttpRouter } from "./httpRouter";
 
 export class HttpRouterGroup {
-    private _routers: Map<string, HttpRouter> = new Map();
+    #routers: Map<string, HttpRouter> = new Map();
 
     public add(...routers: Array<HttpRouter>) {
         for (const router of routers) {
-            if (this._routers.has(router.alias)) {
+            if (this.#routers.has(router.alias)) {
                 continue;
             }
 
-            this._routers.set(router.alias, router);
+            this.#routers.set(router.alias, router);
         }
 
         return this;
@@ -26,8 +31,11 @@ export class HttpRouterGroup {
     public find({ pathname, method }: { pathname: string; method: THttpMethods }): Readonly<{
         parameters: Record<string, string | undefined>;
         model: THttpRouteModel;
+        guardHandlers: TGuardHandlers;
+        openInterceptorHandlers: TOpenInterceptorHandlers;
+        closeInterceptorHandlers: TCloseInterceptorHandlers;
     }> | null {
-        for (const router of this._routers.values()) {
+        for (const router of this.#routers.values()) {
             for (const route of router.routes.values()) {
                 const testResult = route.test({ pathname });
 
@@ -41,7 +49,10 @@ export class HttpRouterGroup {
                     continue;
                 }
 
-                return execResult;
+                return Object.freeze({
+                    ...execResult,
+                    ...router.pipes
+                });
             }
         }
 

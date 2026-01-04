@@ -1,6 +1,6 @@
-import type { TConstructor } from "../ultils";
+import type { TConstructor } from "../utils";
 
-import { guardKey } from "../keys";
+import { guardKey } from "../constants/keys";
 
 export type TGuardMetadata = undefined;
 

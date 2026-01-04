@@ -11,7 +11,7 @@ import {
     requestHeadersArgsKey,
     responseHeadersArgsKey,
     routeModelArgsKey
-} from "../keys";
+} from "../constants/keys";
 
 export type TArgumentsMetadata<TValidationSchema = unknown> =
     | {
@@ -50,7 +50,6 @@ export type TArgumentsMetadata<TValidationSchema = unknown> =
     | {
           index: number;
           type: typeof requestArgsKey;
-          validationSchema?: TValidationSchema;
       }
     | {
           index: number;
@@ -229,7 +228,7 @@ export const Query =
     };
 
 export const Request =
-    <TTarget extends Object, TValidationSchema = unknown>(validationSchema?: TValidationSchema) =>
+    <TTarget extends Object, TValidationSchema = unknown>() =>
     (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {
             return;
@@ -240,8 +239,7 @@ export const Request =
 
         metadata[`argumentIndexes.${parameterIndex}`] = {
             index: parameterIndex,
-            type: requestArgsKey,
-            validationSchema: validationSchema
+            type: requestArgsKey
         } satisfies Extract<
             TArgumentsMetadata,
             {

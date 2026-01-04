@@ -1,4 +1,4 @@
-import { webSocketCloseCodeArgsKey, webSocketCloseReasonArgsKey, webSocketConnectionArgsKey, webSocketMessageArgsKey, webSocketServerArgsKey } from "../keys";
+import { webSocketCloseCodeArgsKey, webSocketCloseReasonArgsKey, webSocketConnectionArgsKey, webSocketMessageArgsKey, webSocketServerArgsKey } from "../constants/keys";
 export type TWebsocketArgumentsMetadata = {
     index: number;
     type: typeof webSocketConnectionArgsKey;

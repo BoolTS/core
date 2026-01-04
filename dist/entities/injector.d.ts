@@ -4,7 +4,7 @@ type TDefinition<T = any> = {
 } | string | symbol;
 interface IInjector {
     set(key: TDefinition, value: any): void;
-    get<T>(definition: TDefinition): T;
+    get<T>(definition: TDefinition): T | undefined;
 }
 export declare class Injector implements IInjector {
     private readonly _mapper;
@@ -17,7 +17,7 @@ export declare class Injector implements IInjector {
      *
      * @param definition
      */
-    get<T>(definition: TDefinition): any;
+    get<T>(definition: TDefinition): T | undefined;
     /**
      *
      * @param key
