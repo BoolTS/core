@@ -1,4 +1,4 @@
-import type { TConstructor } from "../ultils";
+import type { TConstructor } from "../utils";
 import type { TArgumentsMetadataCollection } from "./arguments";
 import type { TWebSocketEventMetadata } from "./webSocketEvent";
 export type TWebSocketHttpRouteMetadata = {

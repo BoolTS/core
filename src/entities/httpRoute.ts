@@ -8,12 +8,9 @@ export type THttpRouteModel<T = unknown> = Readonly<{
     argumentsMetadata: TArgumentsMetadataCollection;
 }>;
 
-const BASE_URL = "http://www.booljs.com";
+const BASE_URL = "https://www.booljs.com";
 
 export class HttpRoute {
-    public static rootPattern = ":([a-z0-9A-Z_-]{1,})";
-    public static innerRootPattern = "([a-z0-9A-Z_-]{1,})";
-
     public readonly alias: string;
 
     #map = new Map<THttpMethods, THttpRouteModel>();
