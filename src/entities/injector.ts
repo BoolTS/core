@@ -7,13 +7,13 @@ import {
     interceptorKey,
     middlewareKey,
     webSocketKey
-} from "../keys";
+} from "../constants/keys";
 
 type TDefinition<T = any> = { new (...args: any[]): T } | string | symbol;
 
 interface IInjector {
     set(key: TDefinition, value: any): void;
-    get<T>(definition: TDefinition): T;
+    get<T>(definition: TDefinition): T | undefined;
 }
 
 export class Injector implements IInjector {
@@ -68,7 +68,7 @@ export class Injector implements IInjector {
 
         this._mapper.set(definition, instance);
 
-        return instance;
+        return instance as T;
     }
 
     /**

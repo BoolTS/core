@@ -1,6 +1,14 @@
-import type { TConstructor } from "../ultils";
+import type { TConstructor } from "../utils";
+import type { TModuleMetadata } from "./module";
 
-import { containerKey, guardKey, injectableKey, middlewareKey, moduleKey } from "../keys";
+import {
+    containerKey,
+    guardKey,
+    injectableKey,
+    interceptorKey,
+    middlewareKey,
+    moduleKey
+} from "../constants/keys";
 
 type TLoaders<TConfig extends {} = {}> = Record<
     string | symbol,
@@ -16,23 +24,27 @@ export type TContainerConfig<TConfig> =
 
 export type TContainerOptions<TConfig extends {} = {}> =
     | Partial<{
+          prefix: string;
           loaders: TLoaders<TConfig>;
           config: TContainerConfig<TConfig>;
           modules: Array<TConstructor<unknown>>;
           dependencies: Array<TConstructor<unknown>>;
           middlewares: Array<TConstructor<unknown>>;
           guards: Array<TConstructor<unknown>>;
+          interceptors: Array<TConstructor<unknown>>;
       }>
     | undefined;
 
 export type TContainerMetadata<TConfig extends {} = {}> =
     | Partial<{
+          prefix: string;
           loaders: TLoaders<TConfig>;
           config: TContainerConfig<TConfig>;
           modules: Array<TConstructor<unknown>>;
           dependencies: Array<TConstructor<unknown>>;
           middlewares: Array<TConstructor<unknown>>;
           guards: Array<TConstructor<unknown>>;
+          interceptors: Array<TConstructor<unknown>>;
       }>
     | undefined;
 
@@ -41,7 +53,7 @@ export const Container =
         args?: TContainerOptions<TConfig>
     ) =>
     (target: K) => {
-        const { modules, middlewares, guards, dependencies } = args || {};
+        const { modules, middlewares, guards, interceptors, dependencies } = args || {};
 
         if (Reflect.hasOwnMetadata(moduleKey, target)) {
             throw new Error(
@@ -50,41 +62,49 @@ export const Container =
         }
 
         if (modules) {
-            for (let i = 0; i < modules.length; i++) {
-                if (!Reflect.getOwnMetadataKeys(modules[i]).includes(moduleKey)) {
-                    throw Error(`${modules[i].name} is not a module.`);
+            const modulePrefixes: string[] = [];
+
+            for (const module of modules) {
+                if (!Reflect.getOwnMetadataKeys(module).includes(moduleKey)) {
+                    throw Error(`[${module.name}] is not a module.`);
+                }
+
+                const moduleMetadata: TModuleMetadata = Reflect.getOwnMetadata(moduleKey, module);
+
+                if (modulePrefixes.includes(moduleMetadata?.prefix || "")) {
+                    throw new Error(`Duplicated prefix of module [${module.name}].`);
                 }
             }
         }
 
         if (middlewares) {
-            for (let i = 0; i < middlewares.length; i++) {
-                if (!Reflect.getOwnMetadataKeys(middlewares[i]).includes(middlewareKey)) {
-                    throw Error(`${middlewares[i].name} is not a middleware.`);
-                }
-            }
-        }
-
-        if (middlewares) {
-            for (let i = 0; i < middlewares.length; i++) {
-                if (!Reflect.getOwnMetadataKeys(middlewares[i]).includes(middlewareKey)) {
-                    throw Error(`${middlewares[i].name} is not a middleware.`);
+            for (const middleware of middlewares) {
+                if (!Reflect.getOwnMetadataKeys(middleware).includes(middlewareKey)) {
+                    throw Error(`[${middleware.name}] is not a middleware.`);
                 }
             }
         }
 
         if (guards) {
-            for (let i = 0; i < guards.length; i++) {
-                if (!Reflect.getOwnMetadataKeys(guards[i]).includes(guardKey)) {
-                    throw Error(`${guards[i].name} is not a guard.`);
+            for (const guard of guards) {
+                if (!Reflect.getOwnMetadataKeys(guard).includes(guardKey)) {
+                    throw Error(`[${guard.name}] is not a guard.`);
+                }
+            }
+        }
+
+        if (interceptors) {
+            for (const interceptor of interceptors) {
+                if (!Reflect.getOwnMetadataKeys(interceptor).includes(interceptorKey)) {
+                    throw Error(`${interceptor.name} is not a middleware.`);
                 }
             }
         }
 
         if (dependencies) {
-            for (let i = 0; i < dependencies.length; i++) {
-                if (!Reflect.getOwnMetadataKeys(dependencies[i]).includes(injectableKey)) {
-                    throw Error(`${dependencies[i].name} is not an injectable.`);
+            for (const dependency of dependencies) {
+                if (!Reflect.getOwnMetadataKeys(dependency).includes(injectableKey)) {
+                    throw Error(`${dependency.name} is not an injectable.`);
                 }
             }
         }

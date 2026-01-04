@@ -2,10 +2,10 @@
 
 
 ### Send test GET method
-GET http://{{baseUrl}}/test/abc/test-case.xml
+GET http://{{baseUrl}}/apis/test/abc/123123
 
 ### Send test POST method
-POST http://{{baseUrl}}/test/abc/123/provider/1111.xml?options[page]=1&options[limit]=6&options[sort][metadata.latestReviewAt]=desc&options[sort][info.searchCount]=desc&options[sort][createdAt]=desc&populate[0]=__headquarters&populate[1]=__logoMedia HTTP/1.1
+POST http://{{baseUrl}}/apis/test/abc?options[page]=1&options[limit]=6&options[sort][metadata.latestReviewAt]=desc&options[sort][info.searchCount]=desc&options[sort][createdAt]=desc&populate[0]=__headquarters&populate[1]=__logoMedia HTTP/1.1
 content-type: application/json
 
 {

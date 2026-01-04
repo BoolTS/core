@@ -1,6 +1,6 @@
 import type { TArgumentsMetadataCollection } from "./arguments";
 
-import { argumentsKey, controllerHttpKey } from "../keys";
+import { argumentsKey, controllerHttpKey } from "../constants/keys";
 
 export type TRoute = {
     path: string;

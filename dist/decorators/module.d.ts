@@ -1,4 +1,4 @@
-import type { TConstructor } from "../ultils";
+import type { TConstructor } from "../utils";
 type TInstances = Array<new (...args: any[]) => any>;
 type TLoaders<TConfig extends {} = {}> = Record<string | symbol, (args: {
     config: TConfig;

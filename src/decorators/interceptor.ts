@@ -1,5 +1,5 @@
-import { interceptorKey } from "../keys";
-import type { TConstructor } from "../ultils";
+import { interceptorKey } from "../constants/keys";
+import type { TConstructor } from "../utils";
 
 export type TInterceptorMetadata = undefined;
 

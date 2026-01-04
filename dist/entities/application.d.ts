@@ -1,44 +1,21 @@
-import type { TContainerMetadata, TWebSocketEventHandlerMetadata } from "../decorators";
-import type { THttpMethods } from "../http";
-import type { ICustomValidator } from "../interfaces/customValidator";
-import type { TConstructor } from "../ultils";
-import { parse as QsParse } from "qs";
-type TParamsType = Record<string, string>;
-type TApplicationOptions<AllowedMethods extends Array<THttpMethods> = Array<THttpMethods>> = Required<{
-    port: number;
-}> & Partial<{
-    config: Record<string | symbol, any> | (() => Record<string | symbol, any>);
-    prefix: string;
-    debug: boolean;
-    log: Partial<{
-        methods: AllowedMethods;
-    }>;
-    queryParser: Parameters<typeof QsParse>[1];
-    static: Required<{
-        path: string;
-    }> & Partial<{
-        headers: TParamsType;
-        cacheTimeInSeconds: number;
-    }>;
-    cors: Partial<{
-        credentials: boolean;
-        origins: string | Array<string>;
-        methods: Array<THttpMethods>;
-        headers: Array<string>;
-    }>;
-}>;
-type TPreLaunch = undefined | Readonly<{
-    containerMetadata: TContainerMetadata;
-    modulesConverted: Array<TConstructor<unknown>>;
-    resolutedContainer?: Awaited<ReturnType<Application["containerResolution"]>>;
-    resolutedModules: Array<Awaited<ReturnType<Application["moduleResolution"]>>>;
-    webSocketsMap: Map<string, TWebSocketEventHandlerMetadata>;
-}>;
+import type { ICustomValidator, TApplicationOptions, TPreLaunch } from "../interfaces";
+import type { TConstructor } from "../utils";
 export declare class Application<TRootClass extends Object = Object> {
     #private;
     private readonly classConstructor;
     private readonly options;
     constructor(classConstructor: TConstructor<TRootClass>, options: TApplicationOptions);
+    /**
+     * Static method to initialize app and await all reloads.
+     * @param classConstructor
+     * @param options
+     * @returns
+     */
+    static create<TRootClass extends Object = Object>(classConstructor: TConstructor<TRootClass>, options: TApplicationOptions): Promise<Application<TRootClass>>;
+    /**
+     * Register app validator to execute all validations process in app.
+     * @param validator
+     */
     useValidator(validator: ICustomValidator): void;
     /**
      *
@@ -55,39 +32,6 @@ export declare class Application<TRootClass extends Object = Object> {
      * @param param0
      * @returns
      */
-    private containerResolution;
-    /**
-     *
-     * @param param0
-     * @returns
-     */
-    private moduleResolution;
-    /**
-     *
-     * @param data
-     * @param zodSchema
-     * @param argumentIndex
-     * @param funcName
-     * @returns
-     */
-    private argumentsResolution;
-    /**
-     *
-     * @param param0
-     * @returns
-     */
-    private initControllerInstance;
-    /**
-     *
-     * @param param0
-     * @returns
-     */
-    private initWebSocketInstance;
-    /**
-     *
-     * @param param0
-     * @returns
-     */
     private serializeResponse;
     /**
      *
@@ -95,18 +39,4 @@ export declare class Application<TRootClass extends Object = Object> {
      * @returns
      */
     private finalizeResponse;
-    /**
-     *
-     * @param param0
-     * @returns
-     */
-    private httpFetcher;
-    /**
-     *
-     * @param bun
-     * @param bool
-     * @returns
-     */
-    private webSocketFetcher;
 }
-export {};

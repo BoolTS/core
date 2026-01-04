@@ -1,12 +1,34 @@
+import type {
+    TCloseInterceptorHandlers,
+    TGuardHandlers,
+    TOpenInterceptorHandlers
+} from "../interfaces";
+
 import HttpRoute from "./httpRoute";
 
 export class HttpRouter {
     public readonly alias: string;
 
-    private _routes: Map<string, HttpRoute> = new Map();
+    #routes: Map<string, HttpRoute> = new Map();
+    #guardHandlers: TGuardHandlers;
+    #openInterceptorHandlers: TOpenInterceptorHandlers;
+    #closeInterceptorHandlers: TCloseInterceptorHandlers;
 
-    constructor({ alias }: { alias: string }) {
+    constructor({
+        alias,
+        guardHandlers: guards = [],
+        openInterceptorHandlers = [],
+        closeInterceptorHandlers = []
+    }: {
+        alias: string;
+        guardHandlers?: TGuardHandlers;
+        openInterceptorHandlers?: TOpenInterceptorHandlers;
+        closeInterceptorHandlers?: TCloseInterceptorHandlers;
+    }) {
         this.alias = this._thinAlias(alias);
+        this.#guardHandlers = guards;
+        this.#openInterceptorHandlers = openInterceptorHandlers;
+        this.#closeInterceptorHandlers = closeInterceptorHandlers;
     }
 
     /**
@@ -14,13 +36,13 @@ export class HttpRouter {
      * @param alias
      * @returns
      */
-    public route(alias: string) {
+    public route({ alias }: { alias: string }) {
         const thinAlias = this._thinAlias(`${this.alias}/${alias}`);
-        const route = this._routes.get(thinAlias);
+        const route = this.#routes.get(thinAlias);
         const newRoute = !route ? new HttpRoute({ alias: `${this.alias}/${alias}` }) : route;
 
         if (!route) {
-            this._routes.set(thinAlias, newRoute);
+            this.#routes.set(thinAlias, newRoute);
         }
 
         return newRoute;
@@ -41,7 +63,15 @@ export class HttpRouter {
      *
      */
     get routes() {
-        return this._routes;
+        return this.#routes;
+    }
+
+    get pipes() {
+        return Object.freeze({
+            guardHandlers: [...this.#guardHandlers],
+            openInterceptorHandlers: [...this.#openInterceptorHandlers],
+            closeInterceptorHandlers: [...this.#closeInterceptorHandlers]
+        });
     }
 }
 

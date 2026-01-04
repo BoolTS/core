@@ -1,6 +1,6 @@
-import type { TConstructor } from "../ultils";
+import type { TConstructor } from "../utils";
 
-import { injectableKey } from "../keys";
+import { injectableKey } from "../constants/keys";
 
 export const Injectable =
     <T extends TConstructor<Object>>() =>

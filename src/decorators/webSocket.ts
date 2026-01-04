@@ -1,9 +1,9 @@
 import type { Server } from "bun";
-import type { TConstructor } from "../ultils";
+import type { TConstructor } from "../utils";
 import type { TArgumentsMetadataCollection } from "./arguments";
 import type { TWebSocketEventMetadata } from "./webSocketEvent";
 
-import { webSocketEventKey, webSocketKey } from "../keys";
+import { webSocketEventKey, webSocketKey } from "../constants/keys";
 
 export type TWebSocketHttpRouteMetadata = {
     path: string;

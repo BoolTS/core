@@ -1,6 +1,6 @@
-import type { TConstructor } from "../ultils";
+import type { TConstructor } from "../utils";
 
-import { middlewareKey } from "../keys";
+import { middlewareKey } from "../constants/keys";
 
 export type TMiddlewareMetadata = undefined;
 

@@ -1,26 +1,46 @@
-import type { BunFile, Server } from "bun";
+import type { Server, ServerWebSocket, WebSocketHandler } from "bun";
 import type {
     TArgumentsMetadataCollection,
     TContainerMetadata,
     TControllerMetadata,
     TModuleMetadata,
     TWebSocketEventHandlerMetadata,
-    TWebSocketMetadata
+    TWebSocketMetadata,
+    TWebSocketUpgradeData
 } from "../decorators";
 import type { THttpMethods } from "../http";
-import type { IGuard, IInterceptor, IMiddleware } from "../interfaces";
-import type { ICustomValidator } from "../interfaces/customValidator";
-import type { TConstructor } from "../ultils";
+import type {
+    IController,
+    ICustomValidator,
+    IGuard,
+    IInterceptor,
+    IMiddleware,
+    TApplicationOptions,
+    TCloseInterceptorHandlers,
+    TCloseInterceptorsPipe,
+    TControllerPipe,
+    TEndMiddlewareHandlers,
+    TEndMiddlewaresPipe,
+    TGuardHandlers,
+    TGuardReturn,
+    TGuardsPipe,
+    TOpenInterceptorHandlers,
+    TOpenInterceptorsPipe,
+    TParamsType,
+    TPipesEnforcerUnion,
+    TPreLaunch,
+    TResolutedOptions,
+    TStartMiddlewareHandlers,
+    TStartMiddlewaresPipe,
+    TStaticMap,
+    TValidator
+} from "../interfaces";
+import type { TConstructor } from "../utils";
 
 import { ETimeUnit, add as TimeAdd } from "@bool-ts/date-time";
+import { serve } from "bun";
 import { parse as QsParse } from "qs";
-import {
-    HttpClientError,
-    httpMethods,
-    httpMethodsStandardization,
-    HttpServerError,
-    jsonErrorInfer
-} from "../http";
+import { Objects } from "../constants";
 import {
     argumentsKey,
     configKey,
@@ -47,8 +67,15 @@ import {
     webSocketKey,
     webSocketMessageArgsKey,
     webSocketServerArgsKey
-} from "../keys";
-import { ansiText, isWebSocketUpgrade } from "../ultils";
+} from "../constants/keys";
+import {
+    HttpClientError,
+    httpMethods,
+    httpMethodsStandardization,
+    HttpServerError,
+    jsonErrorInfer
+} from "../http";
+import { ansiText, inferStatusText, isWebSocketUpgrade } from "../utils";
 import { Context } from "./context";
 import { HttpRouter } from "./httpRouter";
 import { HttpRouterGroup } from "./httpRouterGroup";
@@ -58,110 +85,28 @@ import { WebSocketRoute } from "./webSocketRoute";
 import { WebSocketRouter } from "./webSocketRouter";
 import { WebSocketRouterGroup } from "./webSocketRouterGroup";
 
-type TParamsType = Record<string, string>;
-
-type TApplicationOptions<AllowedMethods extends Array<THttpMethods> = Array<THttpMethods>> =
-    Required<{
-        port: number;
-    }> &
-        Partial<{
-            config: Record<string | symbol, any> | (() => Record<string | symbol, any>);
-            prefix: string;
-            debug: boolean;
-            log: Partial<{
-                methods: AllowedMethods;
-            }>;
-            queryParser: Parameters<typeof QsParse>[1];
-            static: Required<{
-                path: string;
-            }> &
-                Partial<{
-                    headers: TParamsType;
-                    cacheTimeInSeconds: number;
-                }>;
-            cors: Partial<{
-                credentials: boolean;
-                origins: string | Array<string>;
-                methods: Array<THttpMethods>;
-                headers: Array<string>;
-            }>;
-        }>;
-
-type TGroupElementModel<
-    TFuncName extends keyof TClass,
-    TClass extends Object = Object,
-    TFunc = TClass[TFuncName]
-> = Readonly<{
-    class: TClass;
-    func: TFunc;
-    funcName: TFuncName;
-    argumentsMetadata: TArgumentsMetadataCollection;
-}>;
-
-type TStaticMap = Map<
-    string,
-    Readonly<{
-        expiredAt: Date;
-        file: BunFile;
-    }>
->;
-
-type TResolutedOptions = Readonly<{
-    allowLogsMethods: Array<THttpMethods>;
-    allowOrigins: Array<string>;
-    allowMethods: Array<THttpMethods>;
-    allowHeaders: Array<string>;
-    allowCredentials: boolean;
-    staticOption?: Required<{
-        path: string;
-    }> &
-        Partial<{
-            headers: TParamsType;
-            cacheTimeInSeconds: number;
-        }>;
-}>;
-
-type TWebSocketUpgradeData = {
-    pathname: string;
-    method: string;
-    query: Record<string, unknown>;
-};
-
-type TPreLaunch =
-    | undefined
-    | Readonly<{
-          containerMetadata: TContainerMetadata;
-          modulesConverted: Array<TConstructor<unknown>>;
-          resolutedContainer?: Awaited<ReturnType<Application["containerResolution"]>>;
-          resolutedModules: Array<Awaited<ReturnType<Application["moduleResolution"]>>>;
-          webSocketsMap: Map<string, TWebSocketEventHandlerMetadata>;
-      }>;
-
-type TValidator = undefined | ICustomValidator;
-
 export class Application<TRootClass extends Object = Object> {
     #preLaunchData: TPreLaunch;
-    #inputedConstructorKeys: Array<any>;
-    #injector = new Injector();
+    #type: "CONTAINER" | "MODULE";
     #staticMap: TStaticMap = new Map();
     #resolutedOptions: TResolutedOptions;
     #staticCacheTimeInSecond: number = 900;
     #customValidator: TValidator;
+    #globalContext: Context = new Context();
 
     constructor(
         private readonly classConstructor: TConstructor<TRootClass>,
         private readonly options: TApplicationOptions
     ) {
-        this.#inputedConstructorKeys = Reflect.getOwnMetadataKeys(classConstructor);
+        const metadataKeys = Reflect.getOwnMetadataKeys(classConstructor);
 
-        if (
-            !this.#inputedConstructorKeys.includes(containerKey) &&
-            !this.#inputedConstructorKeys.includes(moduleKey)
-        ) {
+        if (!metadataKeys.includes(containerKey) && !metadataKeys.includes(moduleKey)) {
             throw Error(
                 `Can not detect! ${classConstructor.name} class is not a container or module.`
             );
         }
+
+        this.#type = !metadataKeys.includes(containerKey) ? "MODULE" : "CONTAINER";
 
         this.#staticCacheTimeInSecond =
             typeof options.static?.cacheTimeInSeconds !== "number"
@@ -183,10 +128,51 @@ export class Application<TRootClass extends Object = Object> {
             allowHeaders:
                 !this.options.cors?.headers || this.options.cors.headers.includes("*")
                     ? ["*"]
-                    : this.options.cors.headers
+                    : this.options.cors.headers,
+            pipelineStrategy: (() => {
+                switch (options.pipelineStrategy?.type) {
+                    case "SIMPLE":
+                        return Object.freeze({
+                            startMiddlewares: "FIFO",
+                            endMiddlewares: options.pipelineStrategy.targets?.middlewares || "FIFO",
+                            openInterceptors: "FIFO",
+                            closeInterceptors:
+                                options.pipelineStrategy.targets?.interceptors || "FIFO"
+                        });
+
+                    default:
+                        return Object.freeze({
+                            startMiddlewares: "FIFO",
+                            endMiddlewares: "FIFO",
+                            openInterceptors: "FIFO",
+                            closeInterceptors: "FIFO"
+                        });
+                }
+            })()
         });
     }
 
+    /**
+     * Static method to initialize app and await all reloads.
+     * @param classConstructor
+     * @param options
+     * @returns
+     */
+    public static async create<TRootClass extends Object = Object>(
+        classConstructor: TConstructor<TRootClass>,
+        options: TApplicationOptions
+    ) {
+        const app = new Application(classConstructor, options);
+
+        await app.preLaunch();
+
+        return app;
+    }
+
+    /**
+     * Register app validator to execute all validations process in app.
+     * @param validator
+     */
     public useValidator(validator: ICustomValidator) {
         this.#customValidator = validator;
     }
@@ -200,69 +186,42 @@ export class Application<TRootClass extends Object = Object> {
             return this.#preLaunchData;
         }
 
-        const containerMetadata: TContainerMetadata = !this.#inputedConstructorKeys.includes(
-            containerKey
-        )
-            ? undefined
-            : Reflect.getOwnMetadata(containerKey, this.classConstructor);
-
-        const modulesConverted = !this.#inputedConstructorKeys.includes(containerKey)
-            ? [this.classConstructor]
-            : containerMetadata?.modules || [];
-
-        const resolutedContainer = !containerMetadata
-            ? undefined
-            : await this.containerResolution({
-                  containerClass: this.classConstructor,
-                  options: this.options,
-                  extendInjector: this.#injector
-              });
-
-        const resolutedModules = await Promise.all(
-            modulesConverted.map((moduleConverted) =>
-                this.moduleResolution({
-                    moduleClass: moduleConverted,
-                    options: this.options,
-                    extendInjector: !resolutedContainer
-                        ? this.#injector
-                        : resolutedContainer.injector
-                })
-            )
-        );
-
-        const prefixs = [
-            ...new Set(
-                resolutedModules.map(
-                    (availableModuleResolution) => availableModuleResolution.prefix
-                )
-            )
-        ];
-
-        if (prefixs.length !== resolutedModules.length) {
-            throw Error("Module prefix should be unique.");
-        }
+        const {
+            startMiddlewareHandlers,
+            endMiddlewareHandlers,
+            controllerRouterGroup,
+            webSocketHttpRouterGroup,
+            webSocketRouterGroup
+        } =
+            this.#type !== "MODULE"
+                ? await this.#containerResolver({
+                      containerClass: this.classConstructor,
+                      prefix: this.options.prefix,
+                      options: this.options
+                  })
+                : await this.#moduleResolver({
+                      moduleClass: this.classConstructor,
+                      prefix: this.options.prefix,
+                      options: this.options
+                  });
 
         const webSocketsMap = new Map<string, TWebSocketEventHandlerMetadata>();
+        const webSocketMap = webSocketRouterGroup.execute();
 
-        for (const availableModuleResolution of resolutedModules) {
-            const webSocketMap = availableModuleResolution.webSocketRouterGroup.execute();
-
-            for (const [key, metadata] of webSocketMap.entries()) {
-                webSocketsMap.set(key, metadata);
-            }
+        for (const [key, metadata] of webSocketMap.entries()) {
+            webSocketsMap.set(key, metadata);
         }
 
-        const preLaunchData = Object.freeze({
-            containerMetadata,
-            modulesConverted,
-            resolutedContainer,
-            resolutedModules,
-            webSocketsMap
+        this.#preLaunchData = Object.freeze({
+            startMiddlewareHandlers,
+            endMiddlewareHandlers,
+            controllerRouterGroup,
+            webSocketHttpRouterGroup,
+            webSocketRouterGroup,
+            webSocketsMap: webSocketsMap
         });
 
-        this.#preLaunchData = preLaunchData;
-
-        return preLaunchData;
+        return this.#preLaunchData;
     }
 
     /**
@@ -270,6 +229,22 @@ export class Application<TRootClass extends Object = Object> {
      * @param port
      */
     public async listen() {
+        const server = serve<TWebSocketUpgradeData>({
+            port: this.options.port,
+            fetch: this.#rootFetch.bind(this),
+            websocket: await this.#rootWebSocket.bind(this)()
+        });
+
+        this.#globalContext.set(webSocketServerArgsKey, server);
+    }
+
+    /**
+     *
+     * @param request
+     * @param server
+     * @returns
+     */
+    async #rootFetch(request: Request, server: Server<TWebSocketUpgradeData>) {
         const {
             allowLogsMethods,
             allowOrigins,
@@ -279,522 +254,641 @@ export class Application<TRootClass extends Object = Object> {
             staticOption
         } = this.#resolutedOptions;
 
-        const { resolutedContainer, resolutedModules, webSocketsMap } = await this.preLaunch();
+        const {
+            startMiddlewareHandlers,
+            endMiddlewareHandlers,
+            controllerRouterGroup,
+            webSocketHttpRouterGroup
+        } = await this.preLaunch();
 
-        const server = Bun.serve<TWebSocketUpgradeData>({
-            port: this.options.port,
-            fetch: async (request, server) => {
-                const start = performance.now(),
-                    url = new URL(request.url),
-                    query = QsParse(url.searchParams.toString(), this.options.queryParser),
-                    origin = request.headers.get("origin") || "*",
-                    method = request.method.toUpperCase(),
-                    responseHeaders = new Headers();
+        const start = performance.now(),
+            url = new URL(request.url),
+            query = QsParse(url.searchParams.toString(), this.options.queryParser),
+            origin = request.headers.get("origin") || "*",
+            method = request.method.toUpperCase(),
+            responseHeaders = new Headers();
 
-                let context = new Context()
-                    .setOptions({ isStatic: true })
-                    .set(httpServerArgsKey, server)
-                    .set(requestArgsKey, request)
-                    .set(requestHeaderArgsKey, request.headers)
-                    .set(responseHeadersArgsKey, responseHeaders)
-                    .set(queryArgsKey, query);
+        try {
+            const context = new Context()
+                .setOptions({ isStatic: true })
+                .set(httpServerArgsKey, server)
+                .set(requestArgsKey, request)
+                .set(requestHeaderArgsKey, request.headers)
+                .set(responseHeadersArgsKey, responseHeaders)
+                .set(queryArgsKey, query);
 
-                try {
-                    const validateRequestMethod = httpMethodsStandardization(method);
+            [
+                ...(!allowCredentials
+                    ? []
+                    : [
+                          {
+                              key: "Access-Control-Allow-Credentials",
+                              value: "true"
+                          }
+                      ]),
+                {
+                    key: "Access-Control-Allow-Origin",
+                    value: allowOrigins.includes("*")
+                        ? "*"
+                        : !allowOrigins.includes(origin)
+                        ? allowOrigins[0]
+                        : origin
+                },
+                { key: "Access-Control-Allow-Methods", value: allowMethods.join(", ") },
+                { key: "Access-Control-Allow-Headers", value: allowHeaders.join(", ") }
+            ].forEach(({ key, value }) => responseHeaders.set(key, value));
 
-                    if (!validateRequestMethod) {
-                        return this.finalizeResponse(
-                            new Response(
-                                JSON.stringify({
-                                    httpCode: 405,
-                                    message: "Method Not Allowed.",
-                                    data: undefined
-                                }),
-                                {
-                                    status: 405,
-                                    statusText: "Method Not Allowed.",
-                                    headers: responseHeaders
-                                }
-                            )
-                        );
+            const validateRequestMethod = httpMethodsStandardization(method);
+
+            if (!validateRequestMethod || !allowMethods.includes(method)) {
+                return this.finalizeResponse(
+                    new Response(undefined, {
+                        ...Objects.clientErrorStatuses.METHOD_NOT_ALLOWED,
+                        headers: responseHeaders
+                    })
+                );
+            }
+
+            const isUpgradable = isWebSocketUpgrade(request);
+
+            if (isUpgradable) {
+                return await this.#webSocketFetcher({
+                    request: request,
+                    server: server,
+                    context: context,
+                    url: url,
+                    query: query,
+                    method: method,
+                    responseHeaders: responseHeaders,
+                    httpRouterGroup: webSocketHttpRouterGroup,
+                    startMiddlewareHandlers: startMiddlewareHandlers,
+                    endMiddlewareHandlers: endMiddlewareHandlers
+                });
+            }
+
+            if (request.method.toUpperCase() === "OPTIONS") {
+                return this.finalizeResponse(
+                    allowOrigins.includes("*") || allowOrigins.includes(origin)
+                        ? new Response(undefined, {
+                              ...Objects.successfulStatuses.NO_CONTENT,
+                              headers: responseHeaders
+                          })
+                        : new Response(undefined, {
+                              ...Objects.clientErrorStatuses.EXPECTATION_FAILED,
+                              headers: responseHeaders
+                          })
+                );
+            }
+
+            if (staticOption) {
+                const staticResult = await this.#staticFetcher({
+                    url: url,
+                    responseHeaders: responseHeaders,
+                    path: staticOption.path,
+                    headers: staticOption.headers,
+                    cacheTimeInSeconds: staticOption.cacheTimeInSeconds
+                });
+
+                if (staticResult instanceof Response) {
+                    return staticResult;
+                }
+            }
+
+            return await this.#httpFetcher({
+                url: url,
+                method: method,
+                context: context,
+                httpRouterGroup: controllerRouterGroup,
+                startMiddlewareHandlers: startMiddlewareHandlers,
+                endMiddlewareHandlers: endMiddlewareHandlers
+            });
+        } catch (error) {
+            this.options.debug && console.error(error);
+
+            return this.finalizeResponse(jsonErrorInfer(error, responseHeaders));
+        } finally {
+            if (allowLogsMethods) {
+                const end = performance.now();
+                const pathname = ansiText(url.pathname, { color: "blue" });
+                const convertedPID = `${Bun.color("yellow", "ansi")}${process.pid}`;
+                const convertedMethod = ansiText(request.method, {
+                    color: "yellow",
+                    backgroundColor: "blue"
+                });
+                const convertedReqIp = ansiText(
+                    `${
+                        request.headers.get("x-forwarded-for") ||
+                        request.headers.get("x-real-ip") ||
+                        server.requestIP(request)?.address ||
+                        "<Unknown>"
+                    }`,
+                    {
+                        color: "yellow"
                     }
-
-                    const isUpgradable = isWebSocketUpgrade(request);
-
-                    let collection:
-                        | undefined
-                        | Required<{
-                              route: NonNullable<ReturnType<HttpRouterGroup["find"]>>;
-                              resolution: NonNullable<
-                                  Awaited<ReturnType<Application<TRootClass>["moduleResolution"]>>
-                              >;
-                          }>;
-
-                    if (isUpgradable) {
-                        for (const availableModuleResolution of resolutedModules) {
-                            const routeResult =
-                                availableModuleResolution.webSocketHttpRouterGroup.find({
-                                    pathname: url.pathname,
-                                    method: method
-                                });
-
-                            if (routeResult) {
-                                collection = Object.freeze({
-                                    route: routeResult,
-                                    resolution: availableModuleResolution
-                                });
-                                break;
-                            }
-                        }
-
-                        if (!collection) {
-                            return this.finalizeResponse(
-                                new Response(
-                                    JSON.stringify({
-                                        httpCode: 404,
-                                        message: "Route not found.",
-                                        data: undefined
-                                    }),
-                                    {
-                                        status: 404,
-                                        statusText: "Not found.",
-                                        headers: responseHeaders
-                                    }
-                                )
-                            );
-                        }
-
-                        const upgradeResult = await this.webSocketFetcher(
-                            {
-                                request,
-                                server
-                            },
-                            {
-                                query: query,
-                                responseHeaders: responseHeaders,
-                                route: collection.route,
-                                moduleResolution: collection.resolution
-                            }
-                        );
-
-                        return upgradeResult instanceof Response ? upgradeResult : undefined;
+                );
+                const convertedTime = ansiText(
+                    `${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`,
+                    {
+                        color: "yellow",
+                        backgroundColor: "blue"
                     }
+                );
 
-                    [
-                        ...(!allowCredentials
-                            ? []
-                            : [
-                                  {
-                                      key: "Access-Control-Allow-Credentials",
-                                      value: "true"
-                                  }
-                              ]),
-                        {
-                            key: "Access-Control-Allow-Origin",
-                            value: allowOrigins.includes("*")
-                                ? "*"
-                                : !allowOrigins.includes(origin)
-                                ? allowOrigins[0]
-                                : origin
-                        },
-                        { key: "Access-Control-Allow-Methods", value: allowMethods.join(", ") },
-                        { key: "Access-Control-Allow-Headers", value: allowHeaders.join(", ") }
-                    ].forEach(({ key, value }) => responseHeaders.set(key, value));
+                allowLogsMethods.includes(
+                    request.method.toUpperCase() as (typeof allowLogsMethods)[number]
+                ) &&
+                    console.info(
+                        `PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${pathname} - Time: ${convertedTime}`
+                    );
+            }
+        }
+    }
 
-                    if (!allowMethods.includes(method)) {
-                        return this.finalizeResponse(
+    /**
+     *
+     * @returns
+     */
+    async #rootWebSocket<T extends TWebSocketUpgradeData = TWebSocketUpgradeData>(): Promise<
+        WebSocketHandler<T>
+    > {
+        const { webSocketsMap } = await this.preLaunch();
+
+        return {
+            open: (connection: ServerWebSocket<T>) => {
+                const pathnameKey = `${connection.data.pathname}:::open`;
+                const handlerMetadata = webSocketsMap.get(pathnameKey);
+
+                if (!handlerMetadata) {
+                    return;
+                }
+
+                const argumentsMetadata = handlerMetadata.arguments || {};
+                const args: Array<unknown> = [];
+
+                for (const [, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                    switch (argumentMetadata.type) {
+                        case webSocketConnectionArgsKey:
+                            args[argumentMetadata.index] = connection;
+                            break;
+                        case webSocketServerArgsKey:
+                            args[argumentMetadata.index] =
+                                this.#globalContext.get(webSocketServerArgsKey);
+                            break;
+                    }
+                }
+
+                handlerMetadata.descriptor.value(...args);
+            },
+            close: (connection, code, reason) => {
+                const pathnameKey = `${connection.data.pathname}:::close`;
+                const handlerMetadata = webSocketsMap.get(pathnameKey);
+
+                if (!handlerMetadata) {
+                    return;
+                }
+
+                const argumentsMetadata = handlerMetadata.arguments || {};
+                const args: Array<unknown> = [];
+
+                for (const [, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                    switch (argumentMetadata.type) {
+                        case webSocketConnectionArgsKey:
+                            args[argumentMetadata.index] = connection;
+                            break;
+                        case webSocketCloseCodeArgsKey:
+                            args[argumentMetadata.index] = code;
+                            break;
+                        case webSocketCloseReasonArgsKey:
+                            args[argumentMetadata.index] = reason;
+                            break;
+                        case webSocketServerArgsKey:
+                            args[argumentMetadata.index] =
+                                this.#globalContext.get(webSocketServerArgsKey);
+                            break;
+                    }
+                }
+
+                handlerMetadata.descriptor.value(...args);
+            },
+            message: (connection: ServerWebSocket<T>, message) => {
+                const pathnameKey = `${connection.data.pathname}:::message`;
+                const handlerMetadata = webSocketsMap.get(pathnameKey);
+
+                if (!handlerMetadata) {
+                    return;
+                }
+
+                const argumentsMetadata = handlerMetadata.arguments || {};
+                const args: Array<unknown> = [];
+
+                for (const [, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                    switch (argumentMetadata.type) {
+                        case webSocketConnectionArgsKey:
+                            args[argumentMetadata.index] = connection;
+                            break;
+                        case webSocketMessageArgsKey:
+                            args[argumentMetadata.index] = message;
+                            break;
+                        case webSocketServerArgsKey:
+                            args[argumentMetadata.index] =
+                                this.#globalContext.get(webSocketServerArgsKey);
+                            break;
+                    }
+                }
+
+                handlerMetadata.descriptor.value(...args);
+            },
+            drain: (connection: ServerWebSocket<T>) => {
+                const pathnameKey = `${connection.data.pathname}:::drain`;
+                const handlerMetadata = webSocketsMap.get(pathnameKey);
+
+                if (!handlerMetadata) {
+                    return;
+                }
+
+                const argumentsMetadata = handlerMetadata.arguments || {};
+                const args: Array<unknown> = [];
+
+                for (const [, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                    switch (argumentMetadata.type) {
+                        case webSocketConnectionArgsKey:
+                            args[argumentMetadata.index] = connection;
+                            break;
+                        case webSocketServerArgsKey:
+                            args[argumentMetadata.index] =
+                                this.#globalContext.get(webSocketServerArgsKey);
+                            break;
+                    }
+                }
+
+                handlerMetadata.descriptor.value(...args);
+            },
+            ping: (connection: ServerWebSocket<T>, data) => {
+                const pathnameKey = `${connection.data.pathname}:::ping`;
+                const handlerMetadata = webSocketsMap.get(pathnameKey);
+
+                if (!handlerMetadata) {
+                    return;
+                }
+
+                const argumentsMetadata = handlerMetadata.arguments || {};
+                const args: Array<unknown> = [];
+
+                for (const [, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                    switch (argumentMetadata.type) {
+                        case webSocketConnectionArgsKey:
+                            args[argumentMetadata.index] = connection;
+                            break;
+                        case webSocketMessageArgsKey:
+                            args[argumentMetadata.index] = data;
+                            break;
+                        case webSocketServerArgsKey:
+                            args[argumentMetadata.index] =
+                                this.#globalContext.get(webSocketServerArgsKey);
+                            break;
+                    }
+                }
+
+                handlerMetadata.descriptor.value(...args);
+            },
+            pong: (connection: ServerWebSocket<T>, data) => {
+                const pathnameKey = `${connection.data.pathname}:::pong`;
+                const handlerMetadata = webSocketsMap.get(pathnameKey);
+
+                if (!handlerMetadata) {
+                    return;
+                }
+
+                const argumentsMetadata = handlerMetadata.arguments || {};
+                const args: Array<unknown> = [];
+
+                for (const [, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                    switch (argumentMetadata.type) {
+                        case webSocketConnectionArgsKey:
+                            args[argumentMetadata.index] = connection;
+                            break;
+                        case webSocketMessageArgsKey:
+                            args[argumentMetadata.index] = data;
+                            break;
+                        case webSocketServerArgsKey:
+                            args[argumentMetadata.index] =
+                                this.#globalContext.get(webSocketServerArgsKey);
+                            break;
+                    }
+                }
+
+                handlerMetadata.descriptor.value(...args);
+            }
+        } satisfies WebSocketHandler<T>;
+    }
+
+    /**
+     *
+     * @param param0
+     * @returns
+     */
+    async #webSocketFetcher({
+        request,
+        server,
+        context,
+        url,
+        query,
+        method,
+        responseHeaders,
+        httpRouterGroup,
+        startMiddlewareHandlers,
+        endMiddlewareHandlers
+    }: Required<{
+        server: Server<TWebSocketUpgradeData>;
+        request: Request;
+        context: Context;
+        url: URL;
+        query: ReturnType<typeof QsParse>;
+        method: THttpMethods;
+        responseHeaders: Headers;
+        httpRouterGroup: HttpRouterGroup;
+        startMiddlewareHandlers: TStartMiddlewareHandlers;
+        endMiddlewareHandlers: TEndMiddlewareHandlers;
+    }>) {
+        try {
+            await this.#pipesEnforcer({
+                type: "START_MIDDLEWARES",
+                handlers: startMiddlewareHandlers,
+                context: context
+            });
+
+            const routeResult = httpRouterGroup.find({
+                pathname: url.pathname,
+                method: method
+            });
+
+            let upgradeResult: Response | undefined = this.finalizeResponse(
+                new Response(undefined, {
+                    ...Objects.serverErrorStatuses.INTERNAL_SERVER_ERROR,
+                    headers: responseHeaders
+                })
+            );
+
+            if (routeResult) {
+                const authResult = await this.#pipesEnforcer({
+                    type: "GUARDS",
+                    handlers: routeResult.guardHandlers,
+                    context: context
+                });
+
+                if (authResult !== true) {
+                    upgradeResult = this.finalizeResponse(
+                        new Response(undefined, {
+                            ...(!authResult || authResult === "UNAUTHORIZATION"
+                                ? Objects.clientErrorStatuses.UNAUTHORIZED
+                                : Objects.clientErrorStatuses.FORBIDDEN),
+                            headers: responseHeaders
+                        })
+                    );
+                } else {
+                    context.set(routeModelArgsKey, routeResult.model);
+
+                    await this.#pipesEnforcer({
+                        type: "OPEN_INTERCEPTORS",
+                        handlers: routeResult.openInterceptorHandlers,
+                        context: context
+                    });
+
+                    const upgradeExecution = await routeResult.model.func(
+                        ...[server, request, query]
+                    );
+
+                    await this.#pipesEnforcer({
+                        type: "CLOSE_INTERCEPTORS",
+                        handlers: routeResult.closeInterceptorHandlers,
+                        context: context
+                    });
+
+                    if (typeof upgradeExecution !== "boolean" || !upgradeExecution) {
+                        upgradeResult = this.finalizeResponse(
                             new Response(undefined, {
-                                status: 405,
-                                statusText: "Method Not Allowed.",
+                                ...Objects.serverErrorStatuses.INTERNAL_SERVER_ERROR,
                                 headers: responseHeaders
                             })
                         );
-                    }
-
-                    if (request.method.toUpperCase() === "OPTIONS") {
-                        return this.finalizeResponse(
-                            allowOrigins.includes("*") || allowOrigins.includes(origin)
-                                ? new Response(undefined, {
-                                      status: 204,
-                                      statusText: "No Content.",
-                                      headers: responseHeaders
-                                  })
-                                : new Response(undefined, {
-                                      status: 417,
-                                      statusText: "Expectation Failed.",
-                                      headers: responseHeaders
-                                  })
-                        );
-                    }
-
-                    if (staticOption) {
-                        const { path, headers } = staticOption;
-                        const pathname = `${path}/${url.pathname}`;
-                        const cachedFile = this.#staticMap.get(pathname);
-
-                        if (!cachedFile) {
-                            const file = Bun.file(pathname);
-                            const isFileExists = await file.exists();
-
-                            if (isFileExists) {
-                                if (headers) {
-                                    for (const [key, value] of Object.entries(headers)) {
-                                        responseHeaders.set(key, value);
-                                    }
-                                }
-
-                                responseHeaders.set("Content-Type", file.type);
-
-                                return this.finalizeResponse(
-                                    new Response(await file.arrayBuffer(), {
-                                        status: 200,
-                                        statusText: "SUCCESS",
-                                        headers: responseHeaders
-                                    })
-                                );
-                            }
-                        } else {
-                            const isExpired = new Date() > cachedFile.expiredAt;
-
-                            if (isExpired) {
-                                this.#staticMap.delete(pathname);
-                            }
-
-                            const file = !isExpired ? cachedFile.file : Bun.file(pathname);
-                            const isFileExists = await file.exists();
-
-                            if (isFileExists) {
-                                this.#staticMap.set(
-                                    pathname,
-                                    Object.freeze({
-                                        expiredAt: TimeAdd(
-                                            new Date(),
-                                            this.#staticCacheTimeInSecond,
-                                            ETimeUnit.seconds
-                                        ),
-                                        file: file
-                                    })
-                                );
-
-                                if (headers) {
-                                    for (const [key, value] of Object.entries(headers)) {
-                                        responseHeaders.set(key, value);
-                                    }
-                                }
-
-                                responseHeaders.set("Content-Type", file.type);
-
-                                return this.finalizeResponse(
-                                    new Response(await file.arrayBuffer(), {
-                                        status: 200,
-                                        statusText: "SUCCESS",
-                                        headers: responseHeaders
-                                    })
-                                );
-                            }
-                        }
-                    }
-
-                    for (const availableModuleResolution of resolutedModules) {
-                        const routeResult = availableModuleResolution.controllerRouterGroup.find({
-                            pathname: url.pathname,
-                            method: method
-                        });
-
-                        if (routeResult) {
-                            collection = Object.freeze({
-                                route: routeResult,
-                                resolution: availableModuleResolution
-                            });
-                            break;
-                        }
-                    }
-
-                    if (resolutedContainer) {
-                        const { context: newContext } = await this.httpFetcher({
-                            context: context,
-                            route: collection?.route,
-                            resolutedMap: {
-                                injector: resolutedContainer.injector,
-                                startMiddlewareGroup: resolutedContainer.startMiddlewareGroup,
-                                guardGroup: resolutedContainer.guardGroup
-                            },
-                            options: {
-                                isContainer: true
-                            }
-                        });
-
-                        context = newContext;
-                    }
-
-                    if (!collection) {
-                        context
-                            .setOptions({ isStatic: false })
-                            .set(responseStatusArgsKey, 404)
-                            .set(responseStatusTextArgsKey, "Not found.")
-                            .set(
-                                responseBodyArgsKey,
-                                JSON.stringify({
-                                    httpCode: 404,
-                                    message: "Route not found.",
-                                    data: undefined
-                                })
-                            );
                     } else {
-                        const { context: newContext } = await this.httpFetcher({
-                            context: context,
-                            route: collection.route,
-                            resolutedMap: collection.resolution
-                        });
-
-                        context = newContext;
-                    }
-
-                    if (resolutedContainer) {
-                        const { context: newContext } = await this.httpFetcher({
-                            context: context,
-                            resolutedMap: {
-                                injector: resolutedContainer.injector,
-                                endMiddlewareGroup: resolutedContainer.endMiddlewareGroup
-                            },
-                            options: {
-                                isContainer: true
-                            }
-                        });
-
-                        context = newContext;
-                    }
-
-                    const latestResponseHeaders =
-                            context.get<Headers | null | undefined>(responseHeadersArgsKey, {
-                                isStatic: true
-                            }) || new Headers(),
-                        latestResponseBody =
-                            context.get<unknown>(responseBodyArgsKey, { isStatic: false }) ||
-                            undefined,
-                        latestResponseStatus = context.get<unknown>(responseStatusArgsKey, {
-                            isStatic: false
-                        }),
-                        latestResponseStatusText = context.get<unknown>(responseStatusTextArgsKey, {
-                            isStatic: false
-                        });
-
-                    return this.serializeResponse({
-                        status:
-                            typeof latestResponseStatus !== "number"
-                                ? method === "POST"
-                                    ? 201
-                                    : undefined
-                                : latestResponseStatus,
-                        statusText:
-                            typeof latestResponseStatusText !== "string"
-                                ? undefined
-                                : latestResponseStatusText,
-                        headers: latestResponseHeaders,
-                        data: latestResponseBody
-                    });
-                } catch (error) {
-                    this.options.debug && console.error(error);
-
-                    return this.finalizeResponse(jsonErrorInfer(error, responseHeaders));
-                } finally {
-                    if (allowLogsMethods) {
-                        const end = performance.now();
-                        const pathname = ansiText(url.pathname, { color: "blue" });
-                        const convertedPID = `${Bun.color("yellow", "ansi")}${process.pid}`;
-                        const convertedMethod = ansiText(request.method, {
-                            color: "yellow",
-                            backgroundColor: "blue"
-                        });
-                        const convertedReqIp = ansiText(
-                            `${
-                                request.headers.get("x-forwarded-for") ||
-                                request.headers.get("x-real-ip") ||
-                                server.requestIP(request)?.address ||
-                                "<Unknown>"
-                            }`,
-                            {
-                                color: "yellow"
-                            }
-                        );
-                        const convertedTime = ansiText(
-                            `${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`,
-                            {
-                                color: "yellow",
-                                backgroundColor: "blue"
-                            }
-                        );
-
-                        allowLogsMethods.includes(
-                            request.method.toUpperCase() as (typeof allowLogsMethods)[number]
-                        ) &&
-                            console.info(
-                                `PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${pathname} - Time: ${convertedTime}`
-                            );
+                        upgradeResult = undefined;
                     }
                 }
-            },
-            websocket: {
-                open: (connection) => {
-                    const pathnameKey = `${connection.data.pathname}:::open`;
-                    const handlerMetadata = webSocketsMap.get(pathnameKey);
-
-                    if (!handlerMetadata) {
-                        return;
-                    }
-
-                    const argumentsMetadata = handlerMetadata.arguments || {};
-                    const args: Array<unknown> = [];
-
-                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
-                        switch (argumentMetadata.type) {
-                            case webSocketConnectionArgsKey:
-                                args[argumentMetadata.index] = connection;
-                                break;
-                            case webSocketServerArgsKey:
-                                args[argumentMetadata.index] = server;
-                                break;
-                        }
-                    }
-
-                    handlerMetadata.descriptor.value(...args);
-                },
-                close: (connection, code, reason) => {
-                    const pathnameKey = `${connection.data.pathname}:::close`;
-                    const handlerMetadata = webSocketsMap.get(pathnameKey);
-
-                    if (!handlerMetadata) {
-                        return;
-                    }
-
-                    const argumentsMetadata = handlerMetadata.arguments || {};
-                    const args: Array<unknown> = [];
-
-                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
-                        switch (argumentMetadata.type) {
-                            case webSocketConnectionArgsKey:
-                                args[argumentMetadata.index] = connection;
-                                break;
-                            case webSocketServerArgsKey:
-                                args[argumentMetadata.index] = server;
-                                break;
-                            case webSocketCloseCodeArgsKey:
-                                args[argumentMetadata.index] = code;
-                                break;
-                            case webSocketCloseReasonArgsKey:
-                                args[argumentMetadata.index] = reason;
-                                break;
-                        }
-                    }
-
-                    handlerMetadata.descriptor.value(...args);
-                },
-                message: (connection, message) => {
-                    const pathnameKey = `${connection.data.pathname}:::message`;
-                    const handlerMetadata = webSocketsMap.get(pathnameKey);
-
-                    if (!handlerMetadata) {
-                        return;
-                    }
-
-                    const argumentsMetadata = handlerMetadata.arguments || {};
-                    const args: Array<unknown> = [];
-
-                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
-                        switch (argumentMetadata.type) {
-                            case webSocketConnectionArgsKey:
-                                args[argumentMetadata.index] = connection;
-                                break;
-                            case webSocketMessageArgsKey:
-                                args[argumentMetadata.index] = message;
-                                break;
-                            case webSocketServerArgsKey:
-                                args[argumentMetadata.index] = server;
-                                break;
-                        }
-                    }
-
-                    handlerMetadata.descriptor.value(...args);
-                },
-                drain: (connection) => {
-                    const pathnameKey = `${connection.data.pathname}:::drain`;
-                    const handlerMetadata = webSocketsMap.get(pathnameKey);
-
-                    if (!handlerMetadata) {
-                        return;
-                    }
-
-                    const argumentsMetadata = handlerMetadata.arguments || {};
-                    const args: Array<unknown> = [];
-
-                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
-                        switch (argumentMetadata.type) {
-                            case webSocketConnectionArgsKey:
-                                args[argumentMetadata.index] = connection;
-                                break;
-                            case webSocketServerArgsKey:
-                                args[argumentMetadata.index] = server;
-                                break;
-                        }
-                    }
-
-                    handlerMetadata.descriptor.value(...args);
-                },
-                ping: (connection, data) => {
-                    const pathnameKey = `${connection.data.pathname}:::ping`;
-                    const handlerMetadata = webSocketsMap.get(pathnameKey);
-
-                    if (!handlerMetadata) {
-                        return;
-                    }
-
-                    const argumentsMetadata = handlerMetadata.arguments || {};
-                    const args: Array<unknown> = [];
-
-                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
-                        switch (argumentMetadata.type) {
-                            case webSocketConnectionArgsKey:
-                                args[argumentMetadata.index] = connection;
-                                break;
-                            case webSocketServerArgsKey:
-                                args[argumentMetadata.index] = server;
-                                break;
-                            case webSocketMessageArgsKey:
-                                args[argumentMetadata.index] = data;
-                                break;
-                        }
-                    }
-
-                    handlerMetadata.descriptor.value(...args);
-                },
-                pong: (connection, data) => {
-                    const pathnameKey = `${connection.data.pathname}:::pong`;
-                    const handlerMetadata = webSocketsMap.get(pathnameKey);
-
-                    if (!handlerMetadata) {
-                        return;
-                    }
-
-                    const argumentsMetadata = handlerMetadata.arguments || {};
-                    const args: Array<unknown> = [];
-
-                    for (const [_key, argumentMetadata] of Object.entries(argumentsMetadata)) {
-                        switch (argumentMetadata.type) {
-                            case webSocketConnectionArgsKey:
-                                args[argumentMetadata.index] = connection;
-                                break;
-                            case webSocketServerArgsKey:
-                                args[argumentMetadata.index] = server;
-                                break;
-                            case webSocketMessageArgsKey:
-                                args[argumentMetadata.index] = data;
-                                break;
-                        }
-                    }
-
-                    handlerMetadata.descriptor.value(...args);
-                }
+            } else {
             }
+
+            await this.#pipesEnforcer({
+                type: "END_MIDDLEWARES",
+                handlers: endMiddlewareHandlers,
+                context: context
+            });
+
+            return upgradeResult;
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
+
+    /**
+     *
+     * @param param0
+     * @returns
+     */
+    async #staticFetcher({
+        url,
+        path,
+        headers,
+        cacheTimeInSeconds,
+        responseHeaders
+    }: {
+        url: URL;
+        path: string;
+        responseHeaders: Headers;
+        headers?: TParamsType;
+        cacheTimeInSeconds?: number;
+    }) {
+        const pathname = `${path}/${url.pathname}`;
+        const cachedFile = this.#staticMap.get(pathname);
+
+        if (!cachedFile) {
+            const file = Bun.file(pathname);
+            const isFileExists = await file.exists();
+
+            if (isFileExists) {
+                if (headers) {
+                    for (const [key, value] of Object.entries(headers)) {
+                        responseHeaders.set(key, value);
+                    }
+                }
+
+                responseHeaders.set("Content-Type", file.type);
+
+                return this.finalizeResponse(
+                    new Response(await file.arrayBuffer(), {
+                        ...Objects.successfulStatuses.OK,
+                        headers: responseHeaders
+                    })
+                );
+            }
+        } else {
+            const isExpired = new Date() > cachedFile.expiredAt;
+
+            if (isExpired) {
+                this.#staticMap.delete(pathname);
+            }
+
+            const file = !isExpired ? cachedFile.file : Bun.file(pathname);
+            const isFileExists = await file.exists();
+
+            if (isFileExists) {
+                this.#staticMap.set(
+                    pathname,
+                    Object.freeze({
+                        expiredAt: TimeAdd(
+                            new Date(),
+                            this.#staticCacheTimeInSecond,
+                            ETimeUnit.seconds
+                        ),
+                        file: file
+                    })
+                );
+
+                if (headers) {
+                    for (const [key, value] of Object.entries(headers)) {
+                        responseHeaders.set(key, value);
+                    }
+                }
+
+                responseHeaders.set("Content-Type", file.type);
+
+                return this.finalizeResponse(
+                    new Response(await file.arrayBuffer(), {
+                        ...Objects.successfulStatuses.OK,
+                        headers: responseHeaders
+                    })
+                );
+            }
+        }
+    }
+
+    /**
+     *
+     * @param param0
+     * @returns
+     */
+    async #httpFetcher({
+        context,
+        url,
+        method,
+        httpRouterGroup,
+        startMiddlewareHandlers = [],
+        endMiddlewareHandlers = []
+    }: {
+        context: Context;
+        url: URL;
+        method: THttpMethods;
+        httpRouterGroup: HttpRouterGroup;
+        startMiddlewareHandlers?: TStartMiddlewareHandlers;
+        endMiddlewareHandlers?: TEndMiddlewareHandlers;
+    }) {
+        const contextOptions = { isStatic: true };
+
+        context.setOptions(contextOptions);
+
+        await this.#pipesEnforcer({
+            type: "START_MIDDLEWARES",
+            handlers: startMiddlewareHandlers,
+            context: context
+        });
+
+        const routeResult = httpRouterGroup.find({
+            pathname: url.pathname,
+            method: method
+        });
+
+        if (!routeResult) {
+            context
+                .setOptions({ isStatic: false })
+                .set(responseStatusArgsKey, Objects.clientErrorStatuses.NOT_FOUND.status)
+                .set(responseStatusTextArgsKey, Objects.clientErrorStatuses.NOT_FOUND.statusText)
+                .set(responseBodyArgsKey, undefined);
+        } else {
+            context.set(routeModelArgsKey, routeResult.model);
+
+            const authResult = await this.#pipesEnforcer({
+                type: "GUARDS",
+                handlers: routeResult.guardHandlers,
+                context: context
+            });
+
+            if (authResult !== true) {
+                context
+                    .setOptions({ isStatic: false })
+                    .set(
+                        responseStatusArgsKey,
+                        !authResult || authResult === "UNAUTHORIZATION"
+                            ? Objects.clientErrorStatuses.UNAUTHORIZED.status
+                            : Objects.clientErrorStatuses.FORBIDDEN.status
+                    )
+                    .set(
+                        responseStatusTextArgsKey,
+                        !authResult || authResult === "UNAUTHORIZATION"
+                            ? Objects.clientErrorStatuses.UNAUTHORIZED.statusText
+                            : Objects.clientErrorStatuses.FORBIDDEN.statusText
+                    )
+                    .set(responseBodyArgsKey, undefined);
+            } else {
+                await this.#pipesEnforcer({
+                    type: "OPEN_INTERCEPTORS",
+                    handlers: routeResult.openInterceptorHandlers,
+                    context: context
+                });
+
+                await this.#pipesEnforcer({
+                    type: "CONTROLLER",
+                    context: context
+                });
+
+                await this.#pipesEnforcer({
+                    type: "CLOSE_INTERCEPTORS",
+                    handlers: routeResult.closeInterceptorHandlers,
+                    context: context
+                });
+            }
+        }
+
+        await this.#pipesEnforcer({
+            type: "END_MIDDLEWARES",
+            handlers: endMiddlewareHandlers,
+            context: context
+        });
+
+        const latestResponseHeaders =
+                context.get<Headers | null | undefined>(responseHeadersArgsKey, {
+                    isStatic: true
+                }) || new Headers(),
+            latestResponseBody =
+                context.get<unknown>(responseBodyArgsKey, { isStatic: false }) || undefined,
+            latestResponseStatus = context.get<unknown>(responseStatusArgsKey, {
+                isStatic: false
+            }),
+            latestResponseStatusText = context.get<unknown>(responseStatusTextArgsKey, {
+                isStatic: false
+            });
+
+        return this.serializeResponse({
+            status:
+                typeof latestResponseStatus !== "number"
+                    ? method === "POST"
+                        ? 201
+                        : undefined
+                    : latestResponseStatus,
+            statusText:
+                typeof latestResponseStatusText !== "string" ? undefined : latestResponseStatusText,
+            headers: latestResponseHeaders,
+            data: latestResponseBody
         });
     }
 
@@ -803,20 +897,38 @@ export class Application<TRootClass extends Object = Object> {
      * @param param0
      * @returns
      */
-    private async containerResolution({
+    async #containerResolver({
+        prefix = "",
+        startMiddlewareHandlers = [],
+        endMiddlewareHandlers = [],
+        guardHandlers = [],
+        openInterceptorHandlers = [],
+        closeInterceptorHandlers = [],
+        controllerRouterGroup = new HttpRouterGroup(),
+        webSocketHttpRouterGroup = new HttpRouterGroup(),
+        webSocketRouterGroup = new WebSocketRouterGroup(),
         containerClass,
         options,
         extendInjector
     }: {
         containerClass: TConstructor<unknown>;
-        options: TApplicationOptions;
-        extendInjector: Injector;
+        prefix?: string;
+        options: Omit<TApplicationOptions, "prefix">;
+        extendInjector?: Injector;
+        startMiddlewareHandlers?: TStartMiddlewareHandlers;
+        endMiddlewareHandlers?: TEndMiddlewareHandlers;
+        guardHandlers?: TGuardHandlers;
+        openInterceptorHandlers?: TOpenInterceptorHandlers;
+        closeInterceptorHandlers?: TCloseInterceptorHandlers;
+        controllerRouterGroup?: HttpRouterGroup;
+        webSocketHttpRouterGroup?: HttpRouterGroup;
+        webSocketRouterGroup?: WebSocketRouterGroup;
     }) {
         if (!Reflect.getOwnMetadataKeys(containerClass).includes(containerKey)) {
-            throw Error(`${containerClass.name} is not a container.`);
+            throw Error(`[${containerClass.name}] is not a container.`);
         }
 
-        const injector = new Injector(extendInjector);
+        const injector = !extendInjector ? new Injector() : new Injector(extendInjector);
         const containerMetadata: TContainerMetadata = Reflect.getOwnMetadata(
             containerKey,
             containerClass
@@ -825,8 +937,11 @@ export class Application<TRootClass extends Object = Object> {
         const {
             loaders,
             middlewares,
-            guards,
             dependencies,
+            modules,
+            guards,
+            interceptors,
+            prefix: containerPrefix,
             config: containerConfig
         } = containerMetadata || {};
 
@@ -902,28 +1017,38 @@ export class Application<TRootClass extends Object = Object> {
         //#endregion
 
         //#region [Dependencies]
-        !dependencies || dependencies.map((dependency) => injector.get(dependency));
+        if (dependencies) {
+            for (const dependency of dependencies) {
+                const registerResult = injector.get(dependency);
+
+                if (!registerResult) {
+                    throw new Error(`Can not collect dependency [${dependency.name}].`);
+                }
+            }
+        }
         //#endregion
 
         //#region [Middleware(s)]
-        const startMiddlewareGroup: Array<
-            TGroupElementModel<"start", IMiddleware, NonNullable<IMiddleware["start"]>>
-        > = [];
-        const endMiddlewareGroup: Array<
-            TGroupElementModel<"end", IMiddleware, NonNullable<IMiddleware["end"]>>
-        > = [];
+        if (middlewares) {
+            const middlwareChecker = (
+                instance: unknown,
+                ofClass: unknown
+            ): ofClass is IMiddleware => !!instance;
 
-        !middlewares ||
-            middlewares.forEach((middleware) => {
+            for (const middleware of middlewares) {
                 const instance = injector.get<IMiddleware>(middleware);
+
+                if (!instance || !middlwareChecker(instance, middleware)) {
+                    throw new Error(`Can not collect middleware [${middleware.name}].`);
+                }
 
                 if (instance.start && typeof instance.start === "function") {
                     const argumentsMetadata: TArgumentsMetadataCollection =
                         Reflect.getOwnMetadata(argumentsKey, middleware, "start") || {};
 
-                    startMiddlewareGroup.push(
+                    startMiddlewareHandlers.push(
                         Object.freeze({
-                            class: middleware as IMiddleware,
+                            class: middleware,
                             funcName: "start",
                             func: instance.start.bind(instance),
                             argumentsMetadata: argumentsMetadata
@@ -935,42 +1060,131 @@ export class Application<TRootClass extends Object = Object> {
                     const argumentsMetadata: TArgumentsMetadataCollection =
                         Reflect.getOwnMetadata(argumentsKey, middleware, "end") || {};
 
-                    endMiddlewareGroup.push(
+                    endMiddlewareHandlers.push(
                         Object.freeze({
-                            class: middleware as IMiddleware,
+                            class: middleware,
                             funcName: "end",
                             func: instance.end.bind(instance),
                             argumentsMetadata: argumentsMetadata
                         })
                     );
                 }
-            });
+            }
+        }
         //#endregion
 
         //#region [Guard(s)]
-        const guardGroup: Array<
-            TGroupElementModel<"enforce", IGuard, NonNullable<IGuard["enforce"]>>
-        > = !guards
-            ? []
-            : guards.map((guard) => {
-                  const guardInstance = injector.get<IGuard>(guard);
-                  const argumentsMetadata: TArgumentsMetadataCollection =
-                      Reflect.getOwnMetadata(argumentsKey, guard, "enforce") || {};
+        if (guards) {
+            const guardChecker = (instance: unknown, ofClass: unknown): ofClass is IGuard =>
+                !!instance;
 
-                  return Object.freeze({
-                      class: guard as unknown as IGuard,
-                      funcName: "enforce",
-                      func: guardInstance.enforce.bind(guardInstance),
-                      argumentsMetadata: argumentsMetadata
-                  });
-              });
+            for (const guard of guards) {
+                const instance = injector.get<IGuard>(guard);
+
+                if (!instance || !guardChecker(instance, guard)) {
+                    throw new Error(`Can not collect guard [${guard.name}].`);
+                }
+
+                const argumentsMetadata: TArgumentsMetadataCollection =
+                    Reflect.getOwnMetadata(argumentsKey, guard, "enforce") || {};
+
+                guardHandlers.push(
+                    Object.freeze({
+                        class: guard,
+                        funcName: "enforce",
+                        func: instance.enforce.bind(instance),
+                        argumentsMetadata: argumentsMetadata
+                    })
+                );
+            }
+        }
+        //#endregion
+
+        //#region [Interceptor(s)]
+        if (interceptors) {
+            const interceptorChecker = (
+                instance: unknown,
+                ofClass: unknown
+            ): ofClass is IInterceptor => !!instance;
+
+            for (const interceptor of interceptors) {
+                const instance = injector.get<IInterceptor>(interceptor);
+
+                if (!instance || !interceptorChecker(instance, interceptor)) {
+                    throw new Error(`Can not collect interceptor [${interceptor.name}].`);
+                }
+
+                if (instance) {
+                    if (instance.open && typeof instance.open === "function") {
+                        const argumentsMetadata: TArgumentsMetadataCollection =
+                            Reflect.getOwnMetadata(argumentsKey, interceptor, "open") || {};
+
+                        openInterceptorHandlers.push(
+                            Object.freeze({
+                                class: interceptor,
+                                funcName: "open",
+                                func: instance.open.bind(instance),
+                                argumentsMetadata: argumentsMetadata
+                            })
+                        );
+                    }
+
+                    if (instance.close && typeof instance.close === "function") {
+                        const argumentsMetadata: TArgumentsMetadataCollection =
+                            Reflect.getOwnMetadata(argumentsKey, interceptor, "close") || {};
+
+                        closeInterceptorHandlers.push(
+                            Object.freeze({
+                                class: interceptor,
+                                funcName: "close",
+                                func: instance.close.bind(instance),
+                                argumentsMetadata: argumentsMetadata
+                            })
+                        );
+                    }
+                }
+            }
+        }
+        //#endregion
+
+        //#region [Module(s)]
+        if (modules) {
+            const fullPrefix = [prefix.trim(), containerPrefix?.trim() || ""]
+                .filter((prefix) => prefix.length > 0)
+                .join("/");
+
+            for (const module of modules) {
+                try {
+                    await this.#moduleResolver({
+                        prefix: fullPrefix,
+                        moduleClass: module,
+                        extendInjector: injector,
+                        options: options,
+                        startMiddlewareHandlers: startMiddlewareHandlers,
+                        endMiddlewareHandlers: endMiddlewareHandlers,
+                        guardHandlers: [...guardHandlers],
+                        openInterceptorHandlers: [...openInterceptorHandlers],
+                        closeInterceptorHandlers: [...closeInterceptorHandlers],
+                        controllerRouterGroup: controllerRouterGroup,
+                        webSocketHttpRouterGroup: webSocketHttpRouterGroup,
+                        webSocketRouterGroup: webSocketRouterGroup
+                    });
+                } catch (error: unknown) {
+                    console.group(`Can not resolve module: [${module.name}].`);
+                    console.error(error);
+                    console.groupEnd();
+                    throw error;
+                }
+            }
+        }
         //#endregion
 
         return Object.freeze({
-            injector,
-            startMiddlewareGroup,
-            endMiddlewareGroup,
-            guardGroup
+            startMiddlewareHandlers: startMiddlewareHandlers,
+            endMiddlewareHandlers: endMiddlewareHandlers,
+            controllerRouterGroup: controllerRouterGroup,
+            webSocketHttpRouterGroup: webSocketHttpRouterGroup,
+            webSocketRouterGroup: webSocketRouterGroup
         });
     }
 
@@ -979,20 +1193,38 @@ export class Application<TRootClass extends Object = Object> {
      * @param param0
      * @returns
      */
-    private async moduleResolution({
+    async #moduleResolver({
+        prefix = "",
+        startMiddlewareHandlers = [],
+        endMiddlewareHandlers = [],
+        guardHandlers = [],
+        openInterceptorHandlers = [],
+        closeInterceptorHandlers = [],
+        controllerRouterGroup = new HttpRouterGroup(),
+        webSocketHttpRouterGroup = new HttpRouterGroup(),
+        webSocketRouterGroup = new WebSocketRouterGroup(),
         moduleClass,
         options,
         extendInjector
     }: {
+        prefix?: string;
         moduleClass: TConstructor<unknown>;
-        options: TApplicationOptions;
-        extendInjector: Injector;
+        options: Omit<TApplicationOptions, "prefix">;
+        extendInjector?: Injector;
+        startMiddlewareHandlers?: TStartMiddlewareHandlers;
+        endMiddlewareHandlers?: TEndMiddlewareHandlers;
+        guardHandlers?: TGuardHandlers;
+        openInterceptorHandlers?: TOpenInterceptorHandlers;
+        closeInterceptorHandlers?: TCloseInterceptorHandlers;
+        controllerRouterGroup?: HttpRouterGroup;
+        webSocketHttpRouterGroup?: HttpRouterGroup;
+        webSocketRouterGroup?: WebSocketRouterGroup;
     }) {
         if (!Reflect.getOwnMetadataKeys(moduleClass).includes(moduleKey)) {
-            throw Error(`${moduleClass.name} is not a module.`);
+            throw Error(`[${moduleClass.name}] is not a module.`);
         }
 
-        const injector = new Injector(extendInjector);
+        const injector = !extendInjector ? new Injector() : new Injector(extendInjector);
         const moduleMetadata: TModuleMetadata = Reflect.getOwnMetadata(moduleKey, moduleClass);
 
         const {
@@ -1007,7 +1239,9 @@ export class Application<TRootClass extends Object = Object> {
             config: moduleConfig
         } = moduleMetadata || {};
 
-        const fullPrefix = `${options.prefix || ""}/${modulePrefix || ""}`;
+        const fullPrefix = [prefix.trim(), modulePrefix?.trim() || ""]
+            .filter((prefix) => prefix.length > 0)
+            .join("/");
 
         //#region [Configuration(s)]
         const { config } = Object.freeze({
@@ -1087,28 +1321,38 @@ export class Application<TRootClass extends Object = Object> {
         //#endregion
 
         //#region [Dependencies]
-        !dependencies || dependencies.map((dependency) => injector.get(dependency));
+        if (dependencies) {
+            for (const dependency of dependencies) {
+                const registerResult = injector.get(dependency);
+
+                if (!registerResult) {
+                    throw new Error(`Can not collect dependency [${dependency.name}].`);
+                }
+            }
+        }
         //#endregion
 
         //#region [Middleware(s)]
-        const startMiddlewareGroup: Array<
-            TGroupElementModel<"start", IMiddleware, NonNullable<IMiddleware["start"]>>
-        > = [];
-        const endMiddlewareGroup: Array<
-            TGroupElementModel<"end", IMiddleware, NonNullable<IMiddleware["end"]>>
-        > = [];
+        if (middlewares) {
+            const middlwareChecker = (
+                instance: unknown,
+                ofClass: unknown
+            ): ofClass is IMiddleware => !!instance;
 
-        !middlewares ||
-            middlewares.forEach((middleware) => {
+            for (const middleware of middlewares) {
                 const instance = injector.get<IMiddleware>(middleware);
+
+                if (!instance || !middlwareChecker(instance, middleware)) {
+                    throw new Error(`Can not collect middleware [${middleware.name}].`);
+                }
 
                 if (instance.start && typeof instance.start === "function") {
                     const argumentsMetadata: TArgumentsMetadataCollection =
                         Reflect.getOwnMetadata(argumentsKey, middleware, "start") || {};
 
-                    startMiddlewareGroup.push(
+                    startMiddlewareHandlers.push(
                         Object.freeze({
-                            class: middleware as IMiddleware,
+                            class: middleware,
                             funcName: "start",
                             func: instance.start.bind(instance),
                             argumentsMetadata: argumentsMetadata
@@ -1120,117 +1364,126 @@ export class Application<TRootClass extends Object = Object> {
                     const argumentsMetadata: TArgumentsMetadataCollection =
                         Reflect.getOwnMetadata(argumentsKey, middleware, "end") || {};
 
-                    endMiddlewareGroup.push(
+                    endMiddlewareHandlers.push(
                         Object.freeze({
-                            class: middleware as IMiddleware,
+                            class: middleware,
                             funcName: "end",
                             func: instance.end.bind(instance),
                             argumentsMetadata: argumentsMetadata
                         })
                     );
                 }
-            });
+            }
+        }
         //#endregion
 
         //#region [Guard(s)]
-        const guardGroup: Array<
-            TGroupElementModel<"enforce", IGuard, NonNullable<IGuard["enforce"]>>
-        > = !guards
-            ? []
-            : guards.map((guard) => {
-                  const guardInstance = injector.get<IGuard>(guard);
-                  const argumentsMetadata: TArgumentsMetadataCollection =
-                      Reflect.getOwnMetadata(argumentsKey, guard, "enforce") || {};
+        if (guards) {
+            const guardChecker = (instance: unknown, ofClass: unknown): ofClass is IGuard =>
+                !!instance;
 
-                  return Object.freeze({
-                      class: guard as unknown as IGuard,
-                      funcName: "enforce",
-                      func: guardInstance.enforce.bind(guardInstance),
-                      argumentsMetadata: argumentsMetadata
-                  });
-              });
+            for (const guard of guards) {
+                const instance = injector.get<IGuard>(guard);
+
+                if (!instance || !guardChecker(instance, guard)) {
+                    throw new Error(`Can not collect guard [${guard.name}].`);
+                }
+
+                const argumentsMetadata: TArgumentsMetadataCollection =
+                    Reflect.getOwnMetadata(argumentsKey, guard, "enforce") || {};
+
+                guardHandlers.push(
+                    Object.freeze({
+                        class: guard,
+                        funcName: "enforce",
+                        func: instance.enforce.bind(instance),
+                        argumentsMetadata: argumentsMetadata
+                    })
+                );
+            }
+        }
         //#endregion
 
-        //#region [Before interceptor(s)]
-        const openInterceptorGroup: Array<
-            TGroupElementModel<"open", IInterceptor, NonNullable<IInterceptor["open"]>>
-        > = [];
-        const closeInterceptorGroup: Array<
-            TGroupElementModel<"close", IInterceptor, NonNullable<IInterceptor["close"]>>
-        > = [];
+        //#region [Interceptor(s)]
+        if (interceptors) {
+            const interceptorChecker = (
+                instance: unknown,
+                ofClass: unknown
+            ): ofClass is IInterceptor => !!instance;
 
-        !interceptors ||
-            interceptors.forEach((interceptor) => {
+            for (const interceptor of interceptors) {
                 const instance = injector.get<IInterceptor>(interceptor);
 
-                if (instance.open && typeof instance.open === "function") {
-                    const argumentsMetadata: TArgumentsMetadataCollection =
-                        Reflect.getOwnMetadata(argumentsKey, interceptor, "open") || {};
-
-                    openInterceptorGroup.push(
-                        Object.freeze({
-                            class: interceptor as IInterceptor,
-                            funcName: "open",
-                            func: instance.open.bind(instance),
-                            argumentsMetadata: argumentsMetadata
-                        })
-                    );
+                if (!instance || !interceptorChecker(instance, interceptor)) {
+                    throw new Error(`Can not collect interceptor [${interceptor.name}].`);
                 }
 
-                if (instance.close && typeof instance.close === "function") {
-                    const argumentsMetadata: TArgumentsMetadataCollection =
-                        Reflect.getOwnMetadata(argumentsKey, interceptor, "close") || {};
+                if (instance) {
+                    if (instance.open && typeof instance.open === "function") {
+                        const argumentsMetadata: TArgumentsMetadataCollection =
+                            Reflect.getOwnMetadata(argumentsKey, interceptor, "open") || {};
 
-                    closeInterceptorGroup.push(
-                        Object.freeze({
-                            class: interceptor as IInterceptor,
-                            funcName: "close",
-                            func: instance.close.bind(instance),
-                            argumentsMetadata: argumentsMetadata
-                        })
-                    );
+                        openInterceptorHandlers.push(
+                            Object.freeze({
+                                class: interceptor,
+                                funcName: "open",
+                                func: instance.open.bind(instance),
+                                argumentsMetadata: argumentsMetadata
+                            })
+                        );
+                    }
+
+                    if (instance.close && typeof instance.close === "function") {
+                        const argumentsMetadata: TArgumentsMetadataCollection =
+                            Reflect.getOwnMetadata(argumentsKey, interceptor, "close") || {};
+
+                        closeInterceptorHandlers.push(
+                            Object.freeze({
+                                class: interceptor,
+                                funcName: "close",
+                                func: instance.close.bind(instance),
+                                argumentsMetadata: argumentsMetadata
+                            })
+                        );
+                    }
                 }
-            });
+            }
+        }
         //#endregion
 
         //#region [Controller(s)]
-        const controllerRouterGroup = new HttpRouterGroup();
-
-        !controllers ||
-            controllers.forEach((controllerConstructor) =>
-                this.initControllerInstance({
-                    controllerConstructor,
-                    httpRouterGroup: controllerRouterGroup,
+        if (controllers) {
+            for (const controller of controllers) {
+                this.#controllerResolver({
+                    controllerConstructor: controller,
+                    prefix: fullPrefix,
                     injector: injector,
-                    prefix: fullPrefix
-                })
-            );
+                    httpRouterGroup: controllerRouterGroup,
+                    guardHandlers: [...guardHandlers],
+                    openInterceptorHandlers: [...openInterceptorHandlers],
+                    closeInterceptorHandlers: [...closeInterceptorHandlers]
+                });
+            }
+        }
         //#endregion
 
         //#region [WebSocket(s)]
-        const webSocketHttpRouterGroup = new HttpRouterGroup();
-        const webSocketRouterGroup = new WebSocketRouterGroup();
-
-        webSockets &&
-            webSockets.forEach((webSocket) =>
-                this.initWebSocketInstance({
+        if (webSockets) {
+            for (const webSocket of webSockets) {
+                this.#webSocketResolver({
                     webSocketConstructor: webSocket,
-                    httpRouterGroup: webSocketHttpRouterGroup,
-                    webSocketRouterGroup: webSocketRouterGroup,
                     injector: injector,
-                    prefix: fullPrefix
-                })
-            );
+                    prefix: fullPrefix,
+                    webSocketHttpRouterGroup: webSocketHttpRouterGroup,
+                    webSocketRouterGroup: webSocketRouterGroup
+                });
+            }
+        }
         //#endregion
 
         return Object.freeze({
-            prefix: modulePrefix || "",
-            injector: injector,
-            startMiddlewareGroup: startMiddlewareGroup,
-            endMiddlewareGroup: endMiddlewareGroup,
-            guardGroup: guardGroup,
-            openInterceptorGroup: openInterceptorGroup,
-            closeInterceptorGroup: closeInterceptorGroup,
+            startMiddlewareHandlers: startMiddlewareHandlers,
+            endMiddlewareHandlers: endMiddlewareHandlers,
             controllerRouterGroup: controllerRouterGroup,
             webSocketHttpRouterGroup: webSocketHttpRouterGroup,
             webSocketRouterGroup: webSocketRouterGroup
@@ -1239,18 +1492,112 @@ export class Application<TRootClass extends Object = Object> {
 
     /**
      *
-     * @param data
-     * @param zodSchema
-     * @param argumentIndex
-     * @param funcName
+     * @param param0
      * @returns
      */
-    private async argumentsResolution<TValidationSchema = unknown>(
-        data: unknown,
-        validationSchema: TValidationSchema,
-        argumentIndex: number,
-        funcName: string | symbol
-    ) {
+    #controllerResolver({
+        controllerConstructor,
+        prefix = "",
+        injector = new Injector(),
+        httpRouterGroup = new HttpRouterGroup(),
+        guardHandlers = [],
+        openInterceptorHandlers = [],
+        closeInterceptorHandlers = []
+    }: Readonly<{
+        controllerConstructor: TConstructor<unknown>;
+        injector?: Injector;
+        prefix?: string;
+        httpRouterGroup?: HttpRouterGroup;
+        guardHandlers?: TGuardHandlers;
+        openInterceptorHandlers?: TOpenInterceptorHandlers;
+        closeInterceptorHandlers?: TCloseInterceptorHandlers;
+    }>) {
+        if (!Reflect.getOwnMetadataKeys(controllerConstructor).includes(controllerKey)) {
+            throw Error(`[${controllerConstructor.name}] is not a controller.`);
+        }
+
+        const controller = injector.get<IController>(controllerConstructor);
+
+        if (!controller) {
+            throw Error("Can not initialize controller.");
+        }
+
+        const controllerMetadata: TControllerMetadata = Reflect.getOwnMetadata(
+            controllerKey,
+            controllerConstructor
+        ) || {
+            prefix: "/",
+            httpMetadata: []
+        };
+
+        const fullPrefix = [prefix.trim(), controllerMetadata.prefix.trim()]
+            .filter((prefix) => prefix.length > 0)
+            .join("/");
+
+        const router = new HttpRouter({
+            alias: fullPrefix,
+            guardHandlers: guardHandlers,
+            openInterceptorHandlers: openInterceptorHandlers,
+            closeInterceptorHandlers: closeInterceptorHandlers
+        });
+
+        for (const routeMetadata of controllerMetadata.httpMetadata) {
+            if (typeof routeMetadata.descriptor.value !== "function") {
+                continue;
+            }
+
+            const route = router.route({
+                alias: routeMetadata.path
+            });
+            const handler = routeMetadata.descriptor.value.bind(controller);
+            const httpRouteModel = Object.freeze({
+                class: controllerConstructor,
+                funcName: routeMetadata.methodName,
+                func: handler,
+                argumentsMetadata: routeMetadata.argumentsMetadata
+            });
+
+            switch (routeMetadata.httpMethod) {
+                case "GET":
+                    route.get({ model: httpRouteModel });
+                    break;
+                case "POST":
+                    route.post({ model: httpRouteModel });
+                    break;
+                case "PUT":
+                    route.put({ model: httpRouteModel });
+                    break;
+                case "PATCH":
+                    route.patch({ model: httpRouteModel });
+                    break;
+                case "DELETE":
+                    route.delete({ model: httpRouteModel });
+                    break;
+                case "OPTIONS":
+                    route.options({ model: httpRouteModel });
+                    break;
+            }
+        }
+
+        return httpRouterGroup.add(router);
+    }
+
+    /**
+     *
+     * @param param0
+     * @returns
+     */
+    async #argumentsResolver<TValidationSchema = unknown>({
+        data,
+        validationSchema,
+        argumentIndex,
+        funcName
+    }: {
+        data: unknown;
+        validationSchema: TValidationSchema;
+        argumentIndex: number;
+        funcName: string | symbol;
+    }) {
         if (!this.#customValidator) {
             return data;
         }
@@ -1298,95 +1645,30 @@ export class Application<TRootClass extends Object = Object> {
      * @param param0
      * @returns
      */
-    private initControllerInstance({
-        controllerConstructor,
-        httpRouterGroup,
-        injector,
-        prefix
-    }: Readonly<{
-        controllerConstructor: TConstructor<unknown>;
-        httpRouterGroup: HttpRouterGroup;
-        injector: Injector;
-        prefix?: string;
-    }>) {
-        if (!Reflect.getOwnMetadataKeys(controllerConstructor).includes(controllerKey)) {
-            throw Error(`${controllerConstructor.name} is not a controller.`);
-        }
-
-        const controller = injector.get(controllerConstructor);
-
-        if (!controller) {
-            throw Error("Can not initialize controller.");
-        }
-
-        const controllerMetadata: TControllerMetadata = Reflect.getOwnMetadata(
-            controllerKey,
-            controllerConstructor
-        ) || {
-            prefix: "/",
-            httpMetadata: []
-        };
-
-        const router = new HttpRouter({
-            alias: `/${prefix || ""}/${controllerMetadata.prefix}`
-        });
-
-        controllerMetadata.httpMetadata.forEach((routeMetadata) => {
-            if (typeof routeMetadata.descriptor.value !== "function") {
-                return;
-            }
-
-            const route = router.route(routeMetadata.path);
-            const handler = routeMetadata.descriptor.value.bind(controller);
-            const httpRouteModel = Object.freeze({
-                class: controllerConstructor,
-                funcName: routeMetadata.methodName,
-                func: handler,
-                argumentsMetadata: routeMetadata.argumentsMetadata
-            });
-
-            switch (routeMetadata.httpMethod) {
-                case "GET":
-                    return route.get({ model: httpRouteModel });
-                case "POST":
-                    return route.post({ model: httpRouteModel });
-                case "PUT":
-                    return route.put({ model: httpRouteModel });
-                case "PATCH":
-                    return route.patch({ model: httpRouteModel });
-                case "DELETE":
-                    return route.delete({ model: httpRouteModel });
-                case "OPTIONS":
-                    return route.options({ model: httpRouteModel });
-            }
-        });
-
-        return httpRouterGroup.add(router);
-    }
-
-    /**
-     *
-     * @param param0
-     * @returns
-     */
-    private initWebSocketInstance({
-        injector,
-        httpRouterGroup,
-        prefix,
-        webSocketRouterGroup,
-        webSocketConstructor
+    #webSocketResolver({
+        webSocketConstructor,
+        prefix = "",
+        injector = new Injector(),
+        webSocketHttpRouterGroup = new HttpRouterGroup(),
+        webSocketRouterGroup = new WebSocketRouterGroup(),
+        guardHandlers = [],
+        openInterceptorHandlers = [],
+        closeInterceptorHandlers = []
     }: Readonly<{
         webSocketConstructor: TConstructor<unknown>;
-        httpRouterGroup: HttpRouterGroup;
-        webSocketRouterGroup: WebSocketRouterGroup;
-        injector: Injector;
+        webSocketHttpRouterGroup?: HttpRouterGroup;
+        webSocketRouterGroup?: WebSocketRouterGroup;
+        injector?: Injector;
         prefix?: string;
+        guardHandlers?: TGuardHandlers;
+        openInterceptorHandlers?: TOpenInterceptorHandlers;
+        closeInterceptorHandlers?: TCloseInterceptorHandlers;
     }>): Readonly<{
-        httpRouterGroup: HttpRouterGroup;
+        webSocketHttpRouterGroup: HttpRouterGroup;
         webSocketRouterGroup: WebSocketRouterGroup;
     }> {
         if (!Reflect.getOwnMetadataKeys(webSocketConstructor).includes(webSocketKey)) {
-            throw Error(`${webSocketConstructor.name} is not a websocket route.`);
+            throw Error(`[${webSocketConstructor.name}] is not a websocket route.`);
         }
 
         const webSocket = injector.get(webSocketConstructor);
@@ -1404,11 +1686,14 @@ export class Application<TRootClass extends Object = Object> {
             http: []
         };
 
-        const fullPrefix = `/${prefix || ""}/${webSocketMetadata.prefix}`;
+        const fullPrefix = `/${prefix}/${webSocketMetadata.prefix}`;
 
         //#region [HTTP ROUTER]
         const router = new HttpRouter({
-            alias: fullPrefix
+            alias: fullPrefix,
+            guardHandlers: guardHandlers,
+            openInterceptorHandlers: openInterceptorHandlers,
+            closeInterceptorHandlers: closeInterceptorHandlers
         });
 
         for (const [_key, httpMetadata] of Object.entries(webSocketMetadata.http)) {
@@ -1416,7 +1701,9 @@ export class Application<TRootClass extends Object = Object> {
                 continue;
             }
 
-            const route = router.route(httpMetadata.path);
+            const route = router.route({
+                alias: httpMetadata.path
+            });
             const handler = httpMetadata.descriptor.value.bind(webSocket);
             const httpRouteModel = Object.freeze({
                 class: webSocketConstructor,
@@ -1435,7 +1722,7 @@ export class Application<TRootClass extends Object = Object> {
             }
         }
 
-        httpRouterGroup.add(router);
+        webSocketHttpRouterGroup.add(router);
         //#endregion
 
         //#region [WEBSOCKET ROUTER]
@@ -1455,142 +1742,55 @@ export class Application<TRootClass extends Object = Object> {
         //#endregion
 
         return Object.freeze({
-            httpRouterGroup: httpRouterGroup,
+            webSocketHttpRouterGroup: webSocketHttpRouterGroup,
             webSocketRouterGroup: webSocketRouterGroup
         });
     }
 
     /**
      *
-     * @param param0
-     * @returns
+     * @param data
      */
-    private serializeResponse({
-        status,
-        statusText,
-        headers,
-        data
-    }: {
-        status?: number;
-        statusText?: string;
-        headers: Headers;
-        data: unknown;
-    }): Response {
-        const contentType = headers.get("Content-Type") || "text/plain";
-
-        if (contentType.includes("application/json")) {
-            return this.finalizeResponse(
-                new Response(
-                    !data
-                        ? undefined
-                        : data instanceof ReadableStream
-                        ? data
-                        : JSON.stringify(data),
-                    {
-                        status: !data ? 204 : status,
-                        statusText: statusText,
-                        headers: headers
-                    }
-                )
-            );
+    async #pipesEnforcer(
+        data: TStartMiddlewaresPipe & {
+            context: Context;
         }
-
-        if (contentType.includes("text/plain") || contentType.includes("text/html")) {
-            return this.finalizeResponse(
-                new Response(
-                    !data ? undefined : data instanceof ReadableStream ? data : String(data),
-                    {
-                        status: !data ? 204 : status,
-                        statusText: statusText,
-                        headers: headers
-                    }
-                )
-            );
+    ): Promise<undefined>;
+    async #pipesEnforcer(
+        data: TEndMiddlewaresPipe & {
+            context: Context;
         }
-
-        if (contentType.includes("application/octet-stream")) {
-            if (
-                data instanceof Uint8Array ||
-                data instanceof ArrayBuffer ||
-                data instanceof Blob ||
-                data instanceof ReadableStream
-            ) {
-                return this.finalizeResponse(
-                    new Response(data as BodyInit, {
-                        status: status,
-                        statusText: statusText,
-                        headers: headers
-                    })
-                );
-            }
-
-            throw new Error("Invalid data type for application/octet-stream");
+    ): Promise<undefined>;
+    async #pipesEnforcer(
+        data: TOpenInterceptorsPipe & {
+            context: Context;
         }
-
-        if (contentType.includes("multipart/form-data")) {
-            if (data instanceof FormData) {
-                return this.finalizeResponse(
-                    new Response(data, { status: status, statusText: statusText, headers: headers })
-                );
-            }
-
-            throw new Error("multipart/form-data requires FormData object");
+    ): Promise<undefined>;
+    async #pipesEnforcer(
+        data: TCloseInterceptorsPipe & {
+            context: Context;
         }
-
-        return this.finalizeResponse(
-            new Response(!data ? undefined : String(data), {
-                status: !data ? 204 : status,
-                statusText: statusText,
-                headers: headers
-            })
-        );
-    }
-
-    /**
-     *
-     * @param response
-     * @returns
-     */
-    private finalizeResponse(response: Response) {
-        response.headers.set("X-Powered-By", "Bool Typescript");
-
-        return response;
-    }
-
-    /**
-     *
-     * @param param0
-     * @returns
-     */
-    private async httpFetcher({
-        context: outerContext,
-        route,
-        options,
-        resolutedMap
-    }: Partial<{
-        route: NonNullable<ReturnType<HttpRouterGroup["find"]>>;
-        resolutedMap:
-            | Partial<
-                  NonNullable<Awaited<ReturnType<Application<TRootClass>["containerResolution"]>>>
-              >
-            | Partial<
-                  NonNullable<Awaited<ReturnType<Application<TRootClass>["moduleResolution"]>>>
-              >;
+    ): Promise<undefined>;
+    async #pipesEnforcer(
+        data: TGuardsPipe & {
+            context: Context;
+        }
+    ): Promise<TGuardReturn>;
+    async #pipesEnforcer(
+        data: TControllerPipe & {
+            context: Context;
+        }
+    ): Promise<undefined>;
+    async #pipesEnforcer({
+        type,
+        handlers,
+        context
+    }: TPipesEnforcerUnion & {
         context: Context;
-        options: Partial<{
-            isContainer: boolean;
-        }>;
-    }>) {
+    }): Promise<unknown> {
         const contextOptions = { isStatic: true };
-        const context = new Context(...(!outerContext ? [] : [outerContext])).setOptions(
-            contextOptions
-        );
 
-        if (route) {
-            context
-                .set(paramsArgsKey, route.parameters, { isPassthrough: true })
-                .set(routeModelArgsKey, route.model, { isPassthrough: true });
-        }
+        context.setOptions(contextOptions);
 
         const httpServer =
                 context.get<Server<TWebSocketUpgradeData> | null | undefined>(
@@ -1614,313 +1814,285 @@ export class Application<TRootClass extends Object = Object> {
                     NonNullable<ReturnType<HttpRouterGroup["find"]>>["model"] | null | undefined
                 >(routeModelArgsKey, contextOptions) || undefined;
 
-        if (resolutedMap) {
-            const { startMiddlewareGroup, guardGroup } = resolutedMap;
+        if (type === "START_MIDDLEWARES" || type === "END_MIDDLEWARES") {
+            const strategy =
+                type === "START_MIDDLEWARES"
+                    ? this.#resolutedOptions.pipelineStrategy.startMiddlewares
+                    : this.#resolutedOptions.pipelineStrategy.endMiddlewares;
 
-            // Execute start middleware(s)
-            if (startMiddlewareGroup) {
-                for (let i = 0; i < startMiddlewareGroup.length; i++) {
-                    const args = [];
-                    const {
-                        func: handler,
-                        funcName: functionName,
-                        argumentsMetadata
-                    } = startMiddlewareGroup[i];
-
-                    for (const [_key, argMetadata] of Object.entries(argumentsMetadata)) {
-                        switch (argMetadata.type) {
-                            case contextArgsKey:
-                                args[argMetadata.index] = !argMetadata.key
-                                    ? context
-                                    : context.get(argMetadata.key, contextOptions);
-                                break;
-                            case requestArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? request
-                                    : await this.argumentsResolution(
-                                          request,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case requestBodyArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? await request?.[argMetadata.parser || "json"]()
-                                    : await this.argumentsResolution(
-                                          await request?.[argMetadata.parser || "json"](),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case requestHeadersArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? requestHeaders
-                                    : await this.argumentsResolution(
-                                          requestHeaders?.toJSON(),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case requestHeaderArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? requestHeaders?.get(argMetadata.key) || undefined
-                                    : await this.argumentsResolution(
-                                          requestHeaders?.get(argMetadata.key) || undefined,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case paramArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? parameters?.[argMetadata.key] || undefined
-                                    : await this.argumentsResolution(
-                                          parameters?.[argMetadata.key] || undefined,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case routeModelArgsKey:
-                                args[argMetadata.index] = routeModel;
-                                break;
-                            case responseHeadersArgsKey:
-                                args[argMetadata.index] = responseHeaders;
-                                break;
-                            case httpServerArgsKey:
-                                args[argMetadata.index] = httpServer;
-                                break;
-                            default:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? !context.has(argMetadata.type, contextOptions)
-                                        ? undefined
-                                        : context.get(argMetadata.type, contextOptions)
-                                    : await this.argumentsResolution(
-                                          !(argMetadata.type in context)
-                                              ? undefined
-                                              : context.get(argMetadata.type, contextOptions),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                        }
-                    }
-
-                    await handler(...args);
-                }
-            }
-
-            // Execute guard(s)
-            if (guardGroup) {
-                for (let i = 0; i < guardGroup.length; i++) {
-                    const args = [];
-                    const {
-                        func: handler,
-                        funcName: functionName,
-                        argumentsMetadata
-                    } = guardGroup[i];
-
-                    for (const [_key, argMetadata] of Object.entries(argumentsMetadata)) {
-                        switch (argMetadata.type) {
-                            case requestArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? request
-                                    : await this.argumentsResolution(
-                                          request,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case requestBodyArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? await request?.[argMetadata.parser || "json"]()
-                                    : await this.argumentsResolution(
-                                          await request?.[argMetadata.parser || "json"](),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case contextArgsKey:
-                                args[argMetadata.index] = !argMetadata.key
-                                    ? context
-                                    : context.get(argMetadata.key);
-                                break;
-                            case requestHeadersArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? requestHeaders
-                                    : await this.argumentsResolution(
-                                          requestHeaders?.toJSON(),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case responseHeadersArgsKey:
-                                args[argMetadata.index] = responseHeaders;
-                                break;
-                            case requestHeaderArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? requestHeaders?.get(argMetadata.key) || undefined
-                                    : await this.argumentsResolution(
-                                          requestHeaders?.get(argMetadata.key) || undefined,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case paramArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? parameters?.[argMetadata.key] || undefined
-                                    : await this.argumentsResolution(
-                                          parameters?.[argMetadata.key],
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case routeModelArgsKey:
-                                args[argMetadata.index] = routeModel;
-                                break;
-                            case httpServerArgsKey:
-                                args[argMetadata.index] = httpServer;
-                                break;
-                            default:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? !context.has(argMetadata.type)
-                                        ? undefined
-                                        : context.get(argMetadata.type)
-                                    : await this.argumentsResolution(
-                                          context.get(argMetadata.type),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                        }
-                    }
-
-                    const guardResult = await handler(...args);
-
-                    if (typeof guardResult !== "boolean" || !guardResult) {
-                        throw new HttpClientError({
-                            httpCode: 401,
-                            message: "Unauthorization.",
-                            data: undefined
-                        });
-                    }
-                }
-            }
-        }
-
-        if (routeModel && !options?.isContainer) {
-            if (
-                resolutedMap &&
-                "openInterceptorGroup" in resolutedMap &&
-                resolutedMap.openInterceptorGroup
+            for (
+                let i = strategy === "FIFO" ? 0 : handlers.length - 1;
+                strategy === "FIFO" ? i < handlers.length : i > -1;
+                strategy === "FIFO" ? i++ : i--
             ) {
-                const { openInterceptorGroup } = resolutedMap;
+                const args = [];
+                const { func: handler, funcName: functionName, argumentsMetadata } = handlers[i];
 
-                // Execute open interceptor(s)
-                for (let i = 0; i < openInterceptorGroup.length; i++) {
-                    const args = [];
-                    const {
-                        func: handler,
-                        funcName: functionName,
-                        argumentsMetadata
-                    } = openInterceptorGroup[i];
-
-                    for (const [_key, argMetadata] of Object.entries(argumentsMetadata)) {
-                        switch (argMetadata.type) {
-                            case requestArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? request
-                                    : await this.argumentsResolution(
-                                          request,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case requestBodyArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? await request?.[argMetadata.parser || "json"]()
-                                    : await this.argumentsResolution(
-                                          await request?.[argMetadata.parser || "json"](),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case contextArgsKey:
-                                args[argMetadata.index] = !argMetadata.key
-                                    ? context
-                                    : context.get(argMetadata.key);
-                                break;
-                            case requestHeadersArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? requestHeaders
-                                    : await this.argumentsResolution(
-                                          requestHeaders?.toJSON(),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case requestHeaderArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? requestHeaders?.get(argMetadata.key) || undefined
-                                    : await this.argumentsResolution(
-                                          requestHeaders?.get(argMetadata.key) || undefined,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case responseHeadersArgsKey:
-                                args[argMetadata.index] = responseHeaders;
-                                break;
-                            case paramArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? parameters?.[argMetadata.key] || undefined
-                                    : await this.argumentsResolution(
-                                          parameters?.[argMetadata.key] || undefined,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case routeModelArgsKey:
-                                args[argMetadata.index] = routeModel;
-                                break;
-                            case httpServerArgsKey:
-                                args[argMetadata.index] = httpServer;
-                                break;
-                            default:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? !context.has(argMetadata.type)
-                                        ? undefined
-                                        : context.get(argMetadata.type)
-                                    : await this.argumentsResolution(
-                                          context.get(argMetadata.type),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                        }
+                for (const [_key, argMetadata] of Object.entries(argumentsMetadata)) {
+                    switch (argMetadata.type) {
+                        case contextArgsKey:
+                            args[argMetadata.index] = !argMetadata.key
+                                ? context
+                                : context.get(argMetadata.key, contextOptions);
+                            break;
+                        case requestArgsKey:
+                            args[argMetadata.index] = request;
+                            break;
+                        case requestBodyArgsKey:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? await request?.[argMetadata.parser || "json"]()
+                                : await this.#argumentsResolver({
+                                      data: await request?.[argMetadata.parser || "json"](),
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                        case requestHeadersArgsKey:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? requestHeaders
+                                : await this.#argumentsResolver({
+                                      data: requestHeaders?.toJSON(),
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                        case requestHeaderArgsKey:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? requestHeaders?.get(argMetadata.key) || undefined
+                                : await this.#argumentsResolver({
+                                      data: requestHeaders?.get(argMetadata.key) || undefined,
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                        case paramArgsKey:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? parameters?.[argMetadata.key] || undefined
+                                : await this.#argumentsResolver({
+                                      data: parameters?.[argMetadata.key] || undefined,
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                        case routeModelArgsKey:
+                            args[argMetadata.index] = undefined;
+                            break;
+                        case responseHeadersArgsKey:
+                            args[argMetadata.index] = responseHeaders;
+                            break;
+                        case httpServerArgsKey:
+                            args[argMetadata.index] = httpServer;
+                            break;
+                        default:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? context.get(argMetadata.type, contextOptions)
+                                : await this.#argumentsResolver({
+                                      data: context.get(argMetadata.type, contextOptions),
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
                     }
+                }
 
-                    await handler(...args);
+                await handler(...args);
+            }
+        } else if (type === "GUARDS") {
+            if (!routeModel || handlers.length === 0) {
+                return true;
+            }
+
+            for (let i = 0; i < handlers.length; i++) {
+                const args = [];
+                const { func: handler, funcName: functionName, argumentsMetadata } = handlers[i];
+
+                for (const [_key, argMetadata] of Object.entries(argumentsMetadata)) {
+                    switch (argMetadata.type) {
+                        case requestArgsKey:
+                            args[argMetadata.index] = request;
+                            break;
+                        case requestBodyArgsKey:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? await request?.[argMetadata.parser || "json"]()
+                                : await this.#argumentsResolver({
+                                      data: await request?.[argMetadata.parser || "json"](),
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                        case contextArgsKey:
+                            args[argMetadata.index] = !argMetadata.key
+                                ? context
+                                : context.get(argMetadata.key);
+                            break;
+                        case requestHeadersArgsKey:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? requestHeaders
+                                : await this.#argumentsResolver({
+                                      data: requestHeaders?.toJSON(),
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                        case responseHeadersArgsKey:
+                            args[argMetadata.index] = responseHeaders;
+                            break;
+                        case requestHeaderArgsKey:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? requestHeaders?.get(argMetadata.key) || undefined
+                                : await this.#argumentsResolver({
+                                      data: requestHeaders?.get(argMetadata.key) || undefined,
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                        case paramArgsKey:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? parameters?.[argMetadata.key] || undefined
+                                : await this.#argumentsResolver({
+                                      data: parameters?.[argMetadata.key],
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                        case routeModelArgsKey:
+                            args[argMetadata.index] = routeModel;
+                            break;
+                        case httpServerArgsKey:
+                            args[argMetadata.index] = httpServer;
+                            break;
+                        default:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? context.get(argMetadata.type)
+                                : await this.#argumentsResolver({
+                                      data: context.get(argMetadata.type),
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                    }
+                }
+
+                const guardResult = await handler(...args);
+
+                if (guardResult !== true) {
+                    return guardResult;
                 }
             }
 
-            // Execute controller action
+            return true;
+        } else if (type === "OPEN_INTERCEPTORS" || type === "CLOSE_INTERCEPTORS") {
+            if (!routeModel) {
+                return;
+            }
+
+            const strategy =
+                type === "OPEN_INTERCEPTORS"
+                    ? this.#resolutedOptions.pipelineStrategy.openInterceptors
+                    : this.#resolutedOptions.pipelineStrategy.closeInterceptors;
+
+            for (
+                let i = strategy === "FIFO" ? 0 : handlers.length - 1;
+                strategy === "FIFO" ? i < handlers.length : i > -1;
+                strategy === "FIFO" ? i++ : i--
+            ) {
+                const args = [];
+                const { func: handler, funcName: functionName, argumentsMetadata } = handlers[i];
+
+                for (const [_key, argMetadata] of Object.entries(argumentsMetadata)) {
+                    switch (argMetadata.type) {
+                        case requestArgsKey:
+                            args[argMetadata.index] = request;
+                            break;
+                        case requestBodyArgsKey:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? await request?.[argMetadata.parser || "json"]()
+                                : await this.#argumentsResolver({
+                                      data: await request?.[argMetadata.parser || "json"](),
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                        case contextArgsKey:
+                            args[argMetadata.index] = !argMetadata.key
+                                ? context
+                                : context.get(argMetadata.key);
+                            break;
+                        case requestHeadersArgsKey:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? requestHeaders
+                                : await this.#argumentsResolver({
+                                      data: requestHeaders?.toJSON(),
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                        case requestHeaderArgsKey:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? requestHeaders?.get(argMetadata.key) || undefined
+                                : await this.#argumentsResolver({
+                                      data: requestHeaders?.get(argMetadata.key) || undefined,
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                        case responseHeadersArgsKey:
+                            args[argMetadata.index] = responseHeaders;
+                            break;
+                        case paramArgsKey:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? parameters?.[argMetadata.key] || undefined
+                                : await this.#argumentsResolver({
+                                      data: parameters?.[argMetadata.key] || undefined,
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                        case routeModelArgsKey:
+                            args[argMetadata.index] = routeModel;
+                            break;
+                        case httpServerArgsKey:
+                            args[argMetadata.index] = httpServer;
+                            break;
+                        default:
+                            args[argMetadata.index] = !argMetadata.validationSchema
+                                ? context.get(argMetadata.type)
+                                : await this.#argumentsResolver({
+                                      data: context.get(argMetadata.type),
+                                      validationSchema: argMetadata.validationSchema,
+                                      argumentIndex: argMetadata.index,
+                                      funcName: functionName
+                                  });
+                            break;
+                    }
+                }
+
+                await handler(...args);
+            }
+        } else if (type === "CONTROLLER") {
+            if (!routeModel) {
+                context
+                    .setOptions({ isStatic: false })
+                    .set(responseStatusArgsKey, 404)
+                    .set(responseStatusTextArgsKey, "Not found.");
+
+                return;
+            }
+
             const controllerActionArguments: any[] = [];
             const {
                 func: controllerAction,
@@ -1931,24 +2103,17 @@ export class Application<TRootClass extends Object = Object> {
             for (const [_key, argMetadata] of Object.entries(controllerActionArgumentsMetadata)) {
                 switch (argMetadata.type) {
                     case requestArgsKey:
-                        controllerActionArguments[argMetadata.index] = !argMetadata.validationSchema
-                            ? request
-                            : await this.argumentsResolution(
-                                  request,
-                                  argMetadata.validationSchema,
-                                  argMetadata.index,
-                                  controllerActionName
-                              );
+                        controllerActionArguments[argMetadata.index] = request;
                         break;
                     case requestBodyArgsKey:
                         controllerActionArguments[argMetadata.index] = !argMetadata.validationSchema
                             ? await request?.[argMetadata.parser || "json"]()
-                            : await this.argumentsResolution(
-                                  await request?.[argMetadata.parser || "json"](),
-                                  argMetadata.validationSchema,
-                                  argMetadata.index,
-                                  controllerActionName
-                              );
+                            : await this.#argumentsResolver({
+                                  data: await request?.[argMetadata.parser || "json"](),
+                                  validationSchema: argMetadata.validationSchema,
+                                  argumentIndex: argMetadata.index,
+                                  funcName: controllerActionName
+                              });
                         break;
                     case contextArgsKey:
                         controllerActionArguments[argMetadata.index] = !argMetadata.key
@@ -1958,22 +2123,22 @@ export class Application<TRootClass extends Object = Object> {
                     case requestHeadersArgsKey:
                         controllerActionArguments[argMetadata.index] = !argMetadata.validationSchema
                             ? requestHeaders
-                            : await this.argumentsResolution(
-                                  requestHeaders?.toJSON(),
-                                  argMetadata.validationSchema,
-                                  argMetadata.index,
-                                  controllerActionName
-                              );
+                            : await this.#argumentsResolver({
+                                  data: requestHeaders?.toJSON(),
+                                  validationSchema: argMetadata.validationSchema,
+                                  argumentIndex: argMetadata.index,
+                                  funcName: controllerActionName
+                              });
                         break;
                     case requestHeaderArgsKey:
                         controllerActionArguments[argMetadata.index] = !argMetadata.validationSchema
                             ? requestHeaders?.get(argMetadata.key) || undefined
-                            : await this.argumentsResolution(
-                                  requestHeaders?.get(argMetadata.key) || undefined,
-                                  argMetadata.validationSchema,
-                                  argMetadata.index,
-                                  controllerActionName
-                              );
+                            : await this.#argumentsResolver({
+                                  data: requestHeaders?.get(argMetadata.key) || undefined,
+                                  validationSchema: argMetadata.validationSchema,
+                                  argumentIndex: argMetadata.index,
+                                  funcName: controllerActionName
+                              });
                         break;
                     case responseHeadersArgsKey:
                         controllerActionArguments[argMetadata.index] = responseHeaders;
@@ -1981,12 +2146,12 @@ export class Application<TRootClass extends Object = Object> {
                     case paramArgsKey:
                         controllerActionArguments[argMetadata.index] = !argMetadata.validationSchema
                             ? parameters?.[argMetadata.key] || undefined
-                            : await this.argumentsResolution(
-                                  parameters?.[argMetadata.key] || undefined,
-                                  argMetadata.validationSchema,
-                                  argMetadata.index,
-                                  controllerActionName
-                              );
+                            : await this.#argumentsResolver({
+                                  data: parameters?.[argMetadata.key] || undefined,
+                                  validationSchema: argMetadata.validationSchema,
+                                  argumentIndex: argMetadata.index,
+                                  funcName: controllerActionName
+                              });
                         break;
                     case routeModelArgsKey:
                         controllerActionArguments[argMetadata.index] = routeModel;
@@ -1996,15 +2161,13 @@ export class Application<TRootClass extends Object = Object> {
                         break;
                     default:
                         controllerActionArguments[argMetadata.index] = !argMetadata.validationSchema
-                            ? !context.has(argMetadata.type)
-                                ? undefined
-                                : context.get(argMetadata.type)
-                            : await this.argumentsResolution(
-                                  context.get(argMetadata.type),
-                                  argMetadata.validationSchema,
-                                  argMetadata.index,
-                                  controllerActionName
-                              );
+                            ? context.get(argMetadata.type)
+                            : await this.#argumentsResolver({
+                                  data: context.get(argMetadata.type),
+                                  validationSchema: argMetadata.validationSchema,
+                                  argumentIndex: argMetadata.index,
+                                  funcName: controllerActionName
+                              });
                         break;
                 }
             }
@@ -2012,279 +2175,111 @@ export class Application<TRootClass extends Object = Object> {
             context.set(responseBodyArgsKey, await controllerAction(...controllerActionArguments), {
                 isStatic: false
             });
-
-            if (
-                resolutedMap &&
-                "closeInterceptorGroup" in resolutedMap &&
-                resolutedMap.closeInterceptorGroup
-            ) {
-                const { closeInterceptorGroup } = resolutedMap;
-
-                // Execute close interceptor(s)
-                for (let i = 0; i < closeInterceptorGroup.length; i++) {
-                    const args = [];
-                    const {
-                        func: handler,
-                        funcName: functionName,
-                        argumentsMetadata
-                    } = closeInterceptorGroup[i];
-
-                    for (const [_key, argMetadata] of Object.entries(argumentsMetadata)) {
-                        switch (argMetadata.type) {
-                            case requestArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? request
-                                    : await this.argumentsResolution(
-                                          request,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case requestBodyArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? await request?.[argMetadata.parser || "json"]()
-                                    : await this.argumentsResolution(
-                                          await request?.[argMetadata.parser || "json"](),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case contextArgsKey:
-                                args[argMetadata.index] = !argMetadata.key
-                                    ? context
-                                    : context.get(argMetadata.key);
-                                break;
-                            case requestHeadersArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? requestHeaders
-                                    : await this.argumentsResolution(
-                                          requestHeaders?.toJSON(),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case responseHeadersArgsKey:
-                                args[argMetadata.index] = context.get(argMetadata.type);
-                                break;
-                            case requestHeaderArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? requestHeaders?.get(argMetadata.key) || undefined
-                                    : await this.argumentsResolution(
-                                          requestHeaders?.get(argMetadata.key) || undefined,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case paramArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? parameters?.[argMetadata.key] || undefined
-                                    : await this.argumentsResolution(
-                                          parameters?.[argMetadata.key] || undefined,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case routeModelArgsKey:
-                                args[argMetadata.index] = routeModel;
-                                break;
-                            case httpServerArgsKey:
-                                args[argMetadata.index] = httpServer;
-                                break;
-                            default:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? !context.has(argMetadata.type)
-                                        ? undefined
-                                        : context.get(argMetadata.type)
-                                    : await this.argumentsResolution(
-                                          context.get(argMetadata.type),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                        }
-                    }
-
-                    await handler(...args);
-                }
-            }
         }
 
-        if (resolutedMap) {
-            const { endMiddlewareGroup } = resolutedMap;
-
-            // Execute end middleware(s)
-            if (endMiddlewareGroup) {
-                for (let i = 0; i < endMiddlewareGroup.length; i++) {
-                    const args = [];
-                    const {
-                        func: handler,
-                        funcName: functionName,
-                        argumentsMetadata
-                    } = endMiddlewareGroup[i];
-
-                    for (const [_key, argMetadata] of Object.entries(argumentsMetadata)) {
-                        switch (argMetadata.type) {
-                            case requestArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? request
-                                    : await this.argumentsResolution(
-                                          request,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case requestBodyArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? await request?.[argMetadata.parser || "json"]()
-                                    : await this.argumentsResolution(
-                                          await request?.[argMetadata.parser || "json"](),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case contextArgsKey:
-                                args[argMetadata.index] = !argMetadata.key
-                                    ? context
-                                    : context.get(argMetadata.key);
-                                break;
-                            case requestHeadersArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? requestHeaders
-                                    : await this.argumentsResolution(
-                                          requestHeaders?.toJSON(),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case responseHeadersArgsKey:
-                                args[argMetadata.index] = context.get(argMetadata.type);
-                                break;
-                            case requestHeaderArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? requestHeaders?.get(argMetadata.key) || undefined
-                                    : await this.argumentsResolution(
-                                          requestHeaders?.get(argMetadata.key) || undefined,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case paramArgsKey:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? parameters?.[argMetadata.key] || undefined
-                                    : await this.argumentsResolution(
-                                          parameters?.[argMetadata.key] || undefined,
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                            case routeModelArgsKey:
-                                args[argMetadata.index] = routeModel;
-                                break;
-                            case httpServerArgsKey:
-                                args[argMetadata.index] = httpServer;
-                                break;
-                            default:
-                                args[argMetadata.index] = !argMetadata.validationSchema
-                                    ? !context.has(argMetadata.type)
-                                        ? undefined
-                                        : context.get(argMetadata.type)
-                                    : await this.argumentsResolution(
-                                          !(argMetadata.type in context)
-                                              ? undefined
-                                              : context.get(argMetadata.type),
-                                          argMetadata.validationSchema,
-                                          argMetadata.index,
-                                          functionName
-                                      );
-                                break;
-                        }
-                    }
-
-                    await handler(...args);
-                }
-            }
-        }
-
-        return Object.freeze({
-            context: context
-        });
+        return;
     }
 
     /**
      *
-     * @param bun
-     * @param bool
+     * @param param0
      * @returns
      */
-    private async webSocketFetcher(
-        bun: Required<{
-            request: Request;
-            server: Server<TWebSocketUpgradeData>;
-        }>,
-        bool: Required<{
-            responseHeaders: Headers;
-            query: Record<string, unknown>;
-            route: NonNullable<ReturnType<HttpRouterGroup["find"]>>;
-            moduleResolution: NonNullable<
-                Awaited<ReturnType<Application<TRootClass>["moduleResolution"]>>
-            >;
-        }>
-    ) {
-        const { request, server } = bun;
-        const {
-            query,
-            responseHeaders,
-            route: { model }
-        } = bool;
+    private serializeResponse({
+        status,
+        statusText,
+        headers,
+        data
+    }: {
+        status?: number;
+        statusText?: string;
+        headers: Headers;
+        data: unknown;
+    }): Response {
+        const contentType = headers.get("Content-Type") || "text/plain";
+        const inferedStatus = !status ? (!data ? 204 : 200) : status;
+        const inferedStatusText = inferStatusText(inferedStatus);
 
-        // Execute controller action
-        const isUpgrade = await model.func(...[server, request, query]);
-
-        if (typeof isUpgrade !== "boolean") {
+        if (contentType.includes("application/json")) {
             return this.finalizeResponse(
                 new Response(
-                    JSON.stringify({
-                        httpCode: 500,
-                        message: "Can not detect webSocket upgrade result.",
-                        data: undefined
-                    }),
+                    !data
+                        ? undefined
+                        : data instanceof ReadableStream
+                        ? data
+                        : JSON.stringify(data),
                     {
-                        status: 500,
-                        statusText: "Internal server error.",
-                        headers: responseHeaders
+                        status: inferedStatus,
+                        statusText: inferedStatusText,
+                        headers: headers
                     }
                 )
             );
         }
 
-        if (!isUpgrade) {
+        if (contentType.includes("text/plain") || contentType.includes("text/html")) {
             return this.finalizeResponse(
                 new Response(
-                    JSON.stringify({
-                        httpCode: 500,
-                        message: "Can not upgrade.",
-                        data: undefined
-                    }),
+                    !data ? undefined : data instanceof ReadableStream ? data : String(data),
                     {
-                        status: 500,
-                        statusText: "Internal server error.",
-                        headers: responseHeaders
+                        status: inferedStatus,
+                        statusText: inferedStatusText,
+                        headers: headers
                     }
                 )
             );
         }
 
-        return isUpgrade;
+        if (contentType.includes("application/octet-stream")) {
+            if (
+                data instanceof Uint8Array ||
+                data instanceof ArrayBuffer ||
+                data instanceof Blob ||
+                data instanceof ReadableStream
+            ) {
+                return this.finalizeResponse(
+                    new Response(data as BodyInit, {
+                        status: inferedStatus,
+                        statusText: inferedStatusText,
+                        headers: headers
+                    })
+                );
+            }
+
+            throw new Error("Invalid data type for application/octet-stream");
+        }
+
+        if (contentType.includes("multipart/form-data")) {
+            if (data instanceof FormData) {
+                return this.finalizeResponse(
+                    new Response(data, {
+                        status: inferedStatus,
+                        statusText: inferedStatusText,
+                        headers: headers
+                    })
+                );
+            }
+
+            throw new Error("multipart/form-data requires FormData object");
+        }
+
+        return this.finalizeResponse(
+            new Response(!data ? undefined : String(data), {
+                status: inferedStatus,
+                statusText: inferedStatusText,
+                headers: headers
+            })
+        );
+    }
+
+    /**
+     *
+     * @param response
+     * @returns
+     */
+    private finalizeResponse(response: Response) {
+        response.headers.set("X-Powered-By", "Bool Typescript");
+
+        return response;
     }
 }

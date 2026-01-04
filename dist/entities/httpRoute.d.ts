@@ -8,8 +8,6 @@ export type THttpRouteModel<T = unknown> = Readonly<{
 }>;
 export declare class HttpRoute {
     #private;
-    static rootPattern: string;
-    static innerRootPattern: string;
     readonly alias: string;
     constructor({ alias }: {
         alias: string;
