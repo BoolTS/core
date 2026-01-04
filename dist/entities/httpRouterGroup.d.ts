@@ -1,8 +1,9 @@
 import type { THttpMethods } from "../http";
+import type { TCloseInterceptorHandlers, TGuardHandlers, TOpenInterceptorHandlers } from "../interfaces";
 import type { THttpRouteModel } from "./httpRoute";
 import type { HttpRouter } from "./httpRouter";
 export declare class HttpRouterGroup {
-    private _routers;
+    #private;
     add(...routers: Array<HttpRouter>): this;
     /**
      *
@@ -16,5 +17,8 @@ export declare class HttpRouterGroup {
     }): Readonly<{
         parameters: Record<string, string | undefined>;
         model: THttpRouteModel;
+        guardHandlers: TGuardHandlers;
+        openInterceptorHandlers: TOpenInterceptorHandlers;
+        closeInterceptorHandlers: TCloseInterceptorHandlers;
     }> | null;
 }

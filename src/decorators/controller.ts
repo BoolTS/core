@@ -1,7 +1,7 @@
-import type { TConstructor } from "../ultils";
+import type { TConstructor } from "../utils";
 import type { THttpMetadata } from "./http";
 
-import { controllerHttpKey, controllerKey } from "../keys";
+import { controllerHttpKey, controllerKey } from "../constants/keys";
 
 export type TControllerMetadata = Required<{
     prefix: string;

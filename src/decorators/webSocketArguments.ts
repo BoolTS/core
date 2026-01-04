@@ -5,7 +5,7 @@ import {
     webSocketEventArgumentsKey,
     webSocketMessageArgsKey,
     webSocketServerArgsKey
-} from "../keys";
+} from "../constants/keys";
 
 export type TWebsocketArgumentsMetadata =
     | {

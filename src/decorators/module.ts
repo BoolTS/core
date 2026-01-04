@@ -1,4 +1,4 @@
-import type { TConstructor } from "../ultils";
+import type { TConstructor } from "../utils";
 
 import {
     containerKey,
@@ -9,7 +9,7 @@ import {
     middlewareKey,
     moduleKey,
     webSocketKey
-} from "../keys";
+} from "../constants/keys";
 
 type TInstances = Array<new (...args: any[]) => any>;
 type TLoaders<TConfig extends {} = {}> = Record<

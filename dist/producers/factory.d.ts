@@ -1,5 +1,5 @@
 import type { TArgumentsMetadataCollection } from "../decorators/arguments";
-import type { TConstructor } from "../ultils";
+import type { TConstructor } from "../utils";
 import "reflect-metadata";
 import Qs from "qs";
 import { Application } from "../entities";
