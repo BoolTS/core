@@ -6,51 +6,45 @@ type AnsiOptions = {
 };
 
 const ansiColors = Object.freeze({
-    black: 30,
-    red: 31,
-    green: 32,
-    yellow: 33,
-    blue: 34,
-    magenta: 35,
-    cyan: 36,
-    white: 37,
-    gray: 90
+    black: "38;5;16",
+    red: "38;5;196",
+    green: "38;5;46",
+    yellow: "38;5;226",
+    blue: "38;5;21",
+    magenta: "38;5;201",
+    cyan: "38;5;51",
+    white: "38;5;231",
+    gray: "38;5;244"
 });
 
 const backgroundColors = Object.freeze({
-    black: 40,
-    red: 41,
-    green: 42,
-    yellow: 43,
-    blue: 44,
-    magenta: 45,
-    cyan: 46,
-    white: 47,
-    gray: 100
+    black: "48;5;16",
+    red: "48;5;196",
+    green: "48;5;46",
+    yellow: "48;5;226",
+    blue: "48;5;21",
+    magenta: "48;5;201",
+    cyan: "48;5;51",
+    white: "48;5;231",
+    gray: "48;5;244"
 });
 
 export const ansiText = (text: string, options: AnsiOptions = {}) => {
     const { color, backgroundColor, bold, underline } = options;
+    const codes: string[] = [];
 
-    let ansiCode = "";
-
-    if (bold) {
-        ansiCode += "\x1b[1m"; // Mã ANSI cho in đậm
-    }
-
-    if (underline) {
-        ansiCode += "\x1b[4m"; // Mã ANSI cho gạch chân
-    }
+    if (bold) codes.push("1");
+    if (underline) codes.push("4");
 
     if (color && ansiColors[color]) {
-        ansiCode += `\x1b[${ansiColors[color]}m`;
+        codes.push(ansiColors[color]);
     }
 
-    // Màu nền
     if (backgroundColor && backgroundColors[backgroundColor]) {
-        ansiCode += `\x1b[${backgroundColors[backgroundColor]}m`;
+        codes.push(backgroundColors[backgroundColor]);
     }
 
-    // Kết quả với reset
-    return `${ansiCode}${text}\x1b[0m`;
+    if (codes.length === 0) return text;
+
+    return `\x1b[${codes.join(";")}m${text}\x1b[0m`;
 };

@@ -268,15 +268,15 @@ export class Application<TRootClass extends Object = Object> {
             method = request.method.toUpperCase(),
             responseHeaders = new Headers();
 
-        try {
-            const context = new Context()
-                .setOptions({ isStatic: true })
-                .set(httpServerArgsKey, server)
-                .set(requestArgsKey, request)
-                .set(requestHeaderArgsKey, request.headers)
-                .set(responseHeadersArgsKey, responseHeaders)
-                .set(queryArgsKey, query);
+        const context = new Context()
+            .setOptions({ isStatic: true })
+            .set(httpServerArgsKey, server)
+            .set(requestArgsKey, request)
+            .set(requestHeaderArgsKey, request.headers)
+            .set(responseHeadersArgsKey, responseHeaders)
+            .set(queryArgsKey, query);
 
+        try {
             [
                 ...(!allowCredentials
                     ? []
@@ -369,9 +369,12 @@ export class Application<TRootClass extends Object = Object> {
         } finally {
             if (allowLogsMethods) {
                 const end = performance.now();
+                const responseStatus = context.get(responseStatusArgsKey, { isStatic: false });
+                const inferedResponseStatus =
+                    typeof responseStatus !== "number" || !responseStatus ? 0 : responseStatus;
                 const pathname = ansiText(url.pathname, { color: "blue" });
                 const convertedPID = `${Bun.color("yellow", "ansi")}${process.pid}`;
-                const convertedMethod = ansiText(request.method, {
+                const convertedMethod = ansiText(` ${request.method} `, {
                     color: "yellow",
                     backgroundColor: "blue"
                 });
@@ -387,18 +390,64 @@ export class Application<TRootClass extends Object = Object> {
                     }
                 );
                 const convertedTime = ansiText(
-                    `${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms`,
+                    ` ${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms `,
                     {
                         color: "yellow",
                         backgroundColor: "blue"
                     }
+                );
+                const convertedResponseStatus = ansiText(
+                    ` ${inferedResponseStatus} (${inferStatusText(inferedResponseStatus)}) `,
+                    (() => {
+                          if (inferedResponseStatus >= 100 && inferedResponseStatus < 200)
+                            return {
+                                color: "white",
+                                backgroundColor: "cyan"
+                            };
+                        else if (inferedResponseStatus >= 200 && inferedResponseStatus < 300)
+                            return {
+                                color: "white",
+                                backgroundColor: "blue"
+                            };
+                        else if (inferedResponseStatus >= 300 && inferedResponseStatus < 400)
+                            return {
+                                color: "black",
+                                backgroundColor: "magenta"
+                            };
+                        else if (inferedResponseStatus >= 400 && inferedResponseStatus < 500)
+                            return {
+                                color: "black",
+                                backgroundColor: "yellow"
+                            };
+                        else if (inferedResponseStatus >= 500 && inferedResponseStatus < 600)
+                            return {
+                                color: "white",
+                                backgroundColor: "red"
+                            };
+                        else
+                            return {
+                                color: "black",
+                                backgroundColor: "gray"
+                            };
+                    })()
                 );
 
                 allowLogsMethods.includes(
                     request.method.toUpperCase() as (typeof allowLogsMethods)[number]
                 ) &&
                     console.info(
-                        `PID: ${convertedPID} - Method: ${convertedMethod} - IP: ${convertedReqIp} - ${pathname} - Time: ${convertedTime}`
+                        [
+                            `PID: ${convertedPID}`,
+                            `Method: ${convertedMethod}`,
+                            `IP: ${convertedReqIp}`,
+                            pathname,
+                            `Time: ${convertedTime}`,
+                            typeof responseStatus !== "number" || !responseStatus
+                                ? undefined
+                                : convertedResponseStatus
+                        ]
+                            .filter((x) => !!x?.trim())
+                            .join(" - ")
                     );
             }
         }
