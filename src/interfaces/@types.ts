@@ -94,6 +94,7 @@ export type TApplicationOptions<AllowedMethods extends Array<THttpMethods> = Arr
     }> &
         Partial<{
             config: Record<string | symbol, any> | (() => Record<string | symbol, any>);
+            idleTimeoutInSeconds: number;
             prefix: string;
             debug: boolean;
             log: Partial<{
