@@ -119,10 +119,10 @@ export class Application<TRootClass extends Object = Object> {
             allowOrigins: !this.options.cors?.origins
                 ? ["*"]
                 : typeof this.options.cors.origins !== "string"
-                ? this.options.cors.origins.includes("*") || this.options.cors.origins.length < 1
-                    ? ["*"]
-                    : this.options.cors.origins
-                : [this.options.cors.origins !== "*" ? this.options.cors.origins : "*"],
+                  ? this.options.cors.origins.includes("*") || this.options.cors.origins.length < 1
+                      ? ["*"]
+                      : this.options.cors.origins
+                  : [this.options.cors.origins !== "*" ? this.options.cors.origins : "*"],
             allowMethods: this.options.cors?.methods || httpMethods,
             allowCredentials: !this.options.cors?.credentials ? false : true,
             allowHeaders:
@@ -231,6 +231,11 @@ export class Application<TRootClass extends Object = Object> {
     public async listen() {
         const server = serve<TWebSocketUpgradeData>({
             port: this.options.port,
+            idleTimeout:
+                typeof this.options.idleTimeoutInSeconds !== "number" ||
+                this.options.idleTimeoutInSeconds <= 0
+                    ? undefined
+                    : this.options.idleTimeoutInSeconds,
             fetch: this.#rootFetch.bind(this),
             websocket: await this.#rootWebSocket.bind(this)()
         });
@@ -291,8 +296,8 @@ export class Application<TRootClass extends Object = Object> {
                     value: allowOrigins.includes("*")
                         ? "*"
                         : !allowOrigins.includes(origin)
-                        ? allowOrigins[0]
-                        : origin
+                          ? allowOrigins[0]
+                          : origin
                 },
                 { key: "Access-Control-Allow-Methods", value: allowMethods.join(", ") },
                 { key: "Access-Control-Allow-Headers", value: allowHeaders.join(", ") }
@@ -399,7 +404,7 @@ export class Application<TRootClass extends Object = Object> {
                 const convertedResponseStatus = ansiText(
                     ` ${inferedResponseStatus} (${inferStatusText(inferedResponseStatus)}) `,
                     (() => {
-                          if (inferedResponseStatus >= 100 && inferedResponseStatus < 200)
+                        if (inferedResponseStatus >= 100 && inferedResponseStatus < 200)
                             return {
                                 color: "white",
                                 backgroundColor: "cyan"
@@ -1002,12 +1007,12 @@ export class Application<TRootClass extends Object = Object> {
                     ? typeof containerConfig !== "object"
                         ? undefined
                         : "key" in containerConfig &&
-                          "value" in containerConfig &&
-                          typeof containerConfig.key === "symbol"
-                        ? typeof containerConfig.value !== "function"
-                            ? containerConfig.value
-                            : await containerConfig.value()
-                        : containerConfig
+                            "value" in containerConfig &&
+                            typeof containerConfig.key === "symbol"
+                          ? typeof containerConfig.value !== "function"
+                              ? containerConfig.value
+                              : await containerConfig.value()
+                          : containerConfig
                     : await containerConfig())
             }
         });
@@ -1304,12 +1309,12 @@ export class Application<TRootClass extends Object = Object> {
                           ? typeof moduleConfig !== "object"
                               ? undefined
                               : "key" in moduleConfig &&
-                                "value" in moduleConfig &&
-                                typeof moduleConfig.key === "symbol"
-                              ? typeof moduleConfig.value !== "function"
-                                  ? moduleConfig.value
-                                  : await moduleConfig.value()
-                              : moduleConfig
+                                  "value" in moduleConfig &&
+                                  typeof moduleConfig.key === "symbol"
+                                ? typeof moduleConfig.value !== "function"
+                                    ? moduleConfig.value
+                                    : await moduleConfig.value()
+                                : moduleConfig
                           : await moduleConfig())
                   }
         });
@@ -2255,8 +2260,8 @@ export class Application<TRootClass extends Object = Object> {
                     !data
                         ? undefined
                         : data instanceof ReadableStream
-                        ? data
-                        : JSON.stringify(data),
+                          ? data
+                          : JSON.stringify(data),
                     {
                         status: inferedStatus,
                         statusText: inferedStatusText,
