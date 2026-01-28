@@ -870,6 +870,7 @@ export class Application<TRootClass extends Object = Object> {
                 .set(responseBodyArgsKey, undefined);
         } else {
             context.set(routeModelArgsKey, routeResult.model);
+            context.set(paramsArgsKey, routeResult.parameters);
 
             const authResult = await this.#pipesEnforcer({
                 type: "GUARDS",
