@@ -40,9 +40,9 @@
     },
     "scripts": {
         "build": "tsc --emitDeclarationOnly && bun run app.build.ts",
-        "test:server": "bun --hot run __test/server/index.ts",
+        "test:server": "bun --hot run __test/server/booljs/index.ts",
         "test:socket": "bun --hot run __test/client/socket.ts"
     },
     "types": "./dist/index.d.ts",
-    "version": "2.3.2"
+    "version": "2.3.3"
 }
