@@ -402,7 +402,7 @@ export class Application<TRootClass extends Object = Object> {
                     }
                 );
                 const convertedResponseStatus = ansiText(
-                    ` ${inferedResponseStatus} (${inferStatusText(inferedResponseStatus)}) `,
+                    ` ${inferedResponseStatus} `,
                     (() => {
                         if (inferedResponseStatus >= 100 && inferedResponseStatus < 200)
                             return {
@@ -443,12 +443,12 @@ export class Application<TRootClass extends Object = Object> {
                     console.info(
                         [
                             `PID: ${convertedPID}`,
-                            `Method: ${convertedMethod}`,
-                            `IP: ${convertedReqIp}`,
-                            `Time: ${convertedTime}`,
+                            `Method: ${convertedMethod.padStart(10)}`,
+                            `Time: ${convertedTime.padStart(10)}`,
                             typeof responseStatus !== "number" || !responseStatus
                                 ? undefined
-                                : convertedResponseStatus,
+                                : convertedResponseStatus.padStart(5),
+                            `IP: ${convertedReqIp}`,
                             pathname
                         ]
                             .filter((x) => !!x?.trim())
