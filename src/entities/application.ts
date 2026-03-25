@@ -394,15 +394,31 @@ export class Application<TRootClass extends Object = Object> {
                         color: "yellow"
                     }
                 );
+                const timeInMs = Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2;
                 const convertedTime = ansiText(
-                    ` ${Math.round((end - start + Number.EPSILON) * 10 ** 2) / 10 ** 2}ms `,
-                    {
-                        color: "yellow",
-                        backgroundColor: "blue"
-                    }
+                    ` ${timeInMs}ms `.padStart(10),
+                    (() => {
+                        if (timeInMs >= 500) {
+                            return {
+                                color: "white",
+                                backgroundColor: "red"
+                            };
+                        }
+                        if (timeInMs >= 300) {
+                            return {
+                                color: "black",
+                                backgroundColor: "yellow"
+                            };
+                        } else {
+                            return {
+                                color: "white",
+                                backgroundColor: "blue"
+                            };
+                        }
+                    })()
                 );
                 const convertedResponseStatus = ansiText(
-                    ` ${inferedResponseStatus} `,
+                    ` ${inferedResponseStatus} `.padStart(5),
                     (() => {
                         if (inferedResponseStatus >= 100 && inferedResponseStatus < 200)
                             return {
@@ -443,11 +459,11 @@ export class Application<TRootClass extends Object = Object> {
                     console.info(
                         [
                             `PID: ${convertedPID}`,
-                            `Method: ${convertedMethod.padStart(10)}`,
-                            `Time: ${convertedTime.padStart(10)}`,
+                            `Method: ${convertedMethod}`,
+                            `Time: ${convertedTime}`,
                             typeof responseStatus !== "number" || !responseStatus
                                 ? undefined
-                                : convertedResponseStatus.padStart(5),
+                                : `Status: ${convertedResponseStatus}`,
                             `IP: ${convertedReqIp}`,
                             pathname
                         ]
