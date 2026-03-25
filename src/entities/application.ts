@@ -451,7 +451,7 @@ export class Application<TRootClass extends Object = Object> {
                             `IP: ${convertedReqIp}`,
                             pathname
                         ]
-                            .filter((x) => !!x?.trim())
+                            .filter((x) => !!x)
                             .join(" - ")
                     );
             }
