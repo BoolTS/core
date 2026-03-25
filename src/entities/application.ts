@@ -445,11 +445,11 @@ export class Application<TRootClass extends Object = Object> {
                             `PID: ${convertedPID}`,
                             `Method: ${convertedMethod}`,
                             `IP: ${convertedReqIp}`,
-                            pathname,
                             `Time: ${convertedTime}`,
                             typeof responseStatus !== "number" || !responseStatus
                                 ? undefined
-                                : convertedResponseStatus
+                                : convertedResponseStatus,
+                            pathname
                         ]
                             .filter((x) => !!x?.trim())
                             .join(" - ")
