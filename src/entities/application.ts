@@ -10,6 +10,7 @@ import type {
 } from "../decorators";
 import type { THttpMethods } from "../http";
 import type {
+    IContext,
     IController,
     ICustomValidator,
     IGuard,
@@ -75,7 +76,7 @@ import {
     HttpServerError,
     jsonErrorInfer
 } from "../http";
-import { ansiText, inferStatusText, isWebSocketUpgrade } from "../utils";
+import { ansiText, hasCallSignature, inferStatusText, isWebSocketUpgrade } from "../utils";
 import { Context } from "./context";
 import { HttpRouter } from "./httpRouter";
 import { HttpRouterGroup } from "./httpRouterGroup";
@@ -1659,24 +1660,37 @@ export class Application<TRootClass extends Object = Object> {
      * @returns
      */
     async #argumentsResolver<TValidationSchema = unknown>({
+        context,
         data,
         validationSchema,
         argumentIndex,
         funcName
     }: {
+        context: IContext;
         data: unknown;
-        validationSchema: TValidationSchema;
+        validationSchema:
+            | TValidationSchema
+            | ((context: IContext) => TValidationSchema | Promise<TValidationSchema>);
         argumentIndex: number;
         funcName: string | symbol;
     }) {
-        if (!this.#customValidator) {
+        if (
+            !this.#customValidator ||
+            !validationSchema ||
+            Object.getOwnPropertyDescriptor(validationSchema, "prototype")
+        ) {
             return data;
         }
 
         try {
+            const inferValidationSchema =
+                typeof validationSchema === "function" && hasCallSignature(validationSchema)
+                    ? await validationSchema(context)
+                    : validationSchema;
+
             const validation = await this.#customValidator.validate(
                 data,
-                validationSchema,
+                inferValidationSchema,
                 argumentIndex,
                 funcName
             );
@@ -1913,6 +1927,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? await request?.[argMetadata.parser || "json"]()
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: await request?.[argMetadata.parser || "json"](),
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -1923,6 +1938,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? requestHeaders
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: requestHeaders?.toJSON(),
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -1933,6 +1949,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? requestHeaders?.get(argMetadata.key) || undefined
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: requestHeaders?.get(argMetadata.key) || undefined,
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -1943,6 +1960,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? parameters?.[argMetadata.key] || undefined
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: parameters?.[argMetadata.key] || undefined,
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -1962,6 +1980,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? context.get(argMetadata.type, contextOptions)
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: context.get(argMetadata.type, contextOptions),
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -1991,6 +2010,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? await request?.[argMetadata.parser || "json"]()
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: await request?.[argMetadata.parser || "json"](),
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -2006,6 +2026,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? requestHeaders
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: requestHeaders?.toJSON(),
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -2019,6 +2040,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? requestHeaders?.get(argMetadata.key) || undefined
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: requestHeaders?.get(argMetadata.key) || undefined,
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -2029,6 +2051,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? parameters?.[argMetadata.key] || undefined
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: parameters?.[argMetadata.key],
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -2045,6 +2068,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? context.get(argMetadata.type)
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: context.get(argMetadata.type),
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -2089,6 +2113,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? await request?.[argMetadata.parser || "json"]()
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: await request?.[argMetadata.parser || "json"](),
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -2104,6 +2129,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? requestHeaders
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: requestHeaders?.toJSON(),
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -2114,6 +2140,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? requestHeaders?.get(argMetadata.key) || undefined
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: requestHeaders?.get(argMetadata.key) || undefined,
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -2127,6 +2154,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? parameters?.[argMetadata.key] || undefined
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: parameters?.[argMetadata.key] || undefined,
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -2143,6 +2171,7 @@ export class Application<TRootClass extends Object = Object> {
                             args[argMetadata.index] = !argMetadata.validationSchema
                                 ? context.get(argMetadata.type)
                                 : await this.#argumentsResolver({
+                                      context: context,
                                       data: context.get(argMetadata.type),
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
@@ -2180,6 +2209,7 @@ export class Application<TRootClass extends Object = Object> {
                         controllerActionArguments[argMetadata.index] = !argMetadata.validationSchema
                             ? await request?.[argMetadata.parser || "json"]()
                             : await this.#argumentsResolver({
+                                  context: context,
                                   data: await request?.[argMetadata.parser || "json"](),
                                   validationSchema: argMetadata.validationSchema,
                                   argumentIndex: argMetadata.index,
@@ -2195,6 +2225,7 @@ export class Application<TRootClass extends Object = Object> {
                         controllerActionArguments[argMetadata.index] = !argMetadata.validationSchema
                             ? requestHeaders
                             : await this.#argumentsResolver({
+                                  context: context,
                                   data: requestHeaders?.toJSON(),
                                   validationSchema: argMetadata.validationSchema,
                                   argumentIndex: argMetadata.index,
@@ -2205,6 +2236,7 @@ export class Application<TRootClass extends Object = Object> {
                         controllerActionArguments[argMetadata.index] = !argMetadata.validationSchema
                             ? requestHeaders?.get(argMetadata.key) || undefined
                             : await this.#argumentsResolver({
+                                  context: context,
                                   data: requestHeaders?.get(argMetadata.key) || undefined,
                                   validationSchema: argMetadata.validationSchema,
                                   argumentIndex: argMetadata.index,
@@ -2218,6 +2250,7 @@ export class Application<TRootClass extends Object = Object> {
                         controllerActionArguments[argMetadata.index] = !argMetadata.validationSchema
                             ? parameters?.[argMetadata.key] || undefined
                             : await this.#argumentsResolver({
+                                  context: context,
                                   data: parameters?.[argMetadata.key] || undefined,
                                   validationSchema: argMetadata.validationSchema,
                                   argumentIndex: argMetadata.index,
@@ -2234,6 +2267,7 @@ export class Application<TRootClass extends Object = Object> {
                         controllerActionArguments[argMetadata.index] = !argMetadata.validationSchema
                             ? context.get(argMetadata.type)
                             : await this.#argumentsResolver({
+                                  context: context,
                                   data: context.get(argMetadata.type),
                                   validationSchema: argMetadata.validationSchema,
                                   argumentIndex: argMetadata.index,

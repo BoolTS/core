@@ -12,40 +12,53 @@ import {
     responseHeadersArgsKey,
     routeModelArgsKey
 } from "../constants/keys";
+import type { IContext } from "../interfaces";
 
 export type TArgumentsMetadata<TValidationSchema = unknown> =
     | {
           index: number;
           type: typeof requestHeadersArgsKey;
-          validationSchema?: TValidationSchema;
+          validationSchema?:
+              | TValidationSchema
+              | ((context: IContext) => Promise<TValidationSchema> | TValidationSchema);
       }
     | {
           index: number;
           type: typeof requestHeaderArgsKey;
           key: string;
-          validationSchema?: TValidationSchema;
+          validationSchema?:
+              | TValidationSchema
+              | ((context: IContext) => Promise<TValidationSchema> | TValidationSchema);
       }
     | {
           index: number;
           type: typeof requestBodyArgsKey;
-          validationSchema?: TValidationSchema;
+          validationSchema?:
+              | TValidationSchema
+              | ((context: IContext) => Promise<TValidationSchema> | TValidationSchema);
           parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text";
       }
     | {
           index: number;
           type: typeof paramsArgsKey;
-          validationSchema?: TValidationSchema;
+          validationSchema?:
+              | TValidationSchema
+              | ((context: IContext) => Promise<TValidationSchema> | TValidationSchema);
       }
     | {
           index: number;
           type: typeof paramArgsKey;
           key: string;
-          validationSchema?: TValidationSchema;
+          validationSchema?:
+              | TValidationSchema
+              | ((context: IContext) => Promise<TValidationSchema> | TValidationSchema);
       }
     | {
           index: number;
           type: typeof queryArgsKey;
-          validationSchema?: TValidationSchema;
+          validationSchema?:
+              | TValidationSchema
+              | ((context: IContext) => Promise<TValidationSchema> | TValidationSchema);
       }
     | {
           index: number;
