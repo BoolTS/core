@@ -44,10 +44,10 @@ export declare const Delete: <T extends Object, K>(path?: string) => (target: T,
  */
 export declare const Options: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
 declare const _default: {
-    Get: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
-    Post: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
-    Put: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
-    Patch: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
-    Delete: <T extends Object, K>(path?: string) => (target: T, methodName: string | symbol, descriptor: TypedPropertyDescriptor<K>) => void;
+    Get: typeof Get;
+    Post: typeof Post;
+    Put: typeof Put;
+    Patch: typeof Patch;
+    Delete: typeof Delete;
 };
 export default _default;

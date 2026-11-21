@@ -11,3 +11,15 @@ export const inferStatusText = (httpCode: number): string => {
 
     return "Unknown error";
 };
+
+type TCallable = <T>(...args: T[]) => unknown;
+
+export const hasCallSignature = (value: any): value is TCallable => {
+    return (
+        typeof value === "function" &&
+        !(
+            value.prototype &&
+            Object.getOwnPropertyDescriptor(value, "prototype")?.writable === false
+        )
+    );
+};

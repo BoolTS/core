@@ -14,7 +14,7 @@ export type TWebSocketEventHandlerMetadata = Required<{
     }>;
 
 export type TWebSocketEventMetadata = Record<
-    "open" | "close" | "message" | "drain" | "ping" | "pong",
+    "open" | "close" | "message" | "drain" | "ping" | "pong" | "error",
     TWebSocketEventHandlerMetadata
 >;
 
@@ -24,7 +24,9 @@ export type TWebSocketEventMetadata = Record<
  * @returns
  */
 export const WebSocketEvent =
-    <T extends Object>(eventName: "open" | "close" | "message" | "drain" | "ping" | "pong") =>
+    <T extends Object>(
+        eventName: "open" | "close" | "message" | "drain" | "ping" | "pong" | "error"
+    ) =>
     (target: T, methodName: string, descriptor: PropertyDescriptor) => {
         if (!(descriptor.value instanceof Function)) {
             throw Error("WebSocketEvent decorator only use for class's method.");

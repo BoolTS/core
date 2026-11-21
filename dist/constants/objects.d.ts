@@ -258,49 +258,89 @@ export declare const serverErrorStatuses: Readonly<{
 }>;
 export type TServerErrorStatuses = (typeof serverErrorStatuses)[keyof typeof serverErrorStatuses]["status"];
 export declare const httpStatuses: Readonly<{
-    INTERNAL_SERVER_ERROR: Readonly<{
-        status: 500;
-        statusText: "Internal Server Error";
+    CONTINUE: Readonly<{
+        status: 100;
+        statusText: "Continue";
     }>;
-    NOT_IMPLEMENTED: Readonly<{
-        status: 501;
-        statusText: "Not Implemented";
+    SWITCHING_PROTOCOLS: Readonly<{
+        status: 101;
+        statusText: "Switching Protocols";
     }>;
-    BAD_GATEWAY: Readonly<{
-        status: 502;
-        statusText: "Bad Gateway";
+    EARLY_HINTS: Readonly<{
+        status: 103;
+        statusText: "Early Hints";
     }>;
-    SERVICE_UNAVAILABLE: Readonly<{
-        status: 503;
-        statusText: "Service Unavailable";
+    OK: Readonly<{
+        status: 200;
+        statusText: "OK";
     }>;
-    GATEWAY_TIMEOUT: Readonly<{
-        status: 504;
-        statusText: "Gateway Timeout";
+    CREATED: Readonly<{
+        status: 201;
+        statusText: "Created";
     }>;
-    HTTP_VERSION_NOT_SUPPORTED: Readonly<{
-        status: 505;
-        statusText: "HTTP Version Not Supported";
+    ACCEPTED: Readonly<{
+        status: 202;
+        statusText: "Accepted";
     }>;
-    VARIANT_ALSO_NEGOTIATES: Readonly<{
-        status: 506;
-        statusText: "Variant Also Negotiates";
+    NON_AUTHORITATIVE_INFORMATION: Readonly<{
+        status: 203;
+        statusText: "Non-Authoritative Information";
     }>;
-    INSUFFICIENT_STORAGE: Readonly<{
-        status: 507;
-        statusText: "Insufficient Storage";
+    NO_CONTENT: Readonly<{
+        status: 204;
+        statusText: "No Content";
     }>;
-    LOOP_DETECTED: Readonly<{
-        status: 508;
-        statusText: "Loop Detected";
+    RESET_CONTENT: Readonly<{
+        status: 205;
+        statusText: "Reset Content";
     }>;
-    NOT_EXTENDED: Readonly<{
-        status: 510;
-        statusText: "Not Extended";
+    PARTIAL_CONTENT: Readonly<{
+        status: 206;
+        statusText: "Partial Content";
     }>;
-    NETWORK_AUTHENTICATION_REQUIRED: Readonly<{
-        status: 511;
-        statusText: "Network Authentication Required";
+    MULTI_STATUS: Readonly<{
+        status: 207;
+        statusText: "Multi-Status";
+    }>;
+    ALREADY_REPORTED: Readonly<{
+        status: 208;
+        statusText: "Already Reported";
+    }>;
+    IM_USED: Readonly<{
+        status: 226;
+        statusText: "IM Used";
+    }>;
+    MULTIPLE_CHOICES: Readonly<{
+        status: 300;
+        statusText: "Multiple Choices";
+    }>;
+    MOVED_PERMANENTLY: Readonly<{
+        status: 301;
+        statusText: "Moved Permanently";
+    }>;
+    FOUND: Readonly<{
+        status: 302;
+        statusText: "Found";
+    }>;
+    SEE_OTHER: Readonly<{
+        status: 303;
+        statusText: "See Other";
+    }>;
+    NOT_MODIFIED: Readonly<{
+        status: 304;
+        statusText: "Not Modified";
+    }>;
+    UNUSED: Readonly<{
+        status: 306;
+        statusText: "Unused";
+    }>;
+    TEMPORARY_REDIRECT: Readonly<{
+        status: 307;
+        statusText: "Temporary Redirect";
+    }>;
+    PERMANENT_REDIRECT: Readonly<{
+        status: 308;
+        statusText: "Permanent Redirect";
     }>;
     BAD_REQUEST: Readonly<{
         status: 400;
@@ -418,88 +458,48 @@ export declare const httpStatuses: Readonly<{
         status: 451;
         statusText: "Unavailable For Legal Reasons";
     }>;
-    MULTIPLE_CHOICES: Readonly<{
-        status: 300;
-        statusText: "Multiple Choices";
+    INTERNAL_SERVER_ERROR: Readonly<{
+        status: 500;
+        statusText: "Internal Server Error";
     }>;
-    MOVED_PERMANENTLY: Readonly<{
-        status: 301;
-        statusText: "Moved Permanently";
+    NOT_IMPLEMENTED: Readonly<{
+        status: 501;
+        statusText: "Not Implemented";
     }>;
-    FOUND: Readonly<{
-        status: 302;
-        statusText: "Found";
+    BAD_GATEWAY: Readonly<{
+        status: 502;
+        statusText: "Bad Gateway";
     }>;
-    SEE_OTHER: Readonly<{
-        status: 303;
-        statusText: "See Other";
+    SERVICE_UNAVAILABLE: Readonly<{
+        status: 503;
+        statusText: "Service Unavailable";
     }>;
-    NOT_MODIFIED: Readonly<{
-        status: 304;
-        statusText: "Not Modified";
+    GATEWAY_TIMEOUT: Readonly<{
+        status: 504;
+        statusText: "Gateway Timeout";
     }>;
-    UNUSED: Readonly<{
-        status: 306;
-        statusText: "Unused";
+    HTTP_VERSION_NOT_SUPPORTED: Readonly<{
+        status: 505;
+        statusText: "HTTP Version Not Supported";
     }>;
-    TEMPORARY_REDIRECT: Readonly<{
-        status: 307;
-        statusText: "Temporary Redirect";
+    VARIANT_ALSO_NEGOTIATES: Readonly<{
+        status: 506;
+        statusText: "Variant Also Negotiates";
     }>;
-    PERMANENT_REDIRECT: Readonly<{
-        status: 308;
-        statusText: "Permanent Redirect";
+    INSUFFICIENT_STORAGE: Readonly<{
+        status: 507;
+        statusText: "Insufficient Storage";
     }>;
-    OK: Readonly<{
-        status: 200;
-        statusText: "OK";
+    LOOP_DETECTED: Readonly<{
+        status: 508;
+        statusText: "Loop Detected";
     }>;
-    CREATED: Readonly<{
-        status: 201;
-        statusText: "Created";
+    NOT_EXTENDED: Readonly<{
+        status: 510;
+        statusText: "Not Extended";
     }>;
-    ACCEPTED: Readonly<{
-        status: 202;
-        statusText: "Accepted";
-    }>;
-    NON_AUTHORITATIVE_INFORMATION: Readonly<{
-        status: 203;
-        statusText: "Non-Authoritative Information";
-    }>;
-    NO_CONTENT: Readonly<{
-        status: 204;
-        statusText: "No Content";
-    }>;
-    RESET_CONTENT: Readonly<{
-        status: 205;
-        statusText: "Reset Content";
-    }>;
-    PARTIAL_CONTENT: Readonly<{
-        status: 206;
-        statusText: "Partial Content";
-    }>;
-    MULTI_STATUS: Readonly<{
-        status: 207;
-        statusText: "Multi-Status";
-    }>;
-    ALREADY_REPORTED: Readonly<{
-        status: 208;
-        statusText: "Already Reported";
-    }>;
-    IM_USED: Readonly<{
-        status: 226;
-        statusText: "IM Used";
-    }>;
-    CONTINUE: Readonly<{
-        status: 100;
-        statusText: "Continue";
-    }>;
-    SWITCHING_PROTOCOLS: Readonly<{
-        status: 101;
-        statusText: "Switching Protocols";
-    }>;
-    EARLY_HINTS: Readonly<{
-        status: 103;
-        statusText: "Early Hints";
+    NETWORK_AUTHENTICATION_REQUIRED: Readonly<{
+        status: 511;
+        statusText: "Network Authentication Required";
     }>;
 }>;

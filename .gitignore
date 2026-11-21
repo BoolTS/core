@@ -129,6 +129,7 @@ out
 .pnp.*
 
 
+.npmrc
 .vscode
 .DS_Store
 __test/

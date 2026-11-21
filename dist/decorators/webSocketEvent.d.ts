@@ -5,11 +5,11 @@ export type TWebSocketEventHandlerMetadata = Required<{
 }> & Partial<{
     arguments: Record<string, TWebsocketArgumentsMetadata>;
 }>;
-export type TWebSocketEventMetadata = Record<"open" | "close" | "message" | "drain" | "ping" | "pong", TWebSocketEventHandlerMetadata>;
+export type TWebSocketEventMetadata = Record<"open" | "close" | "message" | "drain" | "ping" | "pong" | "error", TWebSocketEventHandlerMetadata>;
 /**
  *
  * @param path
  * @returns
  */
-export declare const WebSocketEvent: <T extends Object>(eventName: "open" | "close" | "message" | "drain" | "ping" | "pong") => (target: T, methodName: string, descriptor: PropertyDescriptor) => void;
+export declare const WebSocketEvent: <T extends Object>(eventName: "open" | "close" | "message" | "drain" | "ping" | "pong" | "error") => (target: T, methodName: string, descriptor: PropertyDescriptor) => void;
 export default WebSocket;

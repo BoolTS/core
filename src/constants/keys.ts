@@ -23,6 +23,7 @@ export const webSocketCloseCodeArgsKey = Symbol.for(`__${prefix}:webSocketArgume
 export const webSocketCloseReasonArgsKey = Symbol.for(
     `__${prefix}:webSocketArguments:closeReason__`
 );
+export const webSocketErrorArgsKey = Symbol.for(`__${prefix}:webSocketArguments:error__`);
 
 export const httpServerArgsKey = Symbol.for(`__${prefix}:httpArguments:server__`);
 export const requestHeadersArgsKey = Symbol.for(`__${prefix}:httpArguments:requestHeaders__`);

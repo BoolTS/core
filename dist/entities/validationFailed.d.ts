@@ -1,5 +1,5 @@
 export declare class ValidationFailed {
-    readonly error?: unknown | undefined;
-    constructor(error?: unknown | undefined);
+    readonly error?: unknown;
+    constructor(error?: unknown);
 }
 export default ValidationFailed;

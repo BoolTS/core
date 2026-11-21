@@ -2,15 +2,7 @@ import { HttpClientError } from "./clientError";
 import { HttpServerError } from "./serverError";
 
 export type THttpMethods =
-    | "GET"
-    | "HEAD"
-    | "POST"
-    | "PUT"
-    | "DELETE"
-    | "CONNECT"
-    | "OPTIONS"
-    | "TRACE"
-    | "PATCH";
+    "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "CONNECT" | "OPTIONS" | "TRACE" | "PATCH";
 
 export const httpMethods: Array<THttpMethods> = [
     "GET",
@@ -73,4 +65,3 @@ export const jsonErrorInfer = (data: any, headers: Headers = new Headers()) => {
 
 export * from "./clientError";
 export * from "./serverError";
-

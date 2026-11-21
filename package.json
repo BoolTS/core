@@ -5,15 +5,15 @@
     },
     "dependencies": {
         "@bool-ts/date-time": "^1.0.0",
-        "qs": "^6.14.1",
+        "qs": "^6.17.1",
         "reflect-metadata": "^0.2.2",
-        "zod": "^4.3.6"
+        "zod": "^4.6.7"
     },
     "description": "Core package for BoolTS framework",
     "devDependencies": {
-        "@types/bun": "latest",
-        "@types/qs": "^6.14.0",
-        "typescript": "^5.9.3"
+        "@types/bun": "^1.4.4",
+        "@types/qs": "^6.15.1",
+        "typescript": "^7.0.2"
     },
     "files": [
         "./dist",
@@ -39,10 +39,10 @@
         "url": "git+https://github.com/BoolTS/core.git"
     },
     "scripts": {
-        "build": "tsc --emitDeclarationOnly && bun run app.build.ts",
+        "build": "bun run --check ./app.build.ts && tsc --emitDeclarationOnly",
         "test:server": "bun --hot run __test/server/booljs/index.ts",
         "test:socket": "bun --hot run __test/client/socket.ts"
     },
     "types": "./dist/index.d.ts",
-    "version": "2.3.3"
+    "version": "2.3.9"
 }
