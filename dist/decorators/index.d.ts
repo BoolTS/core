@@ -9,7 +9,7 @@ export { Interceptor } from "./interceptor";
 export { Middleware } from "./middleware";
 export { Module } from "./module";
 export { WebSocket } from "./webSocket";
-export { WebSocketCloseCode, WebSocketCloseReason, WebSocketConnection, WebSocketMessage, WebSocketServer } from "./webSocketArguments";
+export { WebSocketCloseCode, WebSocketCloseReason, WebSocketConnection, WebSocketError, WebSocketMessage, WebSocketServer } from "./webSocketArguments";
 export { WebSocketEvent } from "./webSocketEvent";
 export type { TArgumentsMetadata, TArgumentsMetadataCollection } from "./arguments";
 export type { TContainerConfig, TContainerMetadata, TContainerOptions } from "./container";

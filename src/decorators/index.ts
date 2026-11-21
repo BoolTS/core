@@ -25,6 +25,7 @@ export {
     WebSocketCloseCode,
     WebSocketCloseReason,
     WebSocketConnection,
+    WebSocketError,
     WebSocketMessage,
     WebSocketServer
 } from "./webSocketArguments";
