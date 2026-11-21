@@ -13,7 +13,7 @@ export type TArgumentsMetadata<TValidationSchema = unknown> = {
     index: number;
     type: typeof requestBodyArgsKey;
     validationSchema?: TValidationSchema | ((context: IContext) => Promise<TValidationSchema> | TValidationSchema);
-    parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text";
+    parser: "arrayBuffer" | "blob" | "formData" | "json" | "text";
 } | {
     index: number;
     type: typeof paramsArgsKey;

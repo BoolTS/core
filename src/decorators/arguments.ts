@@ -36,7 +36,7 @@ export type TArgumentsMetadata<TValidationSchema = unknown> =
           validationSchema?:
               | TValidationSchema
               | ((context: IContext) => Promise<TValidationSchema> | TValidationSchema);
-          parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text";
+          parser: "arrayBuffer" | "blob" | "formData" | "json" | "text";
       }
     | {
           index: number;
@@ -139,7 +139,7 @@ export const RequestHeader =
 export const RequestBody =
     <TTarget extends Object, TValidationSchema = unknown>(
         validationSchema?: TValidationSchema,
-        parser?: "arrayBuffer" | "blob" | "formData" | "json" | "text"
+        parser: "arrayBuffer" | "blob" | "formData" | "json" | "text" = "json"
     ) =>
     (target: TTarget, methodName: string | symbol | undefined, parameterIndex: number) => {
         if (!methodName) {

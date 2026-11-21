@@ -65,6 +65,7 @@ import {
     webSocketCloseCodeArgsKey,
     webSocketCloseReasonArgsKey,
     webSocketConnectionArgsKey,
+    webSocketErrorArgsKey,
     webSocketKey,
     webSocketMessageArgsKey,
     webSocketServerArgsKey
@@ -541,7 +542,7 @@ export class Application<TRootClass extends Object = Object> {
 
                 handlerMetadata.descriptor.value(...args);
             },
-            message: (connection: ServerWebSocket<T>, message) => {
+            message: async (connection: ServerWebSocket<T>, message) => {
                 const pathnameKey = `${connection.data.pathname}:::message`;
                 const handlerMetadata = webSocketsMap.get(pathnameKey);
 
@@ -558,7 +559,15 @@ export class Application<TRootClass extends Object = Object> {
                             args[argumentMetadata.index] = connection;
                             break;
                         case webSocketMessageArgsKey:
-                            args[argumentMetadata.index] = message;
+                            args[argumentMetadata.index] = !argumentMetadata.validationSchema
+                                ? message
+                                : await this.#argumentsResolver({
+                                      context: this.#globalContext,
+                                      data: message,
+                                      validationSchema: argumentMetadata.validationSchema,
+                                      argumentIndex: argumentMetadata.index,
+                                      funcName: handlerMetadata.methodName
+                                  });
                             break;
                         case webSocketServerArgsKey:
                             args[argumentMetadata.index] =
@@ -594,7 +603,7 @@ export class Application<TRootClass extends Object = Object> {
 
                 handlerMetadata.descriptor.value(...args);
             },
-            ping: (connection: ServerWebSocket<T>, data) => {
+            ping: async (connection: ServerWebSocket<T>, data) => {
                 const pathnameKey = `${connection.data.pathname}:::ping`;
                 const handlerMetadata = webSocketsMap.get(pathnameKey);
 
@@ -611,7 +620,15 @@ export class Application<TRootClass extends Object = Object> {
                             args[argumentMetadata.index] = connection;
                             break;
                         case webSocketMessageArgsKey:
-                            args[argumentMetadata.index] = data;
+                            args[argumentMetadata.index] = !argumentMetadata.validationSchema
+                                ? data
+                                : await this.#argumentsResolver({
+                                      context: this.#globalContext,
+                                      data: data,
+                                      validationSchema: argumentMetadata.validationSchema,
+                                      argumentIndex: argumentMetadata.index,
+                                      funcName: handlerMetadata.methodName
+                                  });
                             break;
                         case webSocketServerArgsKey:
                             args[argumentMetadata.index] =
@@ -622,7 +639,7 @@ export class Application<TRootClass extends Object = Object> {
 
                 handlerMetadata.descriptor.value(...args);
             },
-            pong: (connection: ServerWebSocket<T>, data) => {
+            pong: async (connection: ServerWebSocket<T>, data) => {
                 const pathnameKey = `${connection.data.pathname}:::pong`;
                 const handlerMetadata = webSocketsMap.get(pathnameKey);
 
@@ -639,11 +656,47 @@ export class Application<TRootClass extends Object = Object> {
                             args[argumentMetadata.index] = connection;
                             break;
                         case webSocketMessageArgsKey:
-                            args[argumentMetadata.index] = data;
+                            args[argumentMetadata.index] = !argumentMetadata.validationSchema
+                                ? data
+                                : await this.#argumentsResolver({
+                                      context: this.#globalContext,
+                                      data: data,
+                                      validationSchema: argumentMetadata.validationSchema,
+                                      argumentIndex: argumentMetadata.index,
+                                      funcName: handlerMetadata.methodName
+                                  });
                             break;
                         case webSocketServerArgsKey:
                             args[argumentMetadata.index] =
                                 this.#globalContext.get(webSocketServerArgsKey);
+                            break;
+                    }
+                }
+
+                handlerMetadata.descriptor.value(...args);
+            },
+            error: (error, connection) => {
+                const pathnameKey = `${connection.data.pathname}:::error`;
+                const handlerMetadata = webSocketsMap.get(pathnameKey);
+
+                if (!handlerMetadata) {
+                    return;
+                }
+
+                const argumentsMetadata = handlerMetadata.arguments || {};
+                const args: Array<unknown> = [];
+
+                for (const [, argumentMetadata] of Object.entries(argumentsMetadata)) {
+                    switch (argumentMetadata.type) {
+                        case webSocketConnectionArgsKey:
+                            args[argumentMetadata.index] = connection;
+                            break;
+                        case webSocketServerArgsKey:
+                            args[argumentMetadata.index] =
+                                this.#globalContext.get(webSocketServerArgsKey);
+                            break;
+                        case webSocketErrorArgsKey:
+                            args[argumentMetadata.index] = error;
                             break;
                     }
                 }
@@ -1781,7 +1834,7 @@ export class Application<TRootClass extends Object = Object> {
             closeInterceptorHandlers: closeInterceptorHandlers
         });
 
-        for (const [_key, httpMetadata] of Object.entries(webSocketMetadata.http)) {
+        for (const httpMetadata of webSocketMetadata.http) {
             if (typeof httpMetadata.descriptor?.value !== "function") {
                 continue;
             }
@@ -1913,7 +1966,7 @@ export class Application<TRootClass extends Object = Object> {
                 const args = [];
                 const { func: handler, funcName: functionName, argumentsMetadata } = handlers[i];
 
-                for (const [_key, argMetadata] of Object.entries(argumentsMetadata)) {
+                for (const [, argMetadata] of Object.entries(argumentsMetadata)) {
                     switch (argMetadata.type) {
                         case contextArgsKey:
                             args[argMetadata.index] = !argMetadata.key
@@ -1925,10 +1978,10 @@ export class Application<TRootClass extends Object = Object> {
                             break;
                         case requestBodyArgsKey:
                             args[argMetadata.index] = !argMetadata.validationSchema
-                                ? await request?.[argMetadata.parser || "json"]()
+                                ? await request?.[argMetadata.parser]()
                                 : await this.#argumentsResolver({
                                       context: context,
-                                      data: await request?.[argMetadata.parser || "json"](),
+                                      data: await request?.[argMetadata.parser](),
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
                                       funcName: functionName
@@ -2001,17 +2054,17 @@ export class Application<TRootClass extends Object = Object> {
                 const args = [];
                 const { func: handler, funcName: functionName, argumentsMetadata } = handlers[i];
 
-                for (const [_key, argMetadata] of Object.entries(argumentsMetadata)) {
+                for (const [, argMetadata] of Object.entries(argumentsMetadata)) {
                     switch (argMetadata.type) {
                         case requestArgsKey:
                             args[argMetadata.index] = request;
                             break;
                         case requestBodyArgsKey:
                             args[argMetadata.index] = !argMetadata.validationSchema
-                                ? await request?.[argMetadata.parser || "json"]()
+                                ? await request?.[argMetadata.parser]()
                                 : await this.#argumentsResolver({
                                       context: context,
-                                      data: await request?.[argMetadata.parser || "json"](),
+                                      data: await request?.[argMetadata.parser](),
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
                                       funcName: functionName
@@ -2104,17 +2157,17 @@ export class Application<TRootClass extends Object = Object> {
                 const args = [];
                 const { func: handler, funcName: functionName, argumentsMetadata } = handlers[i];
 
-                for (const [_key, argMetadata] of Object.entries(argumentsMetadata)) {
+                for (const [, argMetadata] of Object.entries(argumentsMetadata)) {
                     switch (argMetadata.type) {
                         case requestArgsKey:
                             args[argMetadata.index] = request;
                             break;
                         case requestBodyArgsKey:
                             args[argMetadata.index] = !argMetadata.validationSchema
-                                ? await request?.[argMetadata.parser || "json"]()
+                                ? await request?.[argMetadata.parser]()
                                 : await this.#argumentsResolver({
                                       context: context,
-                                      data: await request?.[argMetadata.parser || "json"](),
+                                      data: await request?.[argMetadata.parser](),
                                       validationSchema: argMetadata.validationSchema,
                                       argumentIndex: argMetadata.index,
                                       funcName: functionName
@@ -2200,17 +2253,17 @@ export class Application<TRootClass extends Object = Object> {
                 argumentsMetadata: controllerActionArgumentsMetadata
             } = routeModel;
 
-            for (const [_key, argMetadata] of Object.entries(controllerActionArgumentsMetadata)) {
+            for (const [, argMetadata] of Object.entries(controllerActionArgumentsMetadata)) {
                 switch (argMetadata.type) {
                     case requestArgsKey:
                         controllerActionArguments[argMetadata.index] = request;
                         break;
                     case requestBodyArgsKey:
                         controllerActionArguments[argMetadata.index] = !argMetadata.validationSchema
-                            ? await request?.[argMetadata.parser || "json"]()
+                            ? await request?.[argMetadata.parser]()
                             : await this.#argumentsResolver({
                                   context: context,
-                                  data: await request?.[argMetadata.parser || "json"](),
+                                  data: await request?.[argMetadata.parser](),
                                   validationSchema: argMetadata.validationSchema,
                                   argumentIndex: argMetadata.index,
                                   funcName: controllerActionName

@@ -4,18 +4,18 @@ BoolTS Core is a powerful TypeScript framework designed to provide essential bui
 
 ## Features
 
--   **Bun Runtime**: Optimized for Bun's high-performance JavaScript runtime
--   **HTTP Handling**: Built-in support for HTTP requests and responses
--   **Data Validation**: Integration with Zod for type-safe data validation
--   **Metadata Reflection**: Support for runtime type information and metadata
--   **Decorators**: Rich set of decorators for extending functionality
--   **DateTime Handling**: Comprehensive date and time utilities
--   **Type Safety**: Full TypeScript support with strict type checking
+- **Bun Runtime**: Optimized for Bun's high-performance JavaScript runtime
+- **HTTP Handling**: Built-in support for HTTP requests and responses
+- **Data Validation**: Integration with Zod for type-safe data validation
+- **Metadata Reflection**: Support for runtime type information and metadata
+- **Decorators**: Rich set of decorators for extending functionality
+- **DateTime Handling**: Comprehensive date and time utilities
+- **Type Safety**: Full TypeScript support with strict type checking
 
 ## Prerequisites
 
--   [Bun](https://bun.sh/) (v1.0 or later)
--   Node.js (for development purposes)
+- [Bun](https://bun.sh/) (v1.0 or later)
+- Node.js (for development purposes)
 
 ## Installation
 
@@ -84,10 +84,10 @@ Handle HTTP requests and responses with built-in routing and middleware support,
 
 Extend your classes and methods with powerful decorators for:
 
--   Route handling
--   Parameter validation
--   Dependency injection
--   And more...
+- Route handling
+- Parameter validation
+- Dependency injection
+- And more...
 
 ### Validation
 

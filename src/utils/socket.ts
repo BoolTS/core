@@ -5,5 +5,9 @@ export const isWebSocketUpgrade = (request: Request): boolean => {
     const upgrade = headers.get("upgrade")?.toLowerCase() || "";
     const connection = headers.get("connection")?.toLowerCase() || "";
 
-    return method === "GET" && upgrade?.toLowerCase() === "websocket" && connection?.toLowerCase().includes("upgrade");
+    return (
+        method === "GET" &&
+        upgrade?.toLowerCase() === "websocket" &&
+        connection?.toLowerCase().includes("upgrade")
+    );
 };

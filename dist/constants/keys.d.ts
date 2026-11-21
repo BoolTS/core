@@ -18,6 +18,7 @@ export declare const webSocketConnectionArgsKey: unique symbol;
 export declare const webSocketMessageArgsKey: unique symbol;
 export declare const webSocketCloseCodeArgsKey: unique symbol;
 export declare const webSocketCloseReasonArgsKey: unique symbol;
+export declare const webSocketErrorArgsKey: unique symbol;
 export declare const httpServerArgsKey: unique symbol;
 export declare const requestHeadersArgsKey: unique symbol;
 export declare const requestHeaderArgsKey: unique symbol;
